@@ -1,0 +1,1897 @@
+{
+  "version": 1,
+  "runtimes": [
+    {
+      "id": "java-21",
+      "version": "21.0.2",
+      "versionEvidence": "Oracle Java executable product version; release file",
+      "copies": [
+        {
+          "from": "libdll/jdk-21",
+          "to": "runtime/windows/java-21"
+        }
+      ]
+    },
+    {
+      "id": "dotnet-8",
+      "version": "8.0.31",
+      "versionEvidence": "Microsoft release metadata and publisher SHA-512",
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/8.0.31/dotnet-runtime-8.0.31-win-x64.zip",
+          "sha512": "9c55c58694676ee64b0eed2cd6d8cbf58b9aa8288420acc66841e15ca0099c75d4af0182d23a641c2342e5a151a325df4a12fa0bde2e47c0fb7e9a33e7b09896",
+          "to": "runtime/windows/dotnet-8"
+        }
+      ]
+    }
+  ],
+  "tools": [
+    {
+      "id": "yakit",
+      "category": "web",
+      "name": "Yakit",
+      "description": {
+        "zh": "开源 HTTP 流量分析与手动请求调试工具。",
+        "en": "Open-source HTTP traffic analysis and manual request debugging."
+      },
+      "keywords": [
+        "http",
+        "proxy",
+        "request",
+        "yakit",
+        "请求",
+        "代理"
+      ],
+      "version": "1.4.8-0919",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/yakit/Yakit.exe",
+        "cwd": "tools/yakit",
+        "requiredFiles": [
+          "tools/yakit/resources/app.asar",
+          "tools/yakit/bins/yak.zip",
+          "tools/yakit/bins/engine-version.txt"
+        ]
+      },
+      "roots": [
+        "tools/yakit"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/yaklang/yakit/releases/tag/v1.4.8-0919",
+        "license": "AGPL-3.0",
+        "licenseUrl": "https://github.com/yaklang/yakit/blob/v1.4.8-0919/LICENSE.md",
+        "versionEvidence": "Official release asset SHA-256; bundled Yak engine 1.4.8-beta19"
+      },
+      "preserve": [
+        "tools/yakit/yakit-projects"
+      ],
+      "archives": [
+        {
+          "format": "nsis-7z",
+          "url": "https://github.com/yaklang/yakit/releases/download/v1.4.8-0919/Yakit-1.4.8-0919-windows-amd64.exe",
+          "to": "tools/yakit",
+          "sha256": "fb89fb6f4712797507d8259267a593746880655388d3c0c14fc9621734b1ce29",
+          "requiredFiles": [
+            {
+              "path": "Yakit.exe",
+              "sha256": "1214392f15600007222d51996a9505971a70f98c4cf80b5ee8136f69bf58a786"
+            },
+            {
+              "path": "bins/yak.zip",
+              "sha256": "c5bfbffd0f9a6e3693249215ecf9a73f26150c43ce8b4b724c87871cf3734cdb"
+            },
+            {
+              "path": "bins/engine-version.txt",
+              "sha256": "db45f4aa194208f2dee67e0f5dfa17d9a3a15d9136e49fd91f7f72161e311acd"
+            },
+            {
+              "path": "LICENSE.md",
+              "sha256": "ad858d53cae05eed9531ecd4c467440803acffe34c69de7b88e03affc5b6a1bd"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cyberchef",
+      "category": "web",
+      "name": "CyberChef",
+      "description": {
+        "zh": "离线分析编码、文本和文件数据。",
+        "en": "Analyze encodings, text, and file data offline."
+      },
+      "keywords": [
+        "encoding",
+        "decode",
+        "text",
+        "编解码",
+        "文本"
+      ],
+      "version": "10.19.4",
+      "entry": {
+        "kind": "web",
+        "path": "tools/cyberchef/CyberChef_v10.18.8.html",
+        "cwd": "tools/cyberchef"
+      },
+      "roots": [
+        "tools/cyberchef"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "HTML release link; source directory label differs"
+      },
+      "copies": [
+        {
+          "from": "libdll/web/CyberChef_v10.18.8",
+          "to": "tools/cyberchef"
+        }
+      ]
+    },
+    {
+      "id": "7zip",
+      "category": "misc",
+      "name": "7-Zip",
+      "description": {
+        "zh": "查看、创建和解压归档文件。",
+        "en": "Inspect, create, and extract archives."
+      },
+      "keywords": [
+        "archive",
+        "zip",
+        "extract",
+        "压缩",
+        "解压"
+      ],
+      "version": "25.00",
+      "entry": {
+        "kind": "console",
+        "path": "tools/7zip/7z.exe",
+        "cwd": "tools/7zip"
+      },
+      "roots": [
+        "tools/7zip"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "copies": [
+        {
+          "from": "libdll/misc/7-Zip",
+          "to": "tools/7zip",
+          "exclude": [
+            "pass.exe"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "exiftool",
+      "category": "misc",
+      "name": "ExifTool",
+      "description": {
+        "zh": "读取和编辑文件元数据。",
+        "en": "Read and edit file metadata."
+      },
+      "keywords": [
+        "metadata",
+        "exif",
+        "image",
+        "元数据",
+        "图片"
+      ],
+      "version": "12.56",
+      "entry": {
+        "kind": "console",
+        "path": "tools/exiftool/exiftool.exe",
+        "cwd": "tools/exiftool"
+      },
+      "roots": [
+        "tools/exiftool"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Packaged executable -ver output; PE product version is 12.5.6.0"
+      },
+      "copies": [
+        {
+          "from": "libdll/exiftool_v12.5.6.exe",
+          "to": "tools/exiftool/exiftool.exe"
+        }
+      ]
+    },
+    {
+      "id": "wireshark",
+      "category": "misc",
+      "name": "Wireshark",
+      "description": {
+        "zh": "查看和分析保存的网络流量文件。",
+        "en": "Inspect and analyze saved network captures."
+      },
+      "keywords": [
+        "pcap",
+        "packet",
+        "network",
+        "流量",
+        "数据包"
+      ],
+      "version": "4.6.2",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/wireshark/Wireshark.exe",
+        "cwd": "tools/wireshark"
+      },
+      "roots": [
+        "tools/wireshark"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version and PortableApps metadata"
+      },
+      "copies": [
+        {
+          "from": "libdll/misc/App/Wireshark",
+          "to": "tools/wireshark"
+        }
+      ]
+    },
+    {
+      "id": "binwalk",
+      "category": "misc",
+      "name": "Binwalk",
+      "description": {
+        "zh": "识别二进制文件中的嵌入内容。",
+        "en": "Identify embedded content in binary files."
+      },
+      "keywords": [
+        "binary",
+        "firmware",
+        "file",
+        "文件",
+        "固件"
+      ],
+      "version": "2.3.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/binwalk/binwalk.exe",
+        "cwd": "tools/binwalk"
+      },
+      "roots": [
+        "tools/binwalk"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Packaged executable help banner"
+      },
+      "copies": [
+        {
+          "from": "libdll/misc/binwalk",
+          "to": "tools/binwalk"
+        }
+      ]
+    },
+    {
+      "id": "ffmpeg",
+      "category": "misc",
+      "name": "FFmpeg",
+      "description": {
+        "zh": "检查和转换音视频文件。",
+        "en": "Inspect and convert audio and video files."
+      },
+      "keywords": [
+        "audio",
+        "video",
+        "ffprobe",
+        "音频",
+        "视频"
+      ],
+      "version": "7.1-full_build-www.gyan.dev",
+      "entry": {
+        "kind": "console",
+        "path": "tools/ffmpeg/ffmpeg.exe",
+        "cwd": "tools/ffmpeg"
+      },
+      "roots": [
+        "tools/ffmpeg"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Packaged executable -version output"
+      },
+      "copies": [
+        {
+          "from": "libdll/newUP/ffmpeg",
+          "to": "tools/ffmpeg",
+          "exclude": [
+            "output"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audacity",
+      "category": "misc",
+      "name": "Audacity",
+      "description": {
+        "zh": "查看波形、频谱并编辑音频。",
+        "en": "Inspect waveforms and spectrograms and edit audio."
+      },
+      "keywords": [
+        "audio",
+        "spectrum",
+        "waveform",
+        "音频",
+        "频谱"
+      ],
+      "version": "3.6.4",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/audacity/Audacity.exe",
+        "cwd": "tools/audacity"
+      },
+      "roots": [
+        "tools/audacity"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "preserve": [
+        "tools/audacity/Portable Settings"
+      ],
+      "copies": [
+        {
+          "from": "libdll/misc/audacity-win-3.6.4-64bit",
+          "to": "tools/audacity",
+          "exclude": [
+            "Portable Settings"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "stegsolve",
+      "category": "misc",
+      "name": "StegSolve",
+      "description": {
+        "zh": "查看图像通道和位平面。",
+        "en": "Inspect image channels and bit planes."
+      },
+      "keywords": [
+        "image",
+        "steganography",
+        "bitplane",
+        "图像",
+        "隐写"
+      ],
+      "version": "unverified",
+      "entry": {
+        "kind": "java",
+        "path": "tools/stegsolve/StegSolve.jar",
+        "cwd": "tools/stegsolve",
+        "runtime": "runtime/windows/java-21/bin/javaw.exe"
+      },
+      "roots": [
+        "tools/stegsolve",
+        "runtime/windows/java-21"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "JAR identity recorded by SHA-256"
+      },
+      "copies": [
+        {
+          "from": "libdll/StegSolve.jar",
+          "to": "tools/stegsolve/StegSolve.jar"
+        }
+      ]
+    },
+    {
+      "id": "pngcheck",
+      "category": "misc",
+      "name": "PNGcheck",
+      "description": {
+        "zh": "检查 PNG 文件结构与数据块。",
+        "en": "Inspect PNG structure and chunks."
+      },
+      "keywords": [
+        "png",
+        "image",
+        "chunk",
+        "图片",
+        "数据块"
+      ],
+      "version": "unverified",
+      "entry": {
+        "kind": "console",
+        "path": "tools/pngcheck/pngcheck.exe",
+        "cwd": "tools/pngcheck"
+      },
+      "roots": [
+        "tools/pngcheck"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Version command required"
+      },
+      "copies": [
+        {
+          "from": "libdll/misc/IDAT",
+          "to": "tools/pngcheck"
+        }
+      ]
+    },
+    {
+      "id": "qrazybox",
+      "category": "misc",
+      "name": "QRazyBox",
+      "description": {
+        "zh": "分析和修复二维码。",
+        "en": "Analyze and repair QR codes."
+      },
+      "keywords": [
+        "qr",
+        "image",
+        "repair",
+        "二维码",
+        "修复"
+      ],
+      "version": "unversioned",
+      "entry": {
+        "kind": "web",
+        "path": "tools/qrazybox/index.html",
+        "cwd": "tools/qrazybox"
+      },
+      "roots": [
+        "tools/qrazybox"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Local web bundle identity recorded by SHA-256"
+      },
+      "copies": [
+        {
+          "from": "libdll/misc/qrazybox-master",
+          "to": "tools/qrazybox"
+        }
+      ]
+    },
+    {
+      "id": "image-lsb-viewer",
+      "category": "misc",
+      "name": "ImageLSBViewer",
+      "description": {
+        "zh": "查看图像最低有效位中的信息。",
+        "en": "Inspect the least significant bits of images."
+      },
+      "keywords": [
+        "lsb",
+        "image",
+        "steganography",
+        "图像",
+        "隐写"
+      ],
+      "version": "unversioned",
+      "entry": {
+        "kind": "web",
+        "path": "tools/image-lsb-viewer/index.html",
+        "cwd": "tools/image-lsb-viewer"
+      },
+      "roots": [
+        "tools/image-lsb-viewer"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Local web bundle identity recorded by SHA-256"
+      },
+      "copies": [
+        {
+          "from": "libdll/newUP/ImageLSBViewer",
+          "to": "tools/image-lsb-viewer"
+        }
+      ]
+    },
+    {
+      "id": "imagemagick",
+      "category": "misc",
+      "name": "ImageMagick",
+      "description": {
+        "zh": "检查、转换和处理图像文件。",
+        "en": "Inspect, convert, and process image files."
+      },
+      "keywords": [
+        "image",
+        "convert",
+        "identify",
+        "图片",
+        "转换"
+      ],
+      "version": "7.1.1-39",
+      "entry": {
+        "kind": "console",
+        "path": "tools/imagemagick/magick.exe",
+        "cwd": "tools/imagemagick"
+      },
+      "roots": [
+        "tools/imagemagick"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "copies": [
+        {
+          "from": "libdll/misc/ImageMagick",
+          "to": "tools/imagemagick"
+        },
+        {
+          "from": "vcomp140.dll",
+          "to": "tools/imagemagick/vcomp140.dll",
+          "sha256": "036b9b3f7ece8dfd48aeccd77113721c5305043aaa9c64d1e72812252727aa7c"
+        }
+      ]
+    },
+    {
+      "id": "ida",
+      "category": "reverse",
+      "name": "IDA",
+      "description": {
+        "zh": "分析程序的反汇编与函数结构。",
+        "en": "Inspect program disassembly and function structure."
+      },
+      "keywords": [
+        "disassembly",
+        "binary",
+        "reverse",
+        "反汇编",
+        "逆向"
+      ],
+      "version": "7.7.22.0118",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/ida/ida64.exe",
+        "cwd": "tools/ida",
+        "pythonRoot": "tools/ida/python38"
+      },
+      "roots": [
+        "tools/ida"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version; differs from ida8.3 source directory",
+        "identityNote": "Executable product field identifies a third-party distribution"
+      },
+      "copies": [
+        {
+          "from": "libdll/ida8.3",
+          "to": "tools/ida",
+          "exclude": [
+            "Keygen.7z",
+            "IDA_InitTool.exe",
+            "SDK77.7z",
+            "idacolor.cf",
+            "使用说明.txt",
+            "plugins",
+            "python38/Lib/site-packages/finger_sdk",
+            "python38/Lib/site-packages/openai"
+          ]
+        },
+        {
+          "from": "libdll/ida8.3/plugins",
+          "to": "tools/ida/plugins",
+          "include": [
+            "bdescr.dll",
+            "bdescr64.dll",
+            "callee.dll",
+            "callee64.dll",
+            "comhelper.dll",
+            "comhelper64.dll",
+            "dscu.dll",
+            "dscu64.dll",
+            "dwarf.dll",
+            "dwarf64.dll",
+            "eh_parse.dll",
+            "eh_parse64.dll",
+            "gdb_user.dll",
+            "gdb_user64.dll",
+            "golang.dll",
+            "golang64.dll",
+            "hexarm.dll",
+            "hexarm64.dll",
+            "hexmips.dll",
+            "hexppc.dll",
+            "hexppc64.dll",
+            "hexrays.dll",
+            "hexx64.dll",
+            "idaclang.dll",
+            "idaclang64.dll",
+            "idapython3.dll",
+            "idapython3_64.dll",
+            "linux_stub.dll",
+            "linux_stub64.dll",
+            "mac_stub.dll",
+            "mac_stub64.dll",
+            "makeidt.dll",
+            "makeidt64.dll",
+            "nextfix.dll",
+            "nextfix64.dll",
+            "objc.dll",
+            "objc64.dll",
+            "pdb.dll",
+            "pdb64.dll",
+            "pin_user.dll",
+            "pin_user64.dll",
+            "replay_user.dll",
+            "replay_user64.dll",
+            "rtti.dll",
+            "rtti64.dll",
+            "samaout.dll",
+            "samaout64.dll",
+            "strings.dll",
+            "strings64.dll",
+            "svdimport.dll",
+            "svdimport64.dll",
+            "swift.dll",
+            "swift64.dll",
+            "tds.dll",
+            "tds64.dll",
+            "uiswitch.dll",
+            "uiswitch64.dll",
+            "unpack.dll",
+            "unpack64.dll",
+            "uunp.dll",
+            "uunp64.dll",
+            "win32_stub.dll",
+            "win32_stub64.dll",
+            "win32_user.dll",
+            "win32_user64.dll",
+            "windbg_user.dll",
+            "windbg_user64.dll",
+            "xnu_user64.dll",
+            "sqldrivers",
+            "styles",
+            "README.md"
+          ]
+        },
+        {
+          "from": "msvcp140.dll",
+          "to": "tools/ida/msvcp140.dll",
+          "sha256": "9057d39b36b6c7d054865ee2bf9cde7a490fe3b01ec4e82514687e24f576269f"
+        },
+        {
+          "from": "msvcp140_1.dll",
+          "to": "tools/ida/msvcp140_1.dll",
+          "sha256": "a65249861238e1c18b84ae5d112617c438d83a76b67eddc170ad82dbc2338665"
+        },
+        {
+          "from": "vcruntime140.dll",
+          "to": "tools/ida/vcruntime140.dll",
+          "sha256": "da72e6677bd1bcd01c453c1998aaa19aeaf6659f4774cf6848409da8232a95b2"
+        },
+        {
+          "from": "vcruntime140_1.dll",
+          "to": "tools/ida/vcruntime140_1.dll",
+          "sha256": "26e470b29bed3d873e0c328186e53f95e9edbfe0b0fd0cda44743a0b1a04a828"
+        }
+      ],
+      "preserve": [
+        "tools/ida/ida.key"
+      ]
+    },
+    {
+      "id": "x64dbg",
+      "category": "reverse",
+      "name": "x64dbg / x32dbg",
+      "description": {
+        "zh": "调试本地 64 位和 32 位 Windows 程序。",
+        "en": "Debug local 64-bit and 32-bit Windows programs."
+      },
+      "keywords": [
+        "debug",
+        "windows",
+        "x32dbg",
+        "调试",
+        "断点"
+      ],
+      "version": "0.0.2.5",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/x64dbg/x64/x64dbg.exe",
+        "cwd": "tools/x64dbg/x64"
+      },
+      "variants": [
+        {
+          "id": "x32",
+          "name": "x32dbg",
+          "entry": {
+            "kind": "gui",
+            "path": "tools/x64dbg/x32/x32dbg.exe",
+            "cwd": "tools/x64dbg/x32"
+          }
+        }
+      ],
+      "roots": [
+        "tools/x64dbg"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version; snapshot directory dated 2024-07-21"
+      },
+      "preserve": [
+        "tools/x64dbg/x64/db",
+        "tools/x64dbg/x64/memdumps",
+        "tools/x64dbg/x64/minidump",
+        "tools/x64dbg/x64/x64dbg.ini",
+        "tools/x64dbg/x32/db",
+        "tools/x64dbg/x32/memdumps",
+        "tools/x64dbg/x32/minidump",
+        "tools/x64dbg/x32/x32dbg.ini"
+      ],
+      "copies": [
+        {
+          "from": "libdll/snapshot_2024-07-21_20-36/release",
+          "to": "tools/x64dbg",
+          "exclude": [
+            "x64/db",
+            "x64/memdumps",
+            "x64/minidump",
+            "x32/db",
+            "x32/memdumps",
+            "x32/minidump",
+            "x64/x64dbg.ini",
+            "x32/x32dbg.ini",
+            "x64/plugins",
+            "x32/plugins"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "die",
+      "category": "reverse",
+      "name": "Detect It Easy",
+      "description": {
+        "zh": "识别可执行文件格式、编译器与封装信息。",
+        "en": "Identify executable formats, compilers, and packers."
+      },
+      "keywords": [
+        "pe",
+        "elf",
+        "format",
+        "格式",
+        "编译器"
+      ],
+      "version": "3.10.0.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/die/die.exe",
+        "cwd": "tools/die"
+      },
+      "roots": [
+        "tools/die"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "preserve": [
+        "tools/die/die.ini"
+      ],
+      "copies": [
+        {
+          "from": "libdll/upD/die_win64_portable_3.10_x64",
+          "to": "tools/die",
+          "exclude": [
+            "die.ini",
+            "shortcuts.iniwin.ini"
+          ]
+        },
+        {
+          "from": "libdll/jdk1.8.0_161/bin/msvcr100.dll",
+          "to": "tools/die/msvcr100.dll",
+          "sha256": "ae3cb6c6afba9a4aa5c85f66023c35338ca579b30326dd02918f9d55259503d5"
+        }
+      ]
+    },
+    {
+      "id": "imhex",
+      "category": "reverse",
+      "name": "ImHex",
+      "description": {
+        "zh": "以十六进制和结构化视图分析文件。",
+        "en": "Analyze files with hexadecimal and structured views."
+      },
+      "keywords": [
+        "hex",
+        "binary",
+        "pattern",
+        "十六进制",
+        "结构"
+      ],
+      "version": "1.35.3",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/imhex/imhex-gui.exe",
+        "cwd": "tools/imhex",
+        "dotnetRoot": "runtime/windows/dotnet-8"
+      },
+      "roots": [
+        "tools/imhex",
+        "runtime/windows/dotnet-8"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Portable directory version; executable identity recorded by SHA-256"
+      },
+      "preserve": [
+        "tools/imhex/config",
+        "tools/imhex/backups",
+        "tools/imhex/recent",
+        "tools/imhex/workspaces"
+      ],
+      "copies": [
+        {
+          "from": "libdll/imhex-1.35.3-Windows-Portable-x86_64",
+          "to": "tools/imhex",
+          "exclude": [
+            "backups",
+            "config",
+            "logs",
+            "recent",
+            "workspaces",
+            "updates",
+            "imhex.pdb",
+            "imhex-gui.pdb",
+            "libimhex.pdb"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "jadx",
+      "category": "reverse",
+      "name": "JADX",
+      "description": {
+        "zh": "查看 Android 和 Java 字节码的反编译结果。",
+        "en": "Inspect decompiled Android and Java bytecode."
+      },
+      "keywords": [
+        "android",
+        "java",
+        "decompile",
+        "反编译",
+        "安卓"
+      ],
+      "version": "dev",
+      "entry": {
+        "kind": "java",
+        "path": "tools/jadx/jadx-gui-dev-all.jar",
+        "cwd": "tools/jadx",
+        "runtime": "runtime/windows/java-21/bin/javaw.exe"
+      },
+      "roots": [
+        "tools/jadx",
+        "runtime/windows/java-21"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "JAR manifest jadx-version field; development JAR identity recorded by SHA-256"
+      },
+      "copies": [
+        {
+          "from": "libdll/newUP/jadx-gui-dev-all.jar",
+          "to": "tools/jadx/jadx-gui-dev-all.jar"
+        }
+      ]
+    },
+    {
+      "id": "dnspy",
+      "category": "reverse",
+      "name": "dnSpy",
+      "description": {
+        "zh": "查看和调试 .NET 程序。",
+        "en": "Inspect and debug .NET programs."
+      },
+      "keywords": [
+        "dotnet",
+        ".net",
+        "decompile",
+        "反编译",
+        "调试"
+      ],
+      "version": "6.1.8.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/dnspy/dnSpy.exe",
+        "cwd": "tools/dnspy"
+      },
+      "roots": [
+        "tools/dnspy"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable file version; includes .NET Desktop 5.0.0"
+      },
+      "preserve": [
+        "tools/dnspy/dnSpy.xml",
+        "tools/dnspy/bin/FileLists"
+      ],
+      "copies": [
+        {
+          "from": "libdll/qemu/dnSpy",
+          "to": "tools/dnspy",
+          "exclude": [
+            "dnSpy.xml",
+            "bin/FileLists"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "pyinstxtractor-ng",
+      "category": "reverse",
+      "name": "PyInstaller Extractor",
+      "description": {
+        "zh": "检查和提取 PyInstaller 程序中的文件。",
+        "en": "Inspect and extract files from PyInstaller applications."
+      },
+      "keywords": [
+        "python",
+        "pyinstaller",
+        "extract",
+        "提取",
+        "解包"
+      ],
+      "version": "unverified",
+      "entry": {
+        "kind": "console",
+        "path": "tools/pyinstxtractor-ng/pyinstxtractor-ng.exe",
+        "cwd": "tools/pyinstxtractor-ng"
+      },
+      "roots": [
+        "tools/pyinstxtractor-ng"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "No version resource; packaged Python executable"
+      },
+      "copies": [
+        {
+          "from": "libdll/up4/pyinstxtractor-ng",
+          "to": "tools/pyinstxtractor-ng"
+        }
+      ]
+    },
+    {
+      "id": "winmerge",
+      "category": "misc",
+      "name": "WinMerge",
+      "description": {
+        "zh": "比较文本、图片和目录中的文件差异。",
+        "en": "Compare text, images, and files in directories."
+      },
+      "keywords": [
+        "diff",
+        "compare",
+        "merge",
+        "对比",
+        "差异"
+      ],
+      "version": "2.16.46.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/winmerge/WinMergeU.exe",
+        "cwd": "tools/winmerge"
+      },
+      "roots": [
+        "tools/winmerge"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://winmerge.org/source-code/",
+        "versionEvidence": "Executable product version; bundled README and GPL notice"
+      },
+      "preserve": [
+        "tools/winmerge/WinMerge.ini"
+      ],
+      "copies": [
+        {
+          "from": "libdll/WinMerge",
+          "to": "tools/winmerge",
+          "exclude": [
+            "WinMerge.ini"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qalculate",
+      "category": "misc",
+      "name": "Qalculate!",
+      "description": {
+        "zh": "计算表达式、换算进制与单位，并绘制函数图像。",
+        "en": "Evaluate expressions, convert number bases and units, and plot functions."
+      },
+      "keywords": [
+        "calculator",
+        "number base",
+        "plot",
+        "计算",
+        "进制"
+      ],
+      "version": "5.8.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/qalculate/qalculate-qt.exe",
+        "cwd": "tools/qalculate"
+      },
+      "roots": [
+        "tools/qalculate"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://qalculate.github.io/",
+        "versionEvidence": "Bundled qalc --version output; bundled GPL notice"
+      },
+      "preserve": [
+        "tools/qalculate/user"
+      ],
+      "copies": [
+        {
+          "from": "libdll/qalculate",
+          "to": "tools/qalculate",
+          "exclude": [
+            "user"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sonic-visualiser",
+      "category": "misc",
+      "name": "Sonic Visualiser",
+      "description": {
+        "zh": "查看音频波形、频谱图和时间标注。",
+        "en": "Inspect audio waveforms, spectrograms, and time annotations."
+      },
+      "keywords": [
+        "audio",
+        "spectrogram",
+        "waveform",
+        "音频",
+        "频谱"
+      ],
+      "version": "5.0.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/sonic-visualiser/SonicVisualiser.exe",
+        "cwd": "tools/sonic-visualiser"
+      },
+      "roots": [
+        "tools/sonic-visualiser"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://sonicvisualiser.org/",
+        "versionEvidence": "Bundled CHANGELOG identifies 5.0.1; GUI version not independently observed; missing MSVC companion DLLs supplied from publisher-verified DB Browser 3.13.1 ZIP, matching bundled MSVC 14.29.30153.0"
+      },
+      "copies": [
+        {
+          "from": "libdll/misc/SonicVisualiser",
+          "to": "tools/sonic-visualiser"
+        }
+      ],
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://github.com/sqlitebrowser/sqlitebrowser/releases/download/v3.13.1/DB.Browser.for.SQLite-v3.13.1-win64.zip",
+          "sha256": "22375e275ec42d96de1d3b8e9ea4ed86d2a3505c4d0ffcbd1af67aa4003e5e4d",
+          "to": "tools/sonic-visualiser",
+          "include": [
+            "msvcp140_1.dll",
+            "msvcp140_2.dll"
+          ],
+          "requiredFiles": [
+            {
+              "path": "msvcp140_1.dll",
+              "sha256": "768e0829decea713afb35a7de07e276f051581c8ff2c17e1bae9b07dd1445dd0"
+            },
+            {
+              "path": "msvcp140_2.dll",
+              "sha256": "5c12eaef6db18b168f712bff9b55793e0effddf15b89552e7f5ca4f8f1887b9b"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "tesseract-ocr",
+      "category": "misc",
+      "name": "Tesseract OCR",
+      "description": {
+        "zh": "离线识别图片中的英文、简体和繁体中文。",
+        "en": "Recognize English, Simplified Chinese, and Traditional Chinese in local images."
+      },
+      "keywords": [
+        "ocr",
+        "image",
+        "text",
+        "文字识别",
+        "图片"
+      ],
+      "version": "5.3.0.20221214",
+      "entry": {
+        "kind": "console",
+        "path": "tools/tesseract-ocr/tesseract.exe",
+        "cwd": "tools/tesseract-ocr"
+      },
+      "roots": [
+        "tools/tesseract-ocr"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://tesseract-ocr.github.io/",
+        "versionEvidence": "tesseract --version output; selected PE dependencies and eng/chi_sim/chi_tra/osd data"
+      },
+      "copies": [
+        {
+          "from": "libdll/OCR",
+          "to": "tools/tesseract-ocr",
+          "include": [
+            "iconv.dll",
+            "libarchive-13.dll",
+            "libbz2-1.dll",
+            "libcurl-4.dll",
+            "libgcc_s_seh-1.dll",
+            "libgif-7.dll",
+            "libidn2-0.dll",
+            "libintl-8.dll",
+            "libjbig-2.dll",
+            "libjpeg-8.dll",
+            "liblept-5.dll",
+            "liblz4-1.dll",
+            "liblzma-5.dll",
+            "liblzo2-2.dll",
+            "libnghttp2-14.dll",
+            "libopenjp2.dll",
+            "libpng16-16.dll",
+            "libstdc++-6.dll",
+            "libtesseract-5.dll",
+            "libtiff-5.dll",
+            "libunistring-2.dll",
+            "libwebp-7.dll",
+            "libwinpthread-1.dll",
+            "libxml2-2.dll",
+            "libzstd-1.dll",
+            "tesseract.exe",
+            "zlib1.dll",
+            "tessdata/eng.traineddata",
+            "tessdata/chi_sim.traineddata",
+            "tessdata/chi_tra.traineddata",
+            "tessdata/osd.traineddata",
+            "tessdata/configs/alto",
+            "tessdata/configs/ambigs.train",
+            "tessdata/configs/api_config",
+            "tessdata/configs/bigram",
+            "tessdata/configs/box.train",
+            "tessdata/configs/box.train.stderr",
+            "tessdata/configs/digits",
+            "tessdata/configs/get.images",
+            "tessdata/configs/hocr",
+            "tessdata/configs/inter",
+            "tessdata/configs/kannada",
+            "tessdata/configs/linebox",
+            "tessdata/configs/logfile",
+            "tessdata/configs/lstm.train",
+            "tessdata/configs/lstmbox",
+            "tessdata/configs/lstmdebug",
+            "tessdata/configs/makebox",
+            "tessdata/configs/pdf",
+            "tessdata/configs/quiet",
+            "tessdata/configs/rebox",
+            "tessdata/configs/strokewidth",
+            "tessdata/configs/tsv",
+            "tessdata/configs/txt",
+            "tessdata/configs/unlv",
+            "tessdata/configs/wordstrbox",
+            "tessdata/tessconfigs/batch",
+            "tessdata/tessconfigs/batch.nochop",
+            "tessdata/tessconfigs/matdemo",
+            "tessdata/tessconfigs/msdemo",
+            "tessdata/tessconfigs/nobatch",
+            "tessdata/tessconfigs/segdemo",
+            "tessdata/pdf.ttf",
+            "tesseract.1.html"
+          ]
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://raw.githubusercontent.com/tesseract-ocr/tesseract/5.3.0/LICENSE",
+          "path": "tools/tesseract-ocr/LICENSE.tesseract.txt",
+          "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+        }
+      ]
+    },
+    {
+      "id": "sox",
+      "category": "misc",
+      "name": "SoX",
+      "description": {
+        "zh": "分析音频参数、转换采样格式和生成频谱图。",
+        "en": "Analyze audio properties, convert sample formats, and generate spectrograms."
+      },
+      "keywords": [
+        "audio",
+        "spectrogram",
+        "sample rate",
+        "音频",
+        "采样"
+      ],
+      "version": "14.4.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/sox/sox.exe",
+        "cwd": "tools/sox"
+      },
+      "roots": [
+        "tools/sox"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://sox.sourceforge.net/",
+        "versionEvidence": "sox --version output; selected PE dependency closure"
+      },
+      "copies": [
+        {
+          "from": "libdll/up3/sox",
+          "to": "tools/sox",
+          "include": [
+            "libflac-8.dll",
+            "libgcc_s_sjlj-1.dll",
+            "libgomp-1.dll",
+            "libid3tag-0.dll",
+            "libogg-0.dll",
+            "libpng16-16.dll",
+            "libsox-3.dll",
+            "libssp-0.dll",
+            "libvorbis-0.dll",
+            "libvorbisenc-2.dll",
+            "libvorbisfile-3.dll",
+            "libwavpack-1.dll",
+            "libwinpthread-1.dll",
+            "sox.exe",
+            "zlib1.dll"
+          ]
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://raw.githubusercontent.com/cbagwell/sox/cfc3ccc2fdae6f5f462b35c0445069ab36630778/COPYING",
+          "path": "tools/sox/COPYING.txt",
+          "sha256": "7d03a542ce0b414c27b248b553bc49d45a7a4dcbcc8c08aeb5ebdca204bf1226"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/cbagwell/sox/cfc3ccc2fdae6f5f462b35c0445069ab36630778/LICENSE.GPL",
+          "path": "tools/sox/LICENSE.GPL.txt",
+          "sha256": "ab15fd526bd8dd18a9e77ebc139656bf4d33e97fc7238cd11bf60e2b9b8666c6"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/cbagwell/sox/cfc3ccc2fdae6f5f462b35c0445069ab36630778/LICENSE.LGPL",
+          "path": "tools/sox/LICENSE.LGPL.txt",
+          "sha256": "5df07007198989c622f5d41de8d703e7bef3d0e79d62e24332ee739a452af62a"
+        }
+      ]
+    },
+    {
+      "id": "tweakpng",
+      "category": "misc",
+      "name": "TweakPNG",
+      "description": {
+        "zh": "查看和编辑 PNG 数据块、调色板及文本信息。",
+        "en": "Inspect and edit PNG chunks, palettes, and text metadata."
+      },
+      "keywords": [
+        "png",
+        "chunk",
+        "palette",
+        "图片",
+        "数据块"
+      ],
+      "version": "1.4.6.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/tweakpng/tweakpng.exe",
+        "cwd": "tools/tweakpng"
+      },
+      "roots": [
+        "tools/tweakpng"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://entropymine.com/jason/tweakpng/",
+        "versionEvidence": "Executable product version; publisher identifies portable 1.4.6 release"
+      },
+      "copies": [
+        {
+          "from": "libdll/upD/tweakpng-1.4.6/tweakpng.exe",
+          "to": "tools/tweakpng/tweakpng.exe",
+          "sha256": "8b561d19c01f0f37becf0afffa6532f962a1bb6813dcab90d610430c87955485"
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://raw.githubusercontent.com/jsummers/tweakpng/faac1617dff2976a6b45047e0abb21ed82701279/COPYING.txt",
+          "path": "tools/tweakpng/COPYING.txt",
+          "sha256": "0b383d5a63da644f628d99c33976ea6487ed89aaa59f0b3257992deac1171e6b"
+        }
+      ]
+    },
+    {
+      "id": "multimon-ng",
+      "category": "misc",
+      "name": "multimon-ng",
+      "description": {
+        "zh": "从本地音频解码 DTMF 按键音和摩尔斯信号。",
+        "en": "Decode DTMF tones and Morse signals from local audio."
+      },
+      "keywords": [
+        "audio",
+        "dtmf",
+        "morse",
+        "音频",
+        "摩尔斯"
+      ],
+      "version": "1.1.8",
+      "entry": {
+        "kind": "console",
+        "path": "tools/multimon-ng/multimon-ng.exe",
+        "cwd": "tools/multimon-ng"
+      },
+      "roots": [
+        "tools/multimon-ng"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://github.com/EliasOenal/multimon-ng",
+        "versionEvidence": "multimon-ng -h output; standalone Windows executable"
+      },
+      "copies": [
+        {
+          "from": "libdll/up3/multimon-ng.exe",
+          "to": "tools/multimon-ng/multimon-ng.exe",
+          "sha256": "4eb292c6e48f101c27b395d4e03c1f424f2b05f31a6512b8745fb5f6720a0fed"
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://raw.githubusercontent.com/EliasOenal/multimon-ng/1.1.8/COPYING",
+          "path": "tools/multimon-ng/COPYING.txt",
+          "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+        }
+      ]
+    },
+    {
+      "id": "gnu-strings",
+      "category": "misc",
+      "name": "GNU strings",
+      "description": {
+        "zh": "查看二进制文件中可打印的文本及其偏移量。",
+        "en": "Inspect printable text and its offsets in binary files."
+      },
+      "keywords": [
+        "strings",
+        "binary",
+        "text",
+        "字符串",
+        "二进制"
+      ],
+      "version": "2.30",
+      "entry": {
+        "kind": "console",
+        "path": "tools/gnu-strings/strings.exe",
+        "cwd": "tools/gnu-strings"
+      },
+      "roots": [
+        "tools/gnu-strings"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://www.gnu.org/software/binutils/",
+        "versionEvidence": "strings --version output; standalone Windows executable"
+      },
+      "copies": [
+        {
+          "from": "libdll/strings.exe",
+          "to": "tools/gnu-strings/strings.exe",
+          "sha256": "166be635db94f1aa75f3b55603dd3b80c46bc266a010a172d465dbb4c5994861"
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://www.gnu.org/licenses/gpl-3.0.txt",
+          "path": "tools/gnu-strings/COPYING3.txt",
+          "sha256": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+        }
+      ]
+    },
+    {
+      "id": "gimp",
+      "category": "misc",
+      "name": "GIMP",
+      "description": {
+        "zh": "编辑图像图层、通道、调色板和透明度。",
+        "en": "Edit image layers, channels, palettes, and transparency."
+      },
+      "keywords": [
+        "image",
+        "layer",
+        "channel",
+        "图片",
+        "通道"
+      ],
+      "version": "3.0.4",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/gimp/bin/gimp-3.0.exe",
+        "cwd": "tools/gimp"
+      },
+      "roots": [
+        "tools/gimp"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://www.gimp.org/",
+        "versionEvidence": "gimp-console-3.0 --version output; local distribution directories only; unsigned local binary; packaged Python and Script-Fu interpreters resolve relative to tools/gimp"
+      },
+      "generatedFiles": [
+        {
+          "path": "tools/gimp/lib/gimp/3.0/interpreters/pygimp.interp",
+          "content": "python=./bin/pythonw.exe\npython3=./bin/pythonw.exe\n/usr/bin/python=./bin/pythonw.exe\n/usr/bin/python3=./bin/pythonw.exe\n:Python:E::py::./bin/pythonw.exe:\n"
+        },
+        {
+          "path": "tools/gimp/lib/gimp/3.0/interpreters/gimp-script-fu-interpreter.interp",
+          "content": "gimp-script-fu-interpreter=./bin/gimp-script-fu-interpreter-3.0.exe\ngimp-script-fu-interpreter-3.0=./bin/gimp-script-fu-interpreter-3.0.exe\n/usr/bin/gimp-script-fu-interpreter=./bin/gimp-script-fu-interpreter-3.0.exe\n:ScriptFu:E::scm::./bin/gimp-script-fu-interpreter-3.0.exe:\n"
+        }
+      ],
+      "copies": [
+        {
+          "from": "libdll/up4/gimp",
+          "to": "tools/gimp",
+          "include": [
+            "32",
+            "bin",
+            "etc",
+            "include",
+            "lib",
+            "share"
+          ],
+          "exclude": [
+            "lib/gimp/3.0/interpreters/pygimp.interp",
+            "lib/gimp/3.0/interpreters/gimp-script-fu-interpreter.interp"
+          ]
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://raw.githubusercontent.com/GNOME/gimp/GIMP_3_0_4/COPYING",
+          "path": "tools/gimp/COPYING.txt",
+          "sha256": "e79e9c8a0c85d735ff98185918ec94ed7d175efc377012787aebcf3b80f0d90b"
+        }
+      ]
+    },
+    {
+      "id": "curl",
+      "category": "web",
+      "name": "curl",
+      "description": {
+        "zh": "手动发送 HTTP 请求并检查响应头和正文。",
+        "en": "Send HTTP requests manually and inspect response headers and bodies."
+      },
+      "keywords": [
+        "http",
+        "request",
+        "headers",
+        "请求",
+        "响应"
+      ],
+      "version": "8.22.0_2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/curl/bin/curl.exe",
+        "cwd": "tools/curl"
+      },
+      "roots": [
+        "tools/curl"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://curl.se/windows/",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://curl.se/windows/dl-8.22.0_2/curl-8.22.0_2-win64-mingw.zip",
+          "sha256": "7c8c6b953b4eb2953d2bdc08cca1d5f09a964e9f86c361693559400c9a6d6db0",
+          "to": "tools/curl",
+          "requiredFiles": [
+            {
+              "path": "bin/curl.exe",
+              "sha256": "b028548a8c0d3dc2c899fe415dce1ef1d2406801b3adc43df9921683026e86cc"
+            }
+          ],
+          "from": "curl-8.22.0_2-win64-mingw"
+        }
+      ]
+    },
+    {
+      "id": "jq",
+      "category": "web",
+      "name": "jq",
+      "description": {
+        "zh": "格式化、筛选和转换 JSON 数据。",
+        "en": "Format, filter, and transform JSON data."
+      },
+      "keywords": [
+        "json",
+        "query",
+        "format",
+        "筛选",
+        "格式化"
+      ],
+      "version": "1.8.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/jq/jq.exe",
+        "cwd": "tools/jq"
+      },
+      "roots": [
+        "tools/jq"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://jqlang.org/download/",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "downloads": [
+        {
+          "url": "https://github.com/jqlang/jq/releases/download/jq-1.8.2/jq-windows-amd64.exe",
+          "path": "tools/jq/jq.exe",
+          "sha256": "a6fc67fedaf9128a3309a1e2ebb8b986aeccf70122ee46d2cb4849e423f0c627"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/jqlang/jq/jq-1.8.2/COPYING",
+          "path": "tools/jq/COPYING.txt",
+          "sha256": "ad2b4a266b2268939c1446979759706077421cf906a203aa188c6f396e8cfd74"
+        }
+      ]
+    },
+    {
+      "id": "yq",
+      "category": "web",
+      "name": "yq",
+      "description": {
+        "zh": "查询和转换 YAML、JSON、XML 与 CSV 数据。",
+        "en": "Query and convert YAML, JSON, XML, and CSV data."
+      },
+      "keywords": [
+        "yaml",
+        "json",
+        "xml",
+        "csv",
+        "转换"
+      ],
+      "version": "4.54.1",
+      "entry": {
+        "kind": "console",
+        "path": "tools/yq/yq.exe",
+        "cwd": "tools/yq"
+      },
+      "roots": [
+        "tools/yq"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/mikefarah/yq/releases/tag/v4.54.1",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "downloads": [
+        {
+          "url": "https://github.com/mikefarah/yq/releases/download/v4.54.1/yq_windows_amd64.exe",
+          "path": "tools/yq/yq.exe",
+          "sha256": "b645f47ebb3a0d2fbab52998550bbd0a1706f23b5ca5f5b48e638c580bb70928"
+        },
+        {
+          "url": "https://raw.githubusercontent.com/mikefarah/yq/v4.54.1/LICENSE",
+          "path": "tools/yq/LICENSE.txt",
+          "sha256": "697db34dabb21562fe84487a2ccd031fbd45382b89c2cbdec8ef31682c486040"
+        }
+      ]
+    },
+    {
+      "id": "sqlite",
+      "category": "misc",
+      "name": "SQLite",
+      "description": {
+        "zh": "检查本地 SQLite 数据库结构和查询结果。",
+        "en": "Inspect local SQLite database schemas and query results."
+      },
+      "keywords": [
+        "sqlite",
+        "database",
+        "sql",
+        "数据库",
+        "查询"
+      ],
+      "version": "3.53.4",
+      "entry": {
+        "kind": "console",
+        "path": "tools/sqlite/sqlite3.exe",
+        "cwd": "tools/sqlite"
+      },
+      "roots": [
+        "tools/sqlite"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://sqlite.org/download.html",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://sqlite.org/2026/sqlite-tools-win-x64-3530400.zip",
+          "sha256": "f46ee2475de4cbe287e6e5f7d43c838796b14e7379cd216bdbb28d391429f9fc",
+          "to": "tools/sqlite",
+          "requiredFiles": [
+            {
+              "path": "sqlite3.exe",
+              "sha256": "5da2398d4913b893bd1ea578d85403b3a83a06fabf9d2303ca9f63ef0849fc6f"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "sqlite-browser",
+      "category": "misc",
+      "name": "DB Browser for SQLite",
+      "description": {
+        "zh": "以表格界面浏览和编辑本地 SQLite 数据库。",
+        "en": "Browse and edit local SQLite databases in a table interface."
+      },
+      "keywords": [
+        "sqlite",
+        "database",
+        "table",
+        "数据库",
+        "表格"
+      ],
+      "version": "3.13.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/sqlite-browser/DB Browser for SQLite.exe",
+        "cwd": "tools/sqlite-browser"
+      },
+      "roots": [
+        "tools/sqlite-browser"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/sqlitebrowser/sqlitebrowser/releases/tag/v3.13.1",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://github.com/sqlitebrowser/sqlitebrowser/releases/download/v3.13.1/DB.Browser.for.SQLite-v3.13.1-win64.zip",
+          "sha256": "22375e275ec42d96de1d3b8e9ea4ed86d2a3505c4d0ffcbd1af67aa4003e5e4d",
+          "to": "tools/sqlite-browser",
+          "requiredFiles": [
+            {
+              "path": "DB Browser for SQLite.exe",
+              "sha256": "8baa96174172f2df10747be48e2cdae2ab7a22fecf8aace5a965f4f9f57b18b1"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "qpdf",
+      "category": "misc",
+      "name": "qpdf",
+      "description": {
+        "zh": "检查 PDF 结构并提取页面和附件。",
+        "en": "Inspect PDF structure and extract pages and attachments."
+      },
+      "keywords": [
+        "pdf",
+        "document",
+        "attachment",
+        "文档",
+        "附件"
+      ],
+      "version": "12.4.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/qpdf/bin/qpdf.exe",
+        "cwd": "tools/qpdf"
+      },
+      "roots": [
+        "tools/qpdf"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/qpdf/qpdf/releases/tag/v12.4.2",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://github.com/qpdf/qpdf/releases/download/v12.4.2/qpdf-12.4.2-mingw64.zip",
+          "sha256": "773d2fa0c7d161e2271430734338e560a07b25d0edf11ceee8e53de435012766",
+          "to": "tools/qpdf",
+          "requiredFiles": [
+            {
+              "path": "bin/qpdf.exe",
+              "sha256": "7a155e0fe51833087d13b7b6a29f4f877bcd2fbcae4354fe41ff2bea2f79e090"
+            }
+          ],
+          "from": "qpdf-12.4.2-mingw64"
+        }
+      ]
+    },
+    {
+      "id": "ripgrep",
+      "category": "misc",
+      "name": "ripgrep",
+      "description": {
+        "zh": "使用文本和正则表达式搜索本地文件。",
+        "en": "Search local files using text and regular expressions."
+      },
+      "keywords": [
+        "search",
+        "regex",
+        "text",
+        "搜索",
+        "正则"
+      ],
+      "version": "15.2.0",
+      "entry": {
+        "kind": "console",
+        "path": "tools/ripgrep/rg.exe",
+        "cwd": "tools/ripgrep"
+      },
+      "roots": [
+        "tools/ripgrep"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/BurntSushi/ripgrep/releases/tag/15.2.0",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://github.com/BurntSushi/ripgrep/releases/download/15.2.0/ripgrep-15.2.0-x86_64-pc-windows-msvc.zip",
+          "sha256": "71b2fef860abe467217a538ff31de02f5258807c0129f771846f87bd029aafc5",
+          "to": "tools/ripgrep",
+          "requiredFiles": [
+            {
+              "path": "rg.exe",
+              "sha256": "14231169855ec5205cf5a1b6f1db358ff4aed4247c86b69ce8aae647c77f6680"
+            }
+          ],
+          "from": "ripgrep-15.2.0-x86_64-pc-windows-msvc"
+        }
+      ]
+    },
+    {
+      "id": "bruno",
+      "category": "web",
+      "name": "Bruno",
+      "description": {
+        "zh": "管理本地请求集合并手动调试 HTTP API。",
+        "en": "Manage local request collections and debug HTTP APIs manually."
+      },
+      "keywords": [
+        "http",
+        "api",
+        "request",
+        "请求",
+        "接口"
+      ],
+      "version": "4.2.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/bruno/Bruno.exe",
+        "cwd": "tools/bruno"
+      },
+      "roots": [
+        "tools/bruno"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/usebruno/bruno/releases/tag/v4.2.1",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://github.com/usebruno/bruno/releases/download/v4.2.1/bruno_4.2.1_x64_win.zip",
+          "sha256": "691d7475234e8399c6a1127e7a5e01ccdd479de4561f93e2cdf126c3b6c11b86",
+          "to": "tools/bruno",
+          "requiredFiles": [
+            {
+              "path": "Bruno.exe",
+              "sha256": "e41709ff9b98ba3cb73c6ada042c333bbffc0d116b20cc4181abf1b59e45d16d"
+            }
+          ]
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://raw.githubusercontent.com/usebruno/bruno/v4.2.1/license.md",
+          "path": "tools/bruno/LICENSE.bruno.txt",
+          "sha256": "8891070a847e5047bf77d38d88d7dfbab1beab41e37c802b9f5b23f2bbb9c7be"
+        }
+      ]
+    },
+    {
+      "id": "pcapfix",
+      "category": "misc",
+      "name": "pcapfix",
+      "description": {
+        "zh": "修复本地 PCAP 和 PCAPNG 抓包文件的结构。",
+        "en": "Repair the structure of local PCAP and PCAPNG capture files."
+      },
+      "keywords": [
+        "pcap",
+        "pcapng",
+        "repair",
+        "流量",
+        "修复"
+      ],
+      "version": "1.1.7",
+      "entry": {
+        "kind": "console",
+        "path": "tools/pcapfix/pcapfix.exe",
+        "cwd": "tools/pcapfix"
+      },
+      "roots": [
+        "tools/pcapfix"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://f00l.de/pcapfix/",
+        "versionEvidence": "Publisher versioned archive; locally pinned SHA-256; publisher-provided Cygwin DLL file version 3.2.0"
+      },
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://f00l.de/pcapfix/pcapfix-1.1.7-win32.zip",
+          "sha256": "bdb800d42209a0612675e91d6f95112cc374d8e19c48d99b3b3e63c0ef857749",
+          "to": "tools/pcapfix",
+          "requiredFiles": [
+            {
+              "path": "pcapfix.exe",
+              "sha256": "c6db4347f18d9e412601ac9aa093b04351a1f3f73a16adb06eabe8e7ce6f93ff"
+            }
+          ],
+          "from": "pcapfix-1.1.7"
+        }
+      ],
+      "downloads": [
+        {
+          "url": "https://f00l.de/pcapfix/cygwin1.dll",
+          "path": "tools/pcapfix/cygwin1.dll",
+          "sha256": "af1387eaf1b07d392a746d564b9b7a2dda6ee26576892da59a99132e26750fd7"
+        }
+      ]
+    }
+  ],
+  "sourceLayout": "ctf-all-in-one-dist"
+}

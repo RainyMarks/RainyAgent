@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>RainyAgent · 开发工具准备</title>
+  <link rel="stylesheet" href="setup.css">
+  <link rel="stylesheet" href="ide.css">
+</head>
+<body>
+  <main>
+    <div class="brand">RAINYAGENT</div>
+    <h1>准备开发工具</h1>
+    <p class="intro">为当前工作区的 Linux 环境准备 Python、C/C++ 编译、格式化和调试工具。</p>
+    <p class="intro">所选环境：<strong id="distribution">正在读取…</strong></p>
+    <section aria-live="polite" aria-atomic="true">
+      <span id="state" class="state">正在检查</span>
+      <p id="message">正在检查开发工具…</p>
+      <p id="error-code" class="code" hidden></p>
+      <ul id="tools" aria-label="开发工具状态"></ul>
+      <p id="incomplete" hidden></p>
+    </section>
+    <div class="actions">
+      <button id="install" hidden>安装开发工具</button>
+      <button id="retry" class="secondary">重新检查</button>
+      <button id="close" class="secondary">返回工作区</button>
+    </div>
+    <details id="diagnostics" hidden>
+      <summary>安装详情</summary>
+      <pre id="log" tabindex="0"></pre>
+    </details>
+    <div class="footnote">
+      <p>点击安装后，将以所选 Linux 环境的 root 用户离线安装随包组件。安装期间请等待完成后再关闭窗口。</p>
+      <p>离线组件适用于 Ubuntu 26.04 amd64。其他发行版可根据缺失工具列表手动准备。</p>
+    </div>
+  </main>
+  <script src="ide.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+name: RainyAgent
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rainy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DSH_TELEMETRY_DISABLED: '1'
+  pnpm_config_verify_deps_before_run: warn
+
+jobs:
+  source:
+    name: Source / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build source programs
+        run: pnpm run build
+      - name: Check Rainy desktop types
+        run: pnpm exec tsc -p apps/rainy-desktop/tsconfig.json --pretty false
+      - name: Verify package licenses
+        run: pnpm exec tsx scripts/verify-dsh-package-licenses.ts
+      - name: Rainy client regression tests
+        run: >-
+          pnpm exec vitest run
+          packages/client/ui-rainy/tests/settings-sections.client.spec.tsx
+          packages/client/ui-rainy/tests/ide-shell.client.spec.tsx
+          packages/client/ui-rainy/tests/strata-settings.client.spec.tsx
+          packages/client/ui-rainy/tests/strata-controller.client.spec.ts
+      - name: Rainy desktop regression tests
+        working-directory: apps/rainy-desktop
+        run: >-
+          pnpm exec vitest run --config vitest.config.ts
+          tests/desktop-lifecycle.test.ts tests/updates.test.ts tests/models-discovery.test.ts
+          tests/transport.test.ts tests/transport-lifecycle.test.ts
+          tests/runtime-environments.test.ts tests/release-integrity.test.ts
+          tests/strata.test.ts tests/strata-health.test.ts tests/models-strata.test.ts
+      - name: Release signing regression tests
+        run: node --test apps/rainy-desktop/tests/sign-release.test.mjs
+      - name: Release transport regression tests
+        run: node --test apps/rainy-desktop/tests/release-assets.test.mjs apps/rainy-desktop/tests/strata-runtime.test.mjs

@@ -1,0 +1,28 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write README.md
+/rainyagent:
+  en: 063e96a99adb501c
+  zh: 5e7d6f5dcf4d288a
+/rainyagent/what-it-includes:
+  en: 5f521d21dc39768a
+  zh: 8cd99e763c9443f2
+/rainyagent/download-and-start:
+  en: 7db7075816937b9f
+  zh: ab9ef00683083895
+/rainyagent/connect-a-model:
+  en: fda515a8f3177479
+  zh: a18a4f3dffa9f10d
+/rainyagent/connect-a-model/bundled-strata:
+  en: 9a62056c78176043
+  zh: 689827dfa4d53a75
+/rainyagent/connect-a-model/existing-server-or-api:
+  en: 568d6b9296a691cd
+  zh: cdba1fc148e782ad
+/rainyagent/build-from-source:
+  en: 5f738efbf7edcca0
+  zh: aaac86c2c6432be8
+/rainyagent/license-and-attribution:
+  en: 9dcfc9fa476ac7de
+  zh: 22e5a1d1a40b1b19

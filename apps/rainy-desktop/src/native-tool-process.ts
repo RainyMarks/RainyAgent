@@ -1,0 +1,81 @@
+/** Start Windows tools with their bundled dependencies and an explicit working directory. */
+import { execFile, spawn } from 'node:child_process'
+import { dirname, delimiter, join } from 'node:path'
+import { promisify } from 'node:util'
+import type { NativeInvocation } from './native-tools.ts'
+
+const exec = promisify(execFile)
+
+/**
+ * Keep Windows process essentials while withholding inherited service credentials.
+ * @param source - carrier environment.
+ * @param invocation - checked installed command.
+ * @returns an invocation-local environment with bundled binaries first on PATH.
+ */
+export function nativeToolEnvironment(source: NodeJS.ProcessEnv, invocation: NativeInvocation): NodeJS.ProcessEnv {
+  const environment: NodeJS.ProcessEnv = {}
+  let systemPath = ''
+  for (const [name, value] of Object.entries(source)) {
+    if (/key|secret|token|password|credential/i.test(name) || /^RAINY_|^DEEPSEEK_|^OPENAI_|^ANTHROPIC_|^ELECTRON_/i.test(name)) continue
+    if (name.toLowerCase() === 'path') { systemPath = value ?? ''; continue }
+    if (/^(?:JAVA_HOME|JDK_HOME|PYTHONHOME|PYTHONPATH|NODE_OPTIONS|DOTNET_.*)$/i.test(name)
+      || /^(?:_JAVA_OPTIONS|JAVA_TOOL_OPTIONS|PSModulePath)$/i.test(name)) continue
+    if (/^(?:QT_PLUGIN_PATH|QT_QPA_PLATFORM_PLUGIN_PATH|QML2?_IMPORT_PATH|QTDIR)$/i.test(name)) continue
+    environment[name] = value
+  }
+  environment.PATH = [dirname(invocation.executable), dirname(invocation.target),
+    ...invocation.pythonRoot ? [invocation.pythonRoot, join(invocation.pythonRoot, 'DLLs')] : [], systemPath].filter(Boolean).join(delimiter)
+  if (invocation.kind === 'java') environment.JAVA_HOME = dirname(dirname(invocation.executable))
+  if (invocation.dotnetRoot) {
+    environment.DOTNET_ROOT = invocation.dotnetRoot
+    environment.DOTNET_ROOT_X64 = invocation.dotnetRoot
+    environment.DOTNET_MULTILEVEL_LOOKUP = '0'
+  }
+  if (invocation.pythonRoot) { environment.PYTHONHOME = invocation.pythonRoot; environment.PYTHONNOUSERSITE = '1' }
+  return environment
+}
+
+function quotePowerShell(value: string): string { return `'${value.replaceAll("'", "''")}'` }
+
+/**
+ * Keep the tool's console open after its initial help or command has completed.
+ * @param invocation - checked installed command; no renderer command text is accepted.
+ * @returns an encoded PowerShell command with literal path and argument values.
+ */
+export function nativeConsoleCommand(invocation: NativeInvocation): string {
+  const command = `$ErrorActionPreference = 'Continue'\nSet-Location -LiteralPath ${quotePowerShell(invocation.cwd)}\n& ${quotePowerShell(invocation.executable)} ${invocation.args.map(quotePowerShell).join(' ')}\n`
+  return Buffer.from(command, 'utf16le').toString('base64')
+}
+
+/**
+ * Request a separate Windows console without inheriting the GUI carrier's redirected handles.
+ * @param invocation - checked installed command.
+ * @param powershell - absolute system PowerShell executable.
+ * @returns the encoded command for the hidden launcher.
+ */
+export function nativeConsoleLauncher(invocation: NativeInvocation, powershell: string): string {
+  const command = `$ErrorActionPreference = 'Stop'\nStart-Process -FilePath ${quotePowerShell(powershell)} -WorkingDirectory ${quotePowerShell(invocation.cwd)} -ArgumentList @('-NoLogo', '-NoProfile', '-NoExit', '-EncodedCommand', '${nativeConsoleCommand(invocation)}') -ErrorAction Stop\n`
+  return Buffer.from(command, 'utf16le').toString('base64')
+}
+
+/**
+ * Open a native GUI or an interactive Windows console.
+ * @param invocation - absolute paths resolved inside the installed tool pack.
+ * @param environment - carrier environment from which secrets are removed.
+ * @returns completion when the operating system accepts the launch request; the window belongs to the user.
+ */
+export async function startNativeProcess(invocation: NativeInvocation, environment: NodeJS.ProcessEnv): Promise<void> {
+  if (invocation.kind === 'web') throw new Error('网页工具需要使用独立网页窗口')
+  const env = nativeToolEnvironment(environment, invocation)
+  if (invocation.kind === 'console') {
+    const powershell = join(environment.SystemRoot ?? environment.SYSTEMROOT ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe')
+    await exec(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', nativeConsoleLauncher(invocation, powershell)],
+      { cwd: invocation.cwd, windowsHide: true, timeout: 30_000, env })
+    return
+  }
+  const child = spawn(invocation.executable, [...invocation.args], { cwd: invocation.cwd, shell: false, detached: true,
+    windowsHide: true, stdio: 'ignore', env })
+  await new Promise<void>((resolve, reject) => { child.once('spawn', () => { resolve() }); child.once('error', reject) })
+  if (child.pid === undefined) throw new Error('Windows 未返回工具进程编号')
+  child.unref()
+}

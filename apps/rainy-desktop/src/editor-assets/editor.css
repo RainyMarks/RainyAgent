@@ -1,0 +1,20 @@
+.rainy-monaco-surface {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.rainy-monaco-surface[hidden] {
+  display: none;
+}
+
+.rainy-monaco-breakpoint {
+  border-radius: 50%;
+  background: var(--dsw-alias-state-error-primary);
+  transform: scale(0.65);
+}
+
+.rainy-monaco-stopped {
+  background: color-mix(in srgb, var(--dsw-alias-state-warn-primary) 20%, transparent);
+}

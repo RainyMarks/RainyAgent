@@ -1,0 +1,2 @@
+CMake 配置预设（可选）: debug
+CMake 构建预设（可选）: build-debug

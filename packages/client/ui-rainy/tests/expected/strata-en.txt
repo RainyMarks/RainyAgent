@@ -1,0 +1,27 @@
+Strata local model
+RainyAgent includes the engine and Python. Select your own main model and matching MTP weights.
+Stopped
+Bundled Strata and Python are ready · 0.1.39
+Use a Qwen3.8 Flash Next GGUF supported by Strata. Keep shards together and select the first, or import a Strata profile.
+The API server requires matching MTP weights. Select an MTP GGUF or prepared directory, or leave empty to detect them beside the model.
+The first start prepares runtime files locally. Model weights are never downloaded automatically.
+Set reasoning and per-request output limits in the model configuration below.
+Model file, model directory, or profile: C:\models\main.gguf
+MTP file or directory (automatic detection when empty): C:\models\mtp.gguf
+Engine context window: 32,768
+Local port: 8081
+KV cache: int8
+VRAM reserve (MiB): 700
+Resident RAM budget (GiB, automatic when empty):
+Refresh: enabled
+Select GGUF: enabled
+Select model directory: enabled
+Import profile: enabled
+Select MTP file: enabled
+Select MTP directory: enabled
+32,768: enabled
+int8: enabled
+Save Strata configuration: disabled
+Start local model: enabled
+Stop local model: disabled
+Connect and use by default: disabled

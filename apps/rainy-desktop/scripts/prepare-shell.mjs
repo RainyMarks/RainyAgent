@@ -1,0 +1,32 @@
+/** Stage only the Electron carrier; all Linux dependencies travel in the verified runtime archive. */
+import { mkdirSync, copyFileSync, cpSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+const app = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const version = JSON.parse(readFileSync(resolve(app, 'package.json'), 'utf8')).version;
+const target = resolve(app, 'build/shell');
+mkdirSync(target, { recursive: true });
+for (const name of ['license.html', 'license.js', 'license.css']) rmSync(resolve(target, 'setup', name), { force: true });
+copyFileSync(resolve(app, 'lib/main.cjs'), resolve(target, 'main.cjs'));
+copyFileSync(resolve(app, 'lib/preload.cjs'), resolve(target, 'preload.cjs'));
+cpSync(resolve(app, 'lib/setup'), resolve(target, 'setup'), { recursive: true });
+copyFileSync(resolve(app, 'LICENSE'), resolve(target, 'LICENSE'));
+copyFileSync(resolve(app, 'THIRD_PARTY_NOTICES.md'), resolve(target, 'THIRD_PARTY_NOTICES.md'));
+writeFileSync(resolve(target, 'package.json'), JSON.stringify({ name: 'rainy-agent', productName: 'RainyAgent', version, main: 'main.cjs', description: 'Local-model-first coding agent for Windows and WSL', author: 'NCUCyberBase', license: 'SEE LICENSE IN LICENSE' }, null, 2) + '\n');
+const graph = JSON.parse(readFileSync(resolve(app, 'runtime/graph.json'), 'utf8'));
+const sharpSource = graph.packages.find(item => item.name === 'sharp').source;
+const sharp = createRequire(import.meta.url)(sharpSource);
+const sizes = [16, 24, 32, 48, 64, 128, 256];
+const images = await Promise.all(sizes.map(size => sharp(resolve(app, 'resources/icon.png')).resize(size, size, { fit: 'contain' }).png().toBuffer()));
+const header = Buffer.alloc(6 + 16 * sizes.length);
+header.writeUInt16LE(1, 2); header.writeUInt16LE(sizes.length, 4);
+let offset = header.length;
+images.forEach((png, index) => {
+  const entry = 6 + index * 16;
+  header[entry] = header[entry + 1] = sizes[index] === 256 ? 0 : sizes[index];
+  header.writeUInt16LE(1, entry + 4); header.writeUInt16LE(32, entry + 6);
+  header.writeUInt32LE(png.length, entry + 8); header.writeUInt32LE(offset, entry + 12);
+  offset += png.length;
+});
+writeFileSync(resolve(app, 'build/icon.ico'), Buffer.concat([header, ...images]));

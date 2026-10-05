@@ -1,0 +1,37 @@
+# Bilingual-pair consistency record for README.md (docs/i18n/README.md): per heading
+# section, a hash of its English and Chinese blocks outside code blocks and generated regions.
+# After editing either side, bring the other along and re-record with:
+#   pnpm run verify-translation-pairing --write apps/rainy-desktop/README.md
+/rainyagent-desktop:
+  en: e903475bfceada57
+  zh: a9bb52af010142ca
+/rainyagent-desktop/offline-installation-and-recovery:
+  en: 699bd24be4c7b950
+  zh: 480368668d4990e2
+/rainyagent-desktop/application-updates:
+  en: fdf2b301a041e655
+  zh: b1e3bda40efed00f
+/rainyagent-desktop/runtime-contract:
+  en: 20bfc6d427110e07
+  zh: 26975b0c4300928c
+/rainyagent-desktop/code-workspace:
+  en: a616b1aa75533879
+  zh: 75ce7629a68fe2da
+/rainyagent-desktop/ctf-workbench:
+  en: eecefd6f027e3a96
+  zh: d317817ad3424a27
+/rainyagent-desktop/strata-local-inference:
+  en: 437e8e798aaa6814
+  zh: 6f7f0289fcd886df
+/rainyagent-desktop/model-experience:
+  en: 40366d2a5dbdb715
+  zh: fc51f4391fefc83b
+/rainyagent-desktop/project-memory:
+  en: 9ad651356a5cbb09
+  zh: 2b1bf867c58d8a0e
+/rainyagent-desktop/usage-license-and-release-integrity:
+  en: 7ee60c0f2ee8ac5c
+  zh: 06d805a7c0bd9007
+/rainyagent-desktop/known-limitations-and-deferred-work:
+  en: a026fc7bcca90cfe
+  zh: 0e8b7258e08db58f

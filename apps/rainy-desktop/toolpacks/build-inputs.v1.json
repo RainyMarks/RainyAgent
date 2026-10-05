@@ -1,0 +1,342 @@
+{
+  "version": 1,
+  "releaseVersion": "1.0.0",
+  "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.0/",
+  "partBytes": 1073741824,
+  "files": [
+    {
+      "path": "build-inputs/ide-resources.tar.gz",
+      "category": "build-input",
+      "bytes": 192209252,
+      "sha256": "61ea6c3a7476c0a8cac2b62f02c9069ce74ee3d9261ce6beaeeb4bfbe64303aa",
+      "pieces": [
+        {
+          "file": "rainy-8cf707563b7026fc0a55.001",
+          "bytes": 192209252,
+          "sha256": "61ea6c3a7476c0a8cac2b62f02c9069ce74ee3d9261ce6beaeeb4bfbe64303aa"
+        }
+      ]
+    },
+    {
+      "path": "build-inputs/strata-runtime.tar.gz",
+      "category": "build-input",
+      "bytes": 558773087,
+      "sha256": "fb38c7b88e423b33b87bfb58a13046927127319ca8a11c9d6384d234a977ffc1",
+      "pieces": [
+        {
+          "file": "rainy-7797adb04e2e76b51019.001",
+          "bytes": 558773087,
+          "sha256": "fb38c7b88e423b33b87bfb58a13046927127319ca8a11c9d6384d234a977ffc1"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/linux-basic.json",
+      "category": "offline",
+      "bytes": 342,
+      "sha256": "278a057e968bd9f8f0138f6f956c4565730a6121878f281ecb3a9042f2b081aa",
+      "pieces": [
+        {
+          "file": "rainy-4e1bf3d9109ce4eaecc1.001",
+          "bytes": 342,
+          "sha256": "278a057e968bd9f8f0138f6f956c4565730a6121878f281ecb3a9042f2b081aa"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/linux-basic.tar.gz",
+      "category": "offline",
+      "bytes": 211896204,
+      "sha256": "d534911d2e091987b9de6a012f93b3ebee7482db803a57895fcd8b6c2f0245a8",
+      "pieces": [
+        {
+          "file": "rainy-5e66d566175e024d888a.001",
+          "bytes": 211896204,
+          "sha256": "d534911d2e091987b9de6a012f93b3ebee7482db803a57895fcd8b6c2f0245a8"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/linux-science-cpu.json",
+      "category": "offline",
+      "bytes": 355,
+      "sha256": "ada67e6a8aa51cdbfd364ef6d4452a83542c9b243c79bd2a69a62457490164d1",
+      "pieces": [
+        {
+          "file": "rainy-ae85fdc9008ee19ad43c.001",
+          "bytes": 355,
+          "sha256": "ada67e6a8aa51cdbfd364ef6d4452a83542c9b243c79bd2a69a62457490164d1"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/linux-science-cpu.tar.gz",
+      "category": "offline",
+      "bytes": 816191248,
+      "sha256": "93c0027a2e3528d06f1b8e0c80a9802f01140df2c1e7db06a7407064e63b77d5",
+      "pieces": [
+        {
+          "file": "rainy-0bb37bd078bb169d3b3d.001",
+          "bytes": 816191248,
+          "sha256": "93c0027a2e3528d06f1b8e0c80a9802f01140df2c1e7db06a7407064e63b77d5"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/linux-science-cuda.json",
+      "category": "offline",
+      "bytes": 358,
+      "sha256": "b96914d10cb63b224d1eedc07c8db1f424f38c765a44fb3df49d6e26812486b4",
+      "pieces": [
+        {
+          "file": "rainy-aa98254acd176a46df03.001",
+          "bytes": 358,
+          "sha256": "b96914d10cb63b224d1eedc07c8db1f424f38c765a44fb3df49d6e26812486b4"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/linux-science-cuda.tar.gz",
+      "category": "offline",
+      "bytes": 3385101519,
+      "sha256": "9a1aeae4cf2ff583903e4f2c552b0efc0bb9313a85301c7355452c40ae7bc2b1",
+      "pieces": [
+        {
+          "file": "rainy-d94a451e4b102684ed06.001",
+          "bytes": 1073741824,
+          "sha256": "5f1876cf0cd8595ebfd363922d032baeec8409e14cfe65f304e757c26b93371e"
+        },
+        {
+          "file": "rainy-d94a451e4b102684ed06.002",
+          "bytes": 1073741824,
+          "sha256": "5726e09f44493eb5b26fcdf5547700ad4c3a5d17c16d699f04afe43535332d48"
+        },
+        {
+          "file": "rainy-d94a451e4b102684ed06.003",
+          "bytes": 1073741824,
+          "sha256": "35bb87cf3e28b6e02bab847fb8b7efee06abbc1e24148689c7f2f274031cc865"
+        },
+        {
+          "file": "rainy-d94a451e4b102684ed06.004",
+          "bytes": 163876047,
+          "sha256": "8d4281e3550a710d68bfffc55692fa01a73178e00a5d3ac608742f4d67a9438f"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-basic.json",
+      "category": "offline",
+      "bytes": 348,
+      "sha256": "d24ca417dac4d3161609853b747874bcabd6faadfc3bb236e307dfb8d91f6243",
+      "pieces": [
+        {
+          "file": "rainy-a4d1f954686d02ebfba5.001",
+          "bytes": 348,
+          "sha256": "d24ca417dac4d3161609853b747874bcabd6faadfc3bb236e307dfb8d91f6243"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-basic.tar.gz",
+      "category": "offline",
+      "bytes": 348187725,
+      "sha256": "456d787bed276c8fd99cea9b766006372ffab7bad8e08b57226c7c47ac52428a",
+      "pieces": [
+        {
+          "file": "rainy-a76e7d1dbe14d1c337ef.001",
+          "bytes": 348187725,
+          "sha256": "456d787bed276c8fd99cea9b766006372ffab7bad8e08b57226c7c47ac52428a"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-cpp.json",
+      "category": "offline",
+      "bytes": 346,
+      "sha256": "cc4828fd2779a5966220ea0452840b1cef9b8711e74f0f8bd0f9ec56240a08b1",
+      "pieces": [
+        {
+          "file": "rainy-e84fe69324b629fac51a.001",
+          "bytes": 346,
+          "sha256": "cc4828fd2779a5966220ea0452840b1cef9b8711e74f0f8bd0f9ec56240a08b1"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-cpp.tar.gz",
+      "category": "offline",
+      "bytes": 1860063562,
+      "sha256": "fb6a76ad2a5f7168f0fe4fb85c12eed1860fe85feb49fa4339047b17e33ca856",
+      "pieces": [
+        {
+          "file": "rainy-7aa2b5501b58b493df98.001",
+          "bytes": 1073741824,
+          "sha256": "94923c5d68736545c075e0d42acd1aa40b256574a3e7fee620e9db0f0953f112"
+        },
+        {
+          "file": "rainy-7aa2b5501b58b493df98.002",
+          "bytes": 786321738,
+          "sha256": "efdeb28f033958baea04204b384e628053d60d56f7ab7a97af5bcc5a546202f7"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-science-cpu.json",
+      "category": "offline",
+      "bytes": 361,
+      "sha256": "7050a101df90f2ea5f309010ec5eb7ef6110462f390b13e08a45145fdd303a72",
+      "pieces": [
+        {
+          "file": "rainy-33625df79c1161f1355f.001",
+          "bytes": 361,
+          "sha256": "7050a101df90f2ea5f309010ec5eb7ef6110462f390b13e08a45145fdd303a72"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-science-cpu.tar.gz",
+      "category": "offline",
+      "bytes": 627908543,
+      "sha256": "8ba306f2c711fd41eef32d3dfeb084ea685dc0cc7be96a3780cb2ed49a39c661",
+      "pieces": [
+        {
+          "file": "rainy-c174fd6dcb2df5f5c405.001",
+          "bytes": 627908543,
+          "sha256": "8ba306f2c711fd41eef32d3dfeb084ea685dc0cc7be96a3780cb2ed49a39c661"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-science-cuda.json",
+      "category": "offline",
+      "bytes": 364,
+      "sha256": "6b0f2c5be4662bad65af41b05e5b0033bddc73f9bc1b64074094a521a6589bb6",
+      "pieces": [
+        {
+          "file": "rainy-e434056d9fb10090fcf3.001",
+          "bytes": 364,
+          "sha256": "6b0f2c5be4662bad65af41b05e5b0033bddc73f9bc1b64074094a521a6589bb6"
+        }
+      ]
+    },
+    {
+      "path": "environment-components/windows-science-cuda.tar.gz",
+      "category": "offline",
+      "bytes": 2454576417,
+      "sha256": "8f03e3f19385a56b49a63b537a8bcd88bc0c1d6669fc0e15664c1f1c172fe08c",
+      "pieces": [
+        {
+          "file": "rainy-3d57d7c895177651a80f.001",
+          "bytes": 1073741824,
+          "sha256": "1c80f238364a9aa933dac50ece178a8b0b6bba5d8f9bb7ad7d1a6fa39560b474"
+        },
+        {
+          "file": "rainy-3d57d7c895177651a80f.002",
+          "bytes": 1073741824,
+          "sha256": "f32ee8d2b99db38cfd43c0ea56844e93b14e969112403c798c9b15576cf2a225"
+        },
+        {
+          "file": "rainy-3d57d7c895177651a80f.003",
+          "bytes": 307092769,
+          "sha256": "0c46da6e0d19f82787a9a7654c3e39b6f6eb2543e05cc1d1db518c86be489fe7"
+        }
+      ]
+    },
+    {
+      "path": "environment/media-verification.json",
+      "category": "offline",
+      "bytes": 1002,
+      "sha256": "e1a5862b90ab81a0459cd7a0598633643e335783735c1ac3457b3dfcae026668",
+      "pieces": [
+        {
+          "file": "rainy-8b7cc7090f657ada3152.001",
+          "bytes": 1002,
+          "sha256": "e1a5862b90ab81a0459cd7a0598633643e335783735c1ac3457b3dfcae026668"
+        }
+      ]
+    },
+    {
+      "path": "environment/ubuntu-26.04.1-wsl-amd64.wsl",
+      "category": "offline",
+      "bytes": 418495746,
+      "sha256": "48d56724b5c8e60f24893e83e73bbb58c60b3ca22fba3da977075420acd54104",
+      "pieces": [
+        {
+          "file": "rainy-a2690dabf0a497df6ccc.001",
+          "bytes": 418495746,
+          "sha256": "48d56724b5c8e60f24893e83e73bbb58c60b3ca22fba3da977075420acd54104"
+        }
+      ]
+    },
+    {
+      "path": "environment/wsl.3.0.1.0.x64.msi",
+      "category": "offline",
+      "bytes": 367669248,
+      "sha256": "28b1a0d013640a2ac95898ea705fa186e5b4ff767a1c1b49257161bc106599c6",
+      "pieces": [
+        {
+          "file": "rainy-1c0236a398a785eebe9c.001",
+          "bytes": 367669248,
+          "sha256": "28b1a0d013640a2ac95898ea705fa186e5b4ff767a1c1b49257161bc106599c6"
+        }
+      ]
+    },
+    {
+      "path": "native-tools-5d33412377a414ad.tar.gz.001",
+      "category": "offline",
+      "bytes": 2147483648,
+      "sha256": "c099074a75a75a1bc128c2e90266fd10931ccb0d64e3d4c87088061ebd89439d",
+      "pieces": [
+        {
+          "file": "rainy-e5730173f56b3921c367.001",
+          "bytes": 1073741824,
+          "sha256": "0fe2f2fa9e4956eb06bbdacf11fad8730501d148750f591498025f904d0d696d"
+        },
+        {
+          "file": "rainy-e5730173f56b3921c367.002",
+          "bytes": 1073741824,
+          "sha256": "a15b2ed0597ab563119817659f8ac6893138b6faac7da99196439660719e7458"
+        }
+      ]
+    },
+    {
+      "path": "native-tools-5d33412377a414ad.tar.gz.002",
+      "category": "offline",
+      "bytes": 171185390,
+      "sha256": "7f50a8759bf9e42e166d73e38d13106ae3a9a4495cd1272237127595050ac07d",
+      "pieces": [
+        {
+          "file": "rainy-e251f4e414eaa8e7bbba.001",
+          "bytes": 171185390,
+          "sha256": "7f50a8759bf9e42e166d73e38d13106ae3a9a4495cd1272237127595050ac07d"
+        }
+      ]
+    },
+    {
+      "path": "native-tools-metadata.json",
+      "category": "offline",
+      "bytes": 4104769,
+      "sha256": "8c47e2b0d78ac626236fd8cc0b3b598cea972d718f31e3ce92e8e73dbf95f91a",
+      "pieces": [
+        {
+          "file": "rainy-4a25b91892119232771a.001",
+          "bytes": 4104769,
+          "sha256": "8c47e2b0d78ac626236fd8cc0b3b598cea972d718f31e3ce92e8e73dbf95f91a"
+        }
+      ]
+    },
+    {
+      "path": "工具清单.json",
+      "category": "offline",
+      "bytes": 36622,
+      "sha256": "c121da0119749464b791c78dd35efde3cadc777c1b2ce238fd4753a284783abf",
+      "pieces": [
+        {
+          "file": "rainy-2c1f506d2acb8cd9b264.001",
+          "bytes": 36622,
+          "sha256": "c121da0119749464b791c78dd35efde3cadc777c1b2ce238fd4753a284783abf"
+        }
+      ]
+    }
+  ]
+}

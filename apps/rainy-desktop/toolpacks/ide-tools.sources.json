@@ -1,0 +1,45 @@
+{
+  "version": 1,
+  "platform": "linux-x64",
+  "ubuntuBaseline": "26.04",
+  "assets": [
+    {
+      "id": "debugpy",
+      "version": "1.8.22",
+      "url": "https://files.pythonhosted.org/packages/56/3d/c7dc9f35bc9e22cdb53679f844bee40fd5cff871862f60595869a433400d/debugpy-1.8.22-py2.py3-none-any.whl",
+      "sha256": "a9e9d3550e15ca479c59333e90845029190531f0cacfedab3b815a57bd913947",
+      "bytes": 5374857,
+      "format": "zip",
+      "destination": "python"
+    },
+    {
+      "id": "js-debug",
+      "version": "1.140.0",
+      "url": "https://github.com/microsoft/vscode-js-debug/releases/download/v1.140.0/js-debug-dap-v1.140.0.tar.gz",
+      "sha256": "27dab92937ec1ab35821ae955aac867544fe06a1b6307229049f2d789af10968",
+      "bytes": 1249709,
+      "format": "tar.gz",
+      "destination": "."
+    },
+    {
+      "id": "ruff",
+      "version": "0.16.9",
+      "url": "https://github.com/astral-sh/ruff/releases/download/0.16.9/ruff-x86_64-unknown-linux-gnu.tar.gz",
+      "sha256": "1bfbb819b5d4f9af501748862276b60e412d336034d99387691a4d4bce7a6f13",
+      "bytes": 10016146,
+      "format": "tar.gz",
+      "destination": "."
+    }
+  ],
+  "licenses": [
+    {
+      "id": "ruff-license",
+      "version": "0.16.9",
+      "url": "https://raw.githubusercontent.com/astral-sh/ruff/0.16.9/LICENSE",
+      "sha256": "2597d854122b77ddc71971564ca2350a37608575ce324adc5650a2b2051c8f18",
+      "bytes": 20731,
+      "path": "licenses/ruff-0.16.9-LICENSE.txt"
+    }
+  ],
+  "systemPackages": ["build-essential", "gdb", "cmake", "ninja-build", "clangd", "clang-format", "python3-venv", "php-cli", "php-curl", "php-mbstring", "php-sqlite3", "php-zip", "php-xml"]
+}
