@@ -1,3 +1,6 @@
+import { randomUUID } from 'node:crypto'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import type { LlmResolvedModelInfo } from '@deepseek-ai/dsh-llm'
@@ -60,5 +63,26 @@ describe('Rainy request admission', () => {
       reason: { kind: 'error', failure: { code: 'EXTENSION_BUDGET_EXCEEDED' } },
     })
     expect(adapter.requests).toHaveLength(1)
+  })
+
+  it('names a removed additional project directory instead of failing with a raw file-system error', async ({
+    onTestFinished,
+  }) => {
+    const ctx = new Context()
+    onTestFinished(() => ctx.fiber.dispose())
+    await mountAgentLoopTestDependencies(ctx)
+    await ctx.plugin(SandboxPolicy)
+    const removed = join(tmpdir(), `rainy-removed-root-${randomUUID()}`)
+    ctx.provide('compaction', {} as never)
+    ctx.provide('tokenMeter', {} as never)
+    ctx.provide('spillStore', {} as never)
+    ctx.provide('configEditor', { entries: () => [] } as never)
+    ctx.provide('rainyProjectRoots', { forSessionCwd: () => [{ path: removed, primary: false }] } as never)
+    ctx.provide('workspaceRegistry', {} as never)
+    ctx.provide('agentDefaultModel', {} as never)
+    await ctx.plugin(Policy, {})
+    const session = { id: SessionId('removed-root-fixture'), header: { cwd: tmpdir() } }
+    expect(() => ctx.sandboxPolicy.resolve({ session: session as never, mode: 'workspace-write' }))
+      .toThrow(`已附加的项目目录不存在：${removed}`)
   })
 })

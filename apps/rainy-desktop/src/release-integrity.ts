@@ -18,8 +18,6 @@ export const releaseManifestSchema = z.object({ version: z.literal(1), product: 
 
 /** Canonical payload signed by the build's release key. */
 export type ReleaseManifest = z.infer<typeof releaseManifestSchema>
-/** Signed envelope whose decoded bytes remain unchanged during verification. */
-export interface SignedReleaseManifest { readonly version: 1; readonly payload: string; readonly signature: string }
 
 /**
  * Authenticate an inventory against keys embedded in the client executable bundle.

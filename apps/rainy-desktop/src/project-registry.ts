@@ -96,10 +96,14 @@ export function createProjectRegistry(options: { root: string; targetId: string 
     await mkdir(root, { recursive: true, mode: 0o700 })
     const temporary = join(root, `projects.${randomUUID()}.pending`)
     const file = await open(temporary, 'wx', 0o600)
-    try { await file.writeFile(JSON.stringify(catalogSchema.parse(catalog), null, 2) + '\n'); await file.sync() }
-    finally { await file.close() }
-    try { await rename(temporary, path) }
-    catch (error) { await unlink(temporary).catch(() => { /* Preserve the original publication failure. */ }); throw error }
+    try {
+      try { await file.writeFile(JSON.stringify(catalogSchema.parse(catalog), null, 2) + '\n'); await file.sync() }
+      finally { await file.close() }
+      await rename(temporary, path)
+    } catch (error) {
+      await unlink(temporary).catch((_cleanupError: unknown) => { /* Preserve the original publication failure. */ })
+      throw error
+    }
   }
   const registry: ProjectRegistry = {
     list: () => serialized(async () => structuredClone((await load()).projects)),

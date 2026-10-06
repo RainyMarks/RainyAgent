@@ -114,7 +114,13 @@ export function apply(ctx: Context, config: Config): void {
       .filter(root => !root.primary)
       .map(root => root.path)
     for (const path of roots) {
-      const current = realpathSync.native(path)
+      let current: string
+      try { current = realpathSync.native(path) }
+      catch (error) {
+        if (error instanceof Error && 'code' in error && (error.code === 'ENOENT' || error.code === 'ENOTDIR'))
+          throw new Error(`已附加的项目目录不存在：${path}。请重新添加或移除该目录。`)
+        throw error
+      }
       if (process.platform === 'win32' ? current.toLowerCase() !== path.toLowerCase() : current !== path)
         throw new Error('已附加的项目目录现在指向其他位置，请重新添加该目录。')
     }

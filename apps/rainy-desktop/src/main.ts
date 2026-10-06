@@ -69,11 +69,26 @@ function requireWslDistribution(target: ExecutionTarget): string {
   return target.distro
 }
 
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error)
+}
+
+/** Translate one path with the distribution's wslpath; arguments are never shell-interpolated. */
+async function wslPath(distro: string, direction: '-u' | '-w', path: string): Promise<string> {
+  return (await run('wsl.exe', ['-d', distro, '--exec', 'wslpath', direction, path], { windowsHide: true, timeout: 15000 })).stdout.trim()
+}
+
+/** Bodies of private Host control responses are untrusted and may not be JSON. */
+async function controlBody(response: Response): Promise<unknown> {
+  try { return await response.json() }
+  catch (_malformedBody) { return undefined } // Callers report a typed failure for any unusable body.
+}
+
 /** Save through the renderer while the WSL Host is still serving its durable state API. */
 function quitAfterSave(draftsSaved = false): void {
   if (lifecycle.closing) return
   void lifecycle.quit(draftsSaved).catch(async (error: unknown) => {
-    await dialog.showMessageBox({ type: 'error', message: '退出前保存失败', detail: error instanceof Error ? error.message : String(error) })
+    await dialog.showMessageBox({ type: 'error', message: '退出前保存失败', detail: errorText(error) })
   })
 }
 
@@ -96,25 +111,32 @@ async function start(): Promise<void> {
   let target = savedExecutionTarget(preferences)
   const availableTargets = await listExecutionTargets()
   if (target.kind === 'wsl') target = availableTargets.find(value => value.kind === 'wsl' && value.distro === target.distro) ?? target
-  const environment = target.kind === 'wsl' ? await prepareDesktopEnvironment({ installRoot, userData: app.getPath('userData'), settingsPath,
-    preloadPath: join(__dirname, 'preload.cjs'), pagePath: join(__dirname, 'setup/index.html'),
-    mediaRoot: app.isPackaged ? join(process.resourcesPath, 'environment') : join(installRoot, 'runtime/environment'),
-    icon: app.isPackaged ? join(process.resourcesPath, 'icon.ico') : join(installRoot, 'build/icon.ico'),
-  }) : undefined
+  const preloadPath = join(__dirname, 'preload.cjs')
+  const icon = app.isPackaged ? join(resourceRoot, 'icon.ico') : resolve(__dirname, '../build/icon.ico')
+  const environmentSetup = { installRoot, userData: app.getPath('userData'), settingsPath, preloadPath,
+    pagePath: join(__dirname, 'setup/index.html'), mediaRoot: join(resourceRoot, 'environment'), icon }
+  const environment = target.kind === 'wsl' ? await prepareDesktopEnvironment(environmentSetup) : undefined
   if (environment) target = (await listExecutionTargets()).find(value => value.kind === 'wsl' && value.distro === environment.distro)
     ?? { ...target, kind: 'wsl', distro: environment.distro, label: `WSL · ${environment.distro}` }
   const distro = target.kind === 'wsl' ? requireWslDistribution(target) : 'Windows'
-  const convert = async (path: string) => target.kind === 'windows' ? path
-    : (await run('wsl.exe', ['-d', distro, '--exec', 'wslpath', '-u', path], { windowsHide: true, timeout: 15000 })).stdout.trim()
+  const convert = async (path: string) => target.kind === 'windows' ? path : wslPath(distro, '-u', path)
   mkdirSync(app.getPath('userData'), { recursive: true })
   const logPath = join(app.getPath('userData'), 'host.log')
-  const window = new BrowserWindow({ title: 'RainyAgent', width: 1380, height: 920, minWidth: 950, minHeight: 650,
-    icon: app.isPackaged ? join(resourceRoot, 'icon.ico') : resolve(__dirname, '../build/icon.ico'),
+  const window = new BrowserWindow({ title: 'RainyAgent', width: 1380, height: 920, minWidth: 950, minHeight: 650, icon,
     titleBarStyle: 'hidden', titleBarOverlay: { height: CAPTION_HEIGHT,
       color: '#00000000', symbolColor: nativeTheme.shouldUseDarkColors ? '#eeeeee' : '#171717' },
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#16191e' : '#f6f7f9',
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true,
-      preload: join(__dirname, 'preload.cjs'), additionalArguments: [`--rainy-distro=${encodeURIComponent(distro)}`] } })
+      preload: preloadPath, additionalArguments: [`--rainy-distro=${encodeURIComponent(distro)}`] } })
+  const ipcDisposers: (() => void)[] = []
+  const onIpc = (channel: string, listener: (event: Electron.IpcMainEvent, value: unknown) => void): void => {
+    ipcMain.on(channel, listener)
+    ipcDisposers.push(() => { ipcMain.removeListener(channel, listener) })
+  }
+  const handleIpc = (channel: string, handler: (event: Electron.IpcMainInvokeEvent, value: unknown) => unknown): void => {
+    ipcMain.handle(channel, handler)
+    ipcDisposers.push(() => { ipcMain.removeHandler(channel) })
+  }
   mainWindowCreated = true
   let updateLocale: 'zh' | 'en' = app.getLocale().startsWith('zh') ? 'zh' : 'en'
   updates = new RainyUpdates(electronUpdater.autoUpdater, {
@@ -159,7 +181,10 @@ async function start(): Promise<void> {
         })
         return transition.installed
       } finally {
-        if (transition.frozen && !lifecycle.quitting) await transport?.inspectActivity('resume')
+        // A failed resume must not replace the installation outcome; a stopped Host has nothing frozen.
+        if (transition.frozen && !lifecycle.quitting) {
+          await transport?.inspectActivity('resume').catch((error: unknown) => { appendFileSync(logPath, `Host resume after update failed: ${errorText(error)}\n`) })
+        }
       }
     },
   })
@@ -173,7 +198,7 @@ async function start(): Promise<void> {
   })
   const requestReload = (ignoreCache = false): void => {
     void reloadAfterSave(ignoreCache).catch((error: unknown) => {
-      void dialog.showMessageBox(window, { type: 'error', message: '刷新失败', detail: error instanceof Error ? error.message : String(error) })
+      void dialog.showMessageBox(window, { type: 'error', message: '刷新失败', detail: errorText(error) })
     })
   }
   window.webContents.on('before-input-event', (event, input) => {
@@ -194,12 +219,14 @@ async function start(): Promise<void> {
       if (!changed.ok) throw new Error(changed.error)
     }
   }
+  const requestDistribution = (): void => {
+    void selectDistribution().catch((error: unknown) => {
+      void dialog.showMessageBox(window, { type: 'error', message: '切换发行版失败', detail: errorText(error) })
+    })
+  }
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'RainyAgent', submenu: [{ label: `执行环境：${target.label}`, click: () => {
-      void selectDistribution().catch((error: unknown) => {
-        void dialog.showMessageBox(window, { type: 'error', message: '切换发行版失败', detail: error instanceof Error ? error.message : '未知错误' })
-      })
-    } }, { label: '检查更新…', click: () => { void updates?.check(true) } }, { label: '退出', click: () => { app.quit() } }] },
+    { label: 'RainyAgent', submenu: [{ label: `执行环境：${target.label}`, click: requestDistribution },
+      { label: '检查更新…', click: () => { void updates?.check(true) } }, { label: '退出', click: () => { app.quit() } }] },
     { label: '编辑', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: '视图', submenu: [{ label: '重新加载', accelerator: 'CmdOrCtrl+R', click: () => { requestReload() } }, { role: 'toggleDevTools' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
   ]))
@@ -248,7 +275,11 @@ async function start(): Promise<void> {
   const hostOptions: HostOptions = { entry: installed.host, node: installed.node, idaMcpCommand, environment: hostEnvironment,
     configureDeepSeek: process.env.RAINY_CONFIGURE_DEEPSEEK === '1',
     onDiagnostic: (text) =>{  appendFileSync(logPath, text + '\n') },
-    onExit: (code) => { if (!lifecycle.quitting && code !== 0) void dialog.showMessageBox(window, { type: 'error', message: '执行后端已停止', detail: `退出代码：${code}。会话历史已保留。` }) },
+    onExit: (code) => {
+      if (lifecycle.quitting || code === 0 || window.isDestroyed()) return
+      void dialog.showMessageBox(window, { type: 'error', message: '执行后端已停止',
+        detail: `${code === null ? '进程已被终止' : `退出代码：${code}`}。会话历史已保留。` })
+    },
   }
   transport = target.kind === 'windows' ? new WindowsHostTransport({ ...hostOptions, cwd: installRoot }) : new WslHostTransport({ ...hostOptions, distro })
   const ready = await transport.start()
@@ -270,8 +301,7 @@ async function start(): Promise<void> {
     && event.senderFrame === window.webContents.mainFrame && new URL(event.senderFrame.url).origin === origin
   const ideEnvironment = target.kind === 'wsl' ? createIdeEnvironmentWindow({ parent: window, distro,
     resourceRoot: posix.resolve(posix.dirname(installed.host), '../resources/ide'),
-    preloadPath: join(__dirname, 'preload.cjs'), pagePath: join(__dirname, 'setup/ide.html'),
-    icon: app.isPackaged ? join(resourceRoot, 'icon.ico') : resolve(__dirname, '../build/icon.ico'),
+    preloadPath, pagePath: join(__dirname, 'setup/ide.html'), icon,
   }) : undefined
   closeIdeEnvironment = () => ideEnvironment?.close() ?? Promise.resolve()
   const prepareComponents = async (): Promise<void> => {
@@ -284,10 +314,7 @@ async function start(): Promise<void> {
       if (action.response === choices.length - 1) return
       if (ideEnvironment !== undefined && action.response === 1) { await ideEnvironment.open(); return }
       if (target.kind === 'windows' && action.response === 1) {
-        const prepared = await prepareDesktopEnvironment({ installRoot, userData: app.getPath('userData'), settingsPath,
-          preloadPath: join(__dirname, 'preload.cjs'), pagePath: join(__dirname, 'setup/index.html'),
-          mediaRoot: join(resourceRoot, 'environment'),
-          icon: app.isPackaged ? join(resourceRoot, 'icon.ico') : join(installRoot, 'build/icon.ico') })
+        const prepared = await prepareDesktopEnvironment(environmentSetup)
         prepared.closeSetup()
         await dialog.showMessageBox(window, { title: 'RainyAgent', message: 'WSL 环境已就绪', detail: '在运行环境页选择该 WSL 环境即可切换。' })
         return
@@ -328,7 +355,7 @@ async function start(): Promise<void> {
     pendingFlush = undefined
     request.resolve({ ok: value.ok, ...'error' in value && typeof value.error === 'string' ? { error: value.error } : {} })
   }
-  ipcMain.on('rainy:workbench-flushed', flushed)
+  onIpc('rainy:workbench-flushed', flushed)
   flushWorkbench = () => {
     if (pendingFlush !== undefined) return pendingFlush.promise
     const id = randomUUID()
@@ -342,7 +369,7 @@ async function start(): Promise<void> {
     catch (error) {
       clearTimeout(timer)
       pendingFlush = undefined
-      resolve({ ok: false, error: error instanceof Error ? error.message : String(error) })
+      resolve({ ok: false, error: errorText(error) })
     }
     return promise
   }
@@ -365,23 +392,16 @@ async function start(): Promise<void> {
         if (!project) return { ok: false, error: '当前项目尚未登记，请刷新运行环境页面后重试。' }
         const current = project.bindings.find(binding => binding.targetId === target.id && binding.workspaceId === workspaceId)
         if (!current) throw new Error('The current project binding is unavailable.')
-        let path = project.bindings.find(binding => binding.targetId === selected.id)?.path
-        if (!path) {
-          const windowsPath = target.kind === 'windows' ? current.path
-            : (await run('wsl.exe', ['-d', distro, '--exec', 'wslpath', '-w', current.path], { windowsHide: true, timeout: 15000 })).stdout.trim()
+        // Windows paths are the shared form between the current and the selected target.
+        const mapToSelected = async (path: string): Promise<string> => {
+          const windowsPath = target.kind === 'windows' ? path : await wslPath(distro, '-w', path)
           if (!win32.isAbsolute(windowsPath)) throw new Error('项目路径无法映射到目标环境，请保留原环境。')
-          path = selected.kind === 'windows' ? windowsPath
-            : (await run('wsl.exe', ['-d', requireWslDistribution(selected), '--exec', 'wslpath', '-u', windowsPath],
-              { windowsHide: true, timeout: 15000 })).stdout.trim()
+          return selected.kind === 'windows' ? windowsPath : wslPath(requireWslDistribution(selected), '-u', windowsPath)
         }
+        const path = project.bindings.find(binding => binding.targetId === selected.id)?.path || await mapToSelected(current.path)
         const roots = []
         for (const root of snapshot.roots.filter(value => !value.primary)) {
-          const windowsPath = target.kind === 'windows' ? root.path
-            : (await run('wsl.exe', ['-d', distro, '--exec', 'wslpath', '-w', root.path], { windowsHide: true, timeout: 15000 })).stdout.trim()
-          const mapped = selected.kind === 'windows' ? windowsPath
-            : (await run('wsl.exe', ['-d', requireWslDistribution(selected), '--exec', 'wslpath', '-u', windowsPath],
-              { windowsHide: true, timeout: 15000 })).stdout.trim()
-          roots.push({ rootId: root.rootId, path: mapped, title: root.title })
+          roots.push({ rootId: root.rootId, path: await mapToSelected(root.path), title: root.title })
         }
         pendingProject = { projectId: project.projectId, path, roots }
       }
@@ -397,7 +417,7 @@ async function start(): Promise<void> {
     quitAfterSave()
   })
   window.on('closed', () => {
-    ipcMain.removeListener('rainy:workbench-flushed', flushed)
+    for (const dispose of ipcDisposers.splice(0)) dispose()
     if (pendingFlush !== undefined) {
       clearTimeout(pendingFlush.timer)
       pendingFlush.resolve({ ok: false, error: '窗口已关闭，无法确认草稿保存状态。' })
@@ -405,7 +425,7 @@ async function start(): Promise<void> {
     }
     flushWorkbench = () => Promise.resolve({ ok: true })
   })
-  const setCaptionColors = (event: Electron.IpcMainEvent, value: unknown) => {
+  onIpc('rainy:caption-colors', (event, value) => {
     if (!trustedSender(event)) return
     const colors = captionColors(value)
     if (!colors) return
@@ -415,16 +435,9 @@ async function start(): Promise<void> {
     window.setTitleBarOverlay({ ...colors, color: '#00000000', height: CAPTION_HEIGHT })
     if (value !== null && typeof value === 'object' && 'theme' in value
       && (value.theme === 'dark' || value.theme === 'light' || value.theme === 'system')) nativeTheme.themeSource = value.theme
-  }
-  const selectDistro = (event: Electron.IpcMainEvent) => {
-    if (!trustedSender(event)) return
-    void selectDistribution().catch((error: unknown) => {
-      void dialog.showMessageBox(window, { type: 'error', message: '切换发行版失败', detail: error instanceof Error ? error.message : '未知错误' })
-    })
-  }
-  ipcMain.on('rainy:caption-colors', setCaptionColors)
-  ipcMain.on('rainy:select-distribution', selectDistro)
-  const showNativeMenu = (event: Electron.IpcMainEvent, value: unknown) => {
+  })
+  onIpc('rainy:select-distribution', (event) => { if (trustedSender(event)) requestDistribution() })
+  onIpc('rainy:native-menu', (event, value) => {
     if (!trustedSender(event) || value === null || typeof value !== 'object' || !('menu' in value) || !('locale' in value)
       || (value.menu !== 'edit' && value.menu !== 'help') || (value.locale !== 'zh' && value.locale !== 'en')) return
     updateLocale = value.locale
@@ -432,8 +445,7 @@ async function start(): Promise<void> {
       void dialog.showMessageBox(window, { title: 'RainyAgent', message: `RainyAgent ${app.getVersion()}`, detail: 'Develop by NCUCyberBase' })
     }, () => { void updates?.check(true) })
     Menu.buildFromTemplate(template).popup({ window })
-  }
-  ipcMain.on('rainy:native-menu', showNativeMenu)
+  })
   const selectDirectory = createIdeDirectoryPicker(async () => {
     if (target.kind === 'windows') {
       const selected = await dialog.showOpenDialog(window, { properties: ['openDirectory', 'createDirectory'] })
@@ -445,19 +457,19 @@ async function start(): Promise<void> {
       convert,
     )
   })
-  ipcMain.handle('rainy:ide-directory', (event) => {
+  handleIpc('rainy:ide-directory', (event) => {
     if (!trustedSender(event)) throw new Error('Directory selection is available only in the RainyAgent window')
     return selectDirectory()
   })
-  ipcMain.handle('rainy:ide-prepare-development', async (event) => {
+  handleIpc('rainy:ide-prepare-development', async (event) => {
     if (!trustedSender(event)) throw new Error('Development setup is available only in the RainyAgent window')
     await prepareComponents()
   })
-  ipcMain.handle('rainy:runtime-targets', async (event) => {
+  handleIpc('rainy:runtime-targets', async (event) => {
     if (!trustedSender(event)) throw new Error('Runtime selection is available only in the RainyAgent window.')
     return { current: target, targets: await listExecutionTargets() }
   })
-  ipcMain.handle('rainy:runtime-switch', async (event, value: unknown) => {
+  handleIpc('rainy:runtime-switch', async (event, value) => {
     if (!trustedSender(event) || value === null || typeof value !== 'object' || !('targetId' in value) || typeof value.targetId !== 'string') throw new Error('Invalid execution target request.')
     const selected = (await listExecutionTargets()).find(item => item.id === value.targetId)
     if (!selected) throw new Error('The selected execution target is unavailable.')
@@ -467,11 +479,11 @@ async function start(): Promise<void> {
     if (!trustedSender(event)) throw new Error('Strata controls are available only in the RainyAgent window.')
     if (mutate && (lifecycle.closing || lifecycle.switching)) throw new Error('请等待应用切换或退出完成后再操作 Strata。')
   }
-  ipcMain.handle('rainy:strata-status', (event) => { admitStrata(event); return strata.status() })
-  ipcMain.handle('rainy:strata-save', (event, value: unknown) => { admitStrata(event, true); return strata.save(value) })
-  ipcMain.handle('rainy:strata-start', (event) => { admitStrata(event, true); return strata.start() })
-  ipcMain.handle('rainy:strata-stop', (event) => { admitStrata(event, true); return strata.stop() })
-  ipcMain.handle('rainy:strata-select-model', async (event, kind: unknown) => {
+  handleIpc('rainy:strata-status', (event) => { admitStrata(event); return strata.status() })
+  handleIpc('rainy:strata-save', (event, value) => { admitStrata(event, true); return strata.save(value) })
+  handleIpc('rainy:strata-start', (event) => { admitStrata(event, true); return strata.start() })
+  handleIpc('rainy:strata-stop', (event) => { admitStrata(event, true); return strata.stop() })
+  handleIpc('rainy:strata-select-model', async (event, kind) => {
     admitStrata(event, true)
     if (kind !== 'gguf' && kind !== 'mtp' && kind !== 'directory' && kind !== 'profile') throw new Error('Invalid local model picker.')
     const selected = await dialog.showOpenDialog(window, kind === 'directory'
@@ -480,11 +492,12 @@ async function start(): Promise<void> {
         ? [{ name: 'Strata JSON', extensions: ['json'] }] : [{ name: 'GGUF', extensions: ['gguf'] }] })
     return selected.canceled ? null : selected.filePaths[0] ?? null
   })
-  ipcMain.handle('rainy:strata-connect', async (event) => {
+  const controlURL = new URL('/rainy/control', origin).href
+  handleIpc('rainy:strata-connect', async (event) => {
     admitStrata(event, true)
     const connection = await strata.connection()
-    const statusResponse = await window.webContents.session.fetch(new URL('/rainy/control', origin).href, { credentials: 'include' })
-    const status: unknown = await statusResponse.json()
+    const statusResponse = await window.webContents.session.fetch(controlURL, { credentials: 'include' })
+    const status = await controlBody(statusResponse)
     if (!statusResponse.ok || status === null || typeof status !== 'object' || !('models' in status) || !Array.isArray(status.models)) {
       throw new Error('当前执行环境的模型设置不可用，请稍后重试。')
     }
@@ -504,42 +517,31 @@ async function start(): Promise<void> {
         approvedBudget = { maxTokens, expectedContextWindow: connection.contextWindow }
       }
     }
-    const response = await window.webContents.session.fetch(new URL('/rainy/control', origin).href, {
+    const response = await window.webContents.session.fetch(controlURL, {
       method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ method: 'connect-strata', params: { baseURL: connection.baseURL, ...approvedBudget } }),
     })
-    const value: unknown = await response.json()
+    const value = await controlBody(response)
     if (value !== null && typeof value === 'object' && 'error' in value && typeof value.error === 'string') throw new Error(value.error)
     if (!response.ok || value === null || typeof value !== 'object' || !('result' in value)
       || value.result === null || typeof value.result !== 'object' || !('provider' in value.result) || !('model' in value.result)
       || typeof value.result.provider !== 'string' || typeof value.result.model !== 'string') throw new Error('Strata 模型配置未完成，请重新检查当前执行环境。')
     return { provider: value.result.provider, model: value.result.model }
   })
-  window.on('closed', () => {
-    ipcMain.removeListener('rainy:caption-colors', setCaptionColors)
-    ipcMain.removeListener('rainy:select-distribution', selectDistro)
-    ipcMain.removeListener('rainy:native-menu', showNativeMenu)
-    ipcMain.removeHandler('rainy:ide-directory')
-    ipcMain.removeHandler('rainy:ide-prepare-development')
-    ipcMain.removeHandler('rainy:runtime-targets')
-    ipcMain.removeHandler('rainy:runtime-switch')
-    for (const operation of ['status', 'save', 'start', 'stop', 'select-model', 'connect']) ipcMain.removeHandler(`rainy:strata-${operation}`)
-  })
   writeFileSync(join(app.getPath('userData'), 'host.json'), JSON.stringify({ target, distro, pid: ready.pid, home: ready.home, origin, runtime: installed.host }, null, 2) + '\n')
   const mappedPaths = new Map<string, string>()
-  const mapPath = (event: Electron.IpcMainEvent, path: unknown) => {
+  // Dropped-file paths are resolved synchronously because the renderer bridge returns them inline.
+  onIpc('rainy:path', (event, path) => {
     event.returnValue = ''
-    if (event.sender !== window.webContents || event.senderFrame !== window.webContents.mainFrame
-      || new URL(event.senderFrame.url).origin !== origin || typeof path !== 'string'
-      || !win32.isAbsolute(path) || path.includes('\0')) return
+    if (!trustedSender(event) || typeof path !== 'string' || !win32.isAbsolute(path) || path.includes('\0')) return
+    if (target.kind === 'windows') { event.returnValue = path; return }
     try {
-      const mapped = target.kind === 'windows' ? path : mappedPaths.get(path) ?? execFileSync('wsl.exe', ['-d', distro, '--exec', 'wslpath', '-u', path], { windowsHide: true, encoding: 'utf8', timeout: 5000 }).trim()
-      if (!(target.kind === 'windows' ? win32.isAbsolute(mapped) : posix.isAbsolute(mapped))) return
-      mappedPaths.set(path, mapped); event.returnValue = mapped
-    } catch { appendFileSync(logPath, 'A dropped file could not be mapped into WSL.\n') }
-  }
-  ipcMain.on('rainy:path', mapPath)
-  window.on('closed', () => ipcMain.removeListener('rainy:path', mapPath))
+      const mapped = mappedPaths.get(path) ?? execFileSync('wsl.exe', ['-d', distro, '--exec', 'wslpath', '-u', path], { windowsHide: true, encoding: 'utf8', timeout: 5000 }).trim()
+      if (!posix.isAbsolute(mapped)) return
+      mappedPaths.set(path, mapped)
+      event.returnValue = mapped
+    } catch (error) { appendFileSync(logPath, `A dropped file could not be mapped into WSL: ${errorText(error)}\n`) }
+  })
   window.webContents.setWindowOpenHandler(({ url }) => { if (/^https?:/.test(url)) void shell.openExternal(url); return { action: 'deny' } })
   window.webContents.on('will-navigate', (event, url) => { if (new URL(url).origin !== origin) event.preventDefault() })
   window.webContents.session.setPermissionRequestHandler((_contents, permission, callback, details) => {
@@ -572,7 +574,7 @@ else {
     quitAfterSave()
   })
   void app.whenReady().then(start).catch(async (error: unknown) => {
-    await dialog.showMessageBox({ type: 'error', message: 'RainyAgent 启动失败', detail: error instanceof Error ? error.message : String(error) })
+    await dialog.showMessageBox({ type: 'error', message: 'RainyAgent 启动失败', detail: errorText(error) })
     app.quit()
   })
 }

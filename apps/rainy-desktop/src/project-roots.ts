@@ -125,8 +125,14 @@ export default class RainyProjectRoots extends Service {
   private async attachDirectory(workspaceId: WorkspaceId, path: string,
     imported?: Pick<IdeWorkspaceRoot, 'rootId' | 'title'>): Promise<readonly IdeWorkspaceRoot[]> {
     if (!isAbsolute(path) || path.includes('\0')) throw new IdeOperationError('invalid-path', 'Choose an absolute directory path.')
-    const canonical = await realpath(path)
-    if (!(await stat(canonical)).isDirectory()) throw new IdeOperationError('not-directory', 'Choose an existing directory.')
+    let canonical: string
+    try {
+      canonical = await realpath(path)
+      if (!(await stat(canonical)).isDirectory()) throw new IdeOperationError('not-directory', 'Choose an existing directory.')
+    } catch (error) {
+      if (error instanceof IdeOperationError) throw error
+      throw new IdeOperationError('not-directory', 'Choose an existing directory.')
+    }
     const roots = this.get(workspaceId)
     if (imported?.rootId === primaryIdeRootId) throw new IdeOperationError('invalid-request', 'The primary directory cannot be imported as an attachment.')
     if (imported !== undefined && roots.some(root => root.rootId === imported.rootId && !samePath(root.path, canonical)))

@@ -117,6 +117,25 @@ async function waitForWindowsLoopback(host: HostReady, signal: AbortSignal): Pro
   }
 }
 
+interface PendingRequest<T> {
+  resolve: (value: T) => void
+  reject: (error: Error) => void
+  timer: ReturnType<typeof setTimeout>
+}
+
+/** Remove one pending control request so exactly one settlement path owns it. */
+function takeRequest<T>(requests: Map<string, PendingRequest<T>>, id: string): PendingRequest<T> | undefined {
+  const request = requests.get(id)
+  if (request === undefined) return undefined
+  clearTimeout(request.timer)
+  requests.delete(id)
+  return request
+}
+
+function rejectAll<T>(requests: Map<string, PendingRequest<T>>, error: Error): void {
+  for (const id of [...requests.keys()]) takeRequest(requests, id)?.reject(error)
+}
+
 abstract class ManagedHostTransport implements HostTransport {
   protected child?: ChildProcessWithoutNullStreams
   protected host?: HostReady
@@ -125,16 +144,8 @@ abstract class ManagedHostTransport implements HostTransport {
   private stopping?: Promise<void>
   private readonly startup = new AbortController()
   private startupProbe?: Promise<void>
-  private readonly requests = new Map<string, {
-    resolve: (value: { active: boolean }) => void
-    reject: (error: Error) => void
-    timer: ReturnType<typeof setTimeout>
-  }>()
-  private readonly projectRequests = new Map<string, {
-    resolve: (value: HostProjectSnapshot | null) => void
-    reject: (error: Error) => void
-    timer: ReturnType<typeof setTimeout>
-  }>()
+  private readonly requests = new Map<string, PendingRequest<{ active: boolean }>>()
+  private readonly projectRequests = new Map<string, PendingRequest<HostProjectSnapshot | null>>()
   constructor(protected readonly options: HostOptions) {}
   protected abstract launch(): ChildProcessWithoutNullStreams
   protected abstract forceStop(child: ChildProcessWithoutNullStreams): void
@@ -174,16 +185,14 @@ abstract class ManagedHostTransport implements HostTransport {
           }
           else if (data.type === 'fatal') { fail(new Error('message' in data ? String(data.message) : 'Host startup failed.')) }
           else if (data.type === 'activity' && 'id' in data && typeof data.id === 'string') {
-            const request = this.requests.get(data.id)
+            const request = takeRequest(this.requests, data.id)
             if (!request) return
-            clearTimeout(request.timer); this.requests.delete(data.id)
             if ('active' in data && typeof data.active === 'boolean') request.resolve({ active: data.active })
             else request.reject(new Error('Host activity inspection returned an invalid response.'))
           }
           else if (data.type === 'project' && 'id' in data && typeof data.id === 'string') {
-            const request = this.projectRequests.get(data.id)
+            const request = takeRequest(this.projectRequests, data.id)
             if (!request) return
-            clearTimeout(request.timer); this.projectRequests.delete(data.id)
             const parsed = 'project' in data ? projectSchema.safeParse(data.project) : undefined
             if ('project' in data && data.project === null) request.resolve(null)
             else if (parsed?.success) request.resolve(parsed.data)
@@ -192,14 +201,12 @@ abstract class ManagedHostTransport implements HostTransport {
         } catch (error) { fail(error instanceof Error ? error : new Error('Invalid Host response.')) }
       })
       child.stderr.setEncoding('utf8')
-      child.stderr.on('data', (text) =>{  this.diagnostic(String(text)) })
+      child.stderr.on('data', (text) => { this.diagnostic(String(text)) })
       this.exit = new Promise((done) => {
         child.once('close', (code) => {
           clearTimeout(timer); lines.close()
-          for (const request of this.requests.values()) { clearTimeout(request.timer); request.reject(new Error('The execution Host stopped.')) }
-          this.requests.clear()
-          for (const request of this.projectRequests.values()) { clearTimeout(request.timer); request.reject(new Error('The execution Host stopped.')) }
-          this.projectRequests.clear()
+          rejectAll(this.requests, new Error('The execution Host stopped.'))
+          rejectAll(this.projectRequests, new Error('The execution Host stopped.'))
           try { this.options.onExit?.(code) } catch (error) { console.error('Host exit callback failed:', error) }
           done()
           fail(new Error(`The execution Host stopped (${code}).`))
@@ -209,31 +216,27 @@ abstract class ManagedHostTransport implements HostTransport {
     })
     return this.ready
   }
-  async inspectActivity(mode: 'observe' | 'freeze' | 'resume' = 'observe'): Promise<{ active: boolean }> {
-    if (!this.host || !this.child?.stdin.writable || this.stopping) throw new Error('The execution Host is unavailable for activity inspection.')
+  /** Send one control request whose reply is matched by id on the Host's stdout control channel. */
+  private request<T>(requests: Map<string, PendingRequest<T>>, message: Record<string, unknown>,
+    unavailable: string, timedOut: string): Promise<T> {
+    const child = this.child
+    if (!this.host || !child?.stdin.writable || this.stopping) return Promise.reject(new Error(unavailable))
     const id = randomUUID()
-    const { promise, resolve, reject } = Promise.withResolvers<{ active: boolean }>()
-    const timer = setTimeout(() => { this.requests.delete(id); reject(new Error('Host activity inspection timed out; the target was not switched.')) }, 10000)
-    this.requests.set(id, { resolve, reject, timer })
-    this.child.stdin.write(JSON.stringify({ type: 'inspect-activity', id, mode }) + '\n', (error) => {
-      if (!error) return
-      const request = this.requests.get(id)
-      if (request) { clearTimeout(request.timer); this.requests.delete(id); request.reject(error) }
+    const { promise, resolve, reject } = Promise.withResolvers<T>()
+    const timer = setTimeout(() => { takeRequest(requests, id)?.reject(new Error(timedOut)) }, 10000)
+    requests.set(id, { resolve, reject, timer })
+    child.stdin.write(JSON.stringify({ ...message, id }) + '\n', (error) => {
+      if (error) takeRequest(requests, id)?.reject(error)
     })
     return promise
   }
-  async inspectProject(workspaceId?: WorkspaceId): Promise<HostProjectSnapshot | null> {
-    if (!this.host || !this.child?.stdin.writable || this.stopping) throw new Error('The execution Host is unavailable.')
-    const id = randomUUID()
-    const { promise, resolve, reject } = Promise.withResolvers<HostProjectSnapshot | null>()
-    const timer = setTimeout(() => { this.projectRequests.delete(id); reject(new Error('Project target inspection timed out.')) }, 10000)
-    this.projectRequests.set(id, { resolve, reject, timer })
-    this.child.stdin.write(JSON.stringify({ type: 'inspect-project', id, workspaceId }) + '\n', (error) => {
-      if (!error) return
-      const request = this.projectRequests.get(id)
-      if (request) { clearTimeout(request.timer); this.projectRequests.delete(id); request.reject(error) }
-    })
-    return promise
+  inspectActivity(mode: 'observe' | 'freeze' | 'resume' = 'observe'): Promise<{ active: boolean }> {
+    return this.request(this.requests, { type: 'inspect-activity', mode },
+      'The execution Host is unavailable for activity inspection.', 'Host activity inspection timed out; the target was not switched.')
+  }
+  inspectProject(workspaceId?: WorkspaceId): Promise<HostProjectSnapshot | null> {
+    return this.request(this.projectRequests, { type: 'inspect-project', workspaceId },
+      'The execution Host is unavailable.', 'Project target inspection timed out.')
   }
   stop(): Promise<void> {
     this.stopping ??= (async () => {

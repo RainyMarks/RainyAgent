@@ -225,6 +225,3 @@ export interface IdeFilesFailure {
   readonly currentVersion?: IdeFileVersion | null | undefined
   readonly currentState?: IdeWorkspaceState | undefined
 }
-
-/** JSON response used by the shared route dispatcher. */
-export type IdeFilesResponse<T> = { readonly ok: true; readonly value: T } | { readonly ok: false; readonly error: IdeFilesFailure }

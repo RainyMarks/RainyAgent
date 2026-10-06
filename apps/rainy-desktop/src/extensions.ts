@@ -98,6 +98,12 @@ declare module '@deepseek-ai/cordis' {
   }
 }
 
+function skillRoot(agent: Agent, scope: 'project' | 'user'): string {
+  return scope === 'project'
+    ? join(agent.session.header.cwd ?? homedir(), '.rainy', 'skills')
+    : join(homedir(), '.rainy-agent', 'skills')
+}
+
 function stringList(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((item: unknown) => typeof item === 'string')
 }
@@ -173,9 +179,12 @@ export default class RainyExtensions extends Service {
       if (selected.skills.length || selected.servers.length || selected.ida)
         this.active.set(agent.id, await this.mount(agent, selected))
     })
+    // Scoped MCP fibers and prompt sections end with the agent context; the shared maps are cleared here.
     ctx.on('agent/disposed', ({ agent }) => {
       this.active.delete(agent.id)
       ctx.rainy.tools.delete(agent.id)
+      ctx.rainy.extensionDescriptions.delete(agent.id)
+      ctx.rainy.extensionBudgets.delete(agent.id)
     })
     ctx.effect(() => async () => {
       const active = [...this.active.values()]
@@ -212,10 +221,8 @@ export default class RainyExtensions extends Service {
   async catalog(id: string): Promise<{ skills: SkillChoice[]; selection: ExtensionSelection; idaAvailable: boolean }> {
     const agent = this.agent(id)
     const skills: SkillChoice[] = []
-    for (const [prefix, folder] of [
-      ['project', join(agent.session.header.cwd ?? homedir(), '.rainy', 'skills')],
-      ['user', join(homedir(), '.rainy-agent', 'skills')],
-    ]) {
+    for (const prefix of ['project', 'user'] as const) {
+      const folder = skillRoot(agent, prefix)
       let children
       try {
         children = await readdir(folder, { withFileTypes: true })
@@ -265,10 +272,7 @@ export default class RainyExtensions extends Service {
       for (const id of selection.skills) {
         const match = /^(project|user)\/([^/\\]+)$/.exec(id)
         if (!match || match[2] === '.' || match[2] === '..') throw new Error('Skill 名称无效。')
-        const root =
-          match[1] === 'project'
-            ? join(agent.session.header.cwd ?? homedir(), '.rainy/skills')
-            : join(homedir(), '.rainy-agent/skills')
+        const root = skillRoot(agent, match[1] === 'project' ? 'project' : 'user')
         const path = await realpath(join(root, match[2], 'SKILL.md'))
         const within = relative(await realpath(root), path)
         if (isAbsolute(within) || within.startsWith('..')) throw new Error('Skill 路径超出配置目录。')
