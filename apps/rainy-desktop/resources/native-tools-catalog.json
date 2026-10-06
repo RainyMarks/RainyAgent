@@ -312,8 +312,8 @@
       },
       "available": true,
       "entrySha256": "ef8e1b1ad9137f581334bb26ef45aaf78c1f3aee2fb57de096b29800964ca0da",
-      "fileCount": 417,
-      "bytes": 330157372
+      "fileCount": 316,
+      "bytes": 151599236
     },
     {
       "id": "pngcheck",
@@ -467,7 +467,20 @@
         "kind": "gui",
         "path": "tools/ida/ida64.exe",
         "cwd": "tools/ida",
-        "pythonRoot": "tools/ida/python38"
+        "pythonRoot": "tools/ida/python312",
+        "requiredFiles": [
+          "tools/ida/python3.dll",
+          "tools/ida/python312.dll",
+          "tools/ida/python312/python.exe",
+          "tools/ida/python312/python3.dll",
+          "tools/ida/python312/python312.dll",
+          "tools/ida/python312/Lib/encodings/__init__.py",
+          "tools/ida/python312/DLLs/_ssl.pyd",
+          "tools/ida/python312/Lib/site-packages/imp.py",
+          "tools/ida/python312/Lib/site-packages/PyQt5/sip.cp312-win_amd64.pyd",
+          "tools/ida/plugins/idapython3_64.dll",
+          "tools/ida/python/3/PyQt5/QtCore.pyd"
+        ]
       },
       "roots": [
         "tools/ida"
@@ -475,15 +488,21 @@
       "source": {
         "kind": "local",
         "versionEvidence": "Executable product version; differs from ida8.3 source directory",
-        "identityNote": "Executable product field identifies a third-party distribution"
+        "identityNote": "Executable product field identifies a third-party distribution",
+        "runtime": {
+          "python": "3.12.14",
+          "sip": "12.18.0",
+          "impCompatibility": "zombie-imp 0.0.4",
+          "versionEvidence": "Pinned CPython, SIP and imp compatibility archives; application-local Python DLLs; unmodified IDAPython scripts"
+        }
       },
       "preserve": [
         "tools/ida/ida.key"
       ],
       "available": true,
       "entrySha256": "763a0621408926f0487cf2d168f2c382d2988b533b3869cf72ef5d5be646a57b",
-      "fileCount": 2673,
-      "bytes": 659269758
+      "fileCount": 3896,
+      "bytes": 624642220
     },
     {
       "id": "x64dbg",
@@ -648,8 +667,8 @@
       },
       "available": true,
       "entrySha256": "a7ab0c0052ffd438ca49440dc56a2c79588b510a72f3636eda4d52e7355472f9",
-      "fileCount": 417,
-      "bytes": 462307258
+      "fileCount": 316,
+      "bytes": 283749122
     },
     {
       "id": "dnspy",
@@ -666,27 +685,35 @@
         "反编译",
         "调试"
       ],
-      "version": "6.1.8.0",
+      "version": "6.6.0",
       "entry": {
         "kind": "gui",
         "path": "tools/dnspy/dnSpy.exe",
-        "cwd": "tools/dnspy"
+        "cwd": "tools/dnspy",
+        "requiredFiles": [
+          "tools/dnspy/bin/coreclr.dll",
+          "tools/dnspy/bin/hostfxr.dll",
+          "tools/dnspy/bin/PresentationFramework.dll"
+        ]
       },
       "roots": [
         "tools/dnspy"
       ],
       "source": {
-        "kind": "local",
-        "versionEvidence": "Executable file version; includes .NET Desktop 5.0.0"
+        "kind": "upstream",
+        "url": "https://github.com/dnSpyEx/dnSpy/releases/tag/v6.6.0",
+        "license": "GPL-3.0",
+        "licenseUrl": "https://github.com/dnSpyEx/dnSpy/blob/v6.6.0/LICENSE.txt",
+        "versionEvidence": "Official self-contained Windows x64 release; bundled .NET Desktop 10.0.9; publisher SHA-256"
       },
       "preserve": [
         "tools/dnspy/dnSpy.xml",
         "tools/dnspy/bin/FileLists"
       ],
       "available": true,
-      "entrySha256": "bc1c4e0fc49c138bbfc223d3e94231cd4884439c663646d91e48fa005df6704a",
-      "fileCount": 865,
-      "bytes": 212800638
+      "entrySha256": "50920335b673aadbff0720d60d15a3a00f117b15a30f5de94e0901afd3600fed",
+      "fileCount": 867,
+      "bytes": 248372200
     },
     {
       "id": "pyinstxtractor-ng",
@@ -946,24 +973,33 @@
         "音频",
         "摩尔斯"
       ],
-      "version": "1.1.8",
+      "version": "1.6.1",
       "entry": {
         "kind": "console",
         "path": "tools/multimon-ng/multimon-ng.exe",
-        "cwd": "tools/multimon-ng"
+        "cwd": "tools/multimon-ng",
+        "requiredFiles": [
+          "tools/multimon-ng/sox.exe",
+          "tools/multimon-ng/libsox-3.dll"
+        ],
+        "args": [
+          "-h"
+        ]
       },
       "roots": [
         "tools/multimon-ng"
       ],
       "source": {
-        "kind": "local",
-        "url": "https://github.com/EliasOenal/multimon-ng",
-        "versionEvidence": "multimon-ng -h output; standalone Windows executable"
+        "kind": "upstream",
+        "url": "https://github.com/EliasOenal/multimon-ng/releases/tag/1.6.1",
+        "license": "GPL-2.0-or-later",
+        "licenseUrl": "https://github.com/EliasOenal/multimon-ng/blob/1.6.1/COPYING",
+        "versionEvidence": "Publisher SHA-256 for Windows x64 1.6.1 asset; executable reports 1.6.0; private SoX converts WAV to raw"
       },
       "available": true,
-      "entrySha256": "4eb292c6e48f101c27b395d4e03c1f424f2b05f31a6512b8745fb5f6720a0fed",
-      "fileCount": 2,
-      "bytes": 203030
+      "entrySha256": "a9e31708caf7b85852aef822d1b4b4d0fb77965b4c527f25343348a5c1350009",
+      "fileCount": 17,
+      "bytes": 5964006
     },
     {
       "id": "gnu-strings",

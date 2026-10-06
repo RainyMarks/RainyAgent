@@ -68,9 +68,12 @@ export function validateReleaseManifest(input) {
     || !/^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?$/u.test(input.releaseVersion)
     || !Number.isSafeInteger(input.partBytes) || input.partBytes < 1 || input.partBytes > PART_BYTES
     || !Array.isArray(input.files) || input.files.length === 0) throw new Error('Invalid release manifest')
-  const url = new URL(input.baseUrl)
-  if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !url.pathname.endsWith('/')
-    || /\/(?:latest|latest\/download)\//u.test(url.pathname)) throw new Error('Release base URL must be a pinned HTTPS directory')
+  function pinnedUrl(value) {
+    const url = new URL(value)
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !url.pathname.endsWith('/')
+      || /\/(?:latest|latest\/download)\//u.test(url.pathname)) throw new Error('Release base URL must be a pinned HTTPS directory')
+  }
+  pinnedUrl(input.baseUrl)
   const paths = new Set()
   const pieces = new Set(['release-assets.json'])
   for (const entry of input.files) {
@@ -79,6 +82,7 @@ export function validateReleaseManifest(input) {
     paths.add(key)
     if (!categories.has(entry.category) || !Number.isSafeInteger(entry.bytes) || entry.bytes < 0 || !hashPattern.test(entry.sha256)
       || !Array.isArray(entry.pieces) || entry.pieces.length === 0) throw new Error(`Invalid release file: ${entry.path}`)
+    if (entry.baseUrl !== undefined) pinnedUrl(entry.baseUrl)
     let size = 0
     for (const piece of entry.pieces) {
       const name = releasePath(piece.file)

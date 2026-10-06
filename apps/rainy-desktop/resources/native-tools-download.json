@@ -1,38 +1,38 @@
 {
+  "version": 1,
+  "packId": "bf9836d29a5e8ab2bc0fb44b926ae00f2babd0af2bda8893c5518f04d28cc769",
+  "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.2-resources/",
   "volumes": [
     {
-      "path": "native-tools-5d33412377a414ad.tar.gz.001",
+      "path": "native-tools-bf9836d29a5e8ab2.tar.gz.001",
       "category": "offline",
       "bytes": 2147483648,
-      "sha256": "c099074a75a75a1bc128c2e90266fd10931ccb0d64e3d4c87088061ebd89439d",
+      "sha256": "487a19a8799e3881adada44a947bb53f22e8da6de5935744eae58532d46c4975",
       "pieces": [
         {
-          "file": "rainy-e5730173f56b3921c367.001",
+          "file": "rainy-123e807101c41851f479.001",
           "bytes": 1073741824,
-          "sha256": "0fe2f2fa9e4956eb06bbdacf11fad8730501d148750f591498025f904d0d696d"
+          "sha256": "38b88991c0f19ff3afcd6008f5163aca809f4e4bd6499e660202677463ab8e50"
         },
         {
-          "file": "rainy-e5730173f56b3921c367.002",
+          "file": "rainy-123e807101c41851f479.002",
           "bytes": 1073741824,
-          "sha256": "a15b2ed0597ab563119817659f8ac6893138b6faac7da99196439660719e7458"
+          "sha256": "573a8e188ef3937db64b16616d0200a5a1a2b2d0547eafbc3b11e69b0ff4ab8c"
         }
       ]
     },
     {
-      "path": "native-tools-5d33412377a414ad.tar.gz.002",
+      "path": "native-tools-bf9836d29a5e8ab2.tar.gz.002",
       "category": "offline",
-      "bytes": 171185390,
-      "sha256": "7f50a8759bf9e42e166d73e38d13106ae3a9a4495cd1272237127595050ac07d",
+      "bytes": 31235350,
+      "sha256": "91a5887c02a60f26a26fb4195e660deeaf72643c9e2e508457387eee536fc6b6",
       "pieces": [
         {
-          "file": "rainy-e251f4e414eaa8e7bbba.001",
-          "bytes": 171185390,
-          "sha256": "7f50a8759bf9e42e166d73e38d13106ae3a9a4495cd1272237127595050ac07d"
+          "file": "rainy-b3e7f86d619c7d123a70.001",
+          "bytes": 31235350,
+          "sha256": "91a5887c02a60f26a26fb4195e660deeaf72643c9e2e508457387eee536fc6b6"
         }
       ]
     }
-  ],
-  "version": 1,
-  "packId": "5d33412377a414adac0839c66521eefed002c6c8356d8343d35de835dced8eb7",
-  "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.0-resources/"
+  ]
 }

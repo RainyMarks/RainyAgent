@@ -8,7 +8,7 @@ RainyAgent 使用 Windows x64 Electron 外壳；核心安装包包含 Windows Ho
 
 ## 离线安装与恢复
 
-[1.0.1 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.1)提供核心安装程序。匹配的原生工具分卷、`environment/` WSL 安装介质和 `environment-components/` 运行环境归档保留在[资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。源码打包将这些输入恢复至 `release/offline-1.0.1`。原生工具为可选项：可在目录中联网安装，也可把匹配分卷放在安装程序旁离线安装。每个原生工具分卷最大为 2 GiB。
+[1.0.2 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2)提供核心安装程序。更新的原生工具分卷位于 [1.0.2 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2-resources)；未变化的 `environment/` WSL 安装介质和 `environment-components/` 运行环境归档仍位于 [1.0.0 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。源码打包从两个固定版本的资源存档恢复输入至 `release/offline-1.0.2`。原生工具为可选项：可在目录中联网安装，也可把匹配分卷放在安装程序旁离线安装。每个原生工具分卷最大为 2 GiB。
 
 工具安装窗口显示当前阶段、文件及阶段进度。点击取消后请求安全停止，并等待必要的回滚。重新运行同一套完整发行文件时，会重新校验分卷并复用已校验的暂存文件。缺卷、分卷损坏或空间不足会在工具目录替换前停止安装。更新前请保存工作并关闭 RainyAgent、原生工具及其命令行窗口；安装程序报告占用，不自动结束这些进程。
 

@@ -68,7 +68,7 @@ export async function restoreReleaseInputs(options) {
     } else {
       async function* pieces() {
         for (const piece of entry.pieces) {
-          const response = await fetch(new URL(piece.file, baseUrl))
+          const response = await fetch(new URL(piece.file, entry.baseUrl ?? baseUrl))
           if (!response.ok || !response.body) throw new Error(`Release download failed: ${piece.file} (${response.status})`)
           const hash = createHash('sha256')
           let bytes = 0

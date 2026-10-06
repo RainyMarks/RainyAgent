@@ -84,6 +84,11 @@ test('manifest rejects traversal, Windows aliases, case collisions, and overlapp
   const value = structuredClone(f.manifest)
   value.files[1].pieces[0].file = value.files[0].pieces[0].file
   assert.throws(() => validateReleaseManifest(value), /Invalid release piece/)
+  for (const unpinned of ['http://example.test/release/', 'https://example.test/latest/download/', 'https://example.test/release/?token=secret']) {
+    const changed = structuredClone(f.manifest)
+    changed.files[1].baseUrl = unpinned
+    assert.throws(() => validateReleaseManifest(changed), /pinned HTTPS directory/)
+  }
 })
 
 test('local bootstrap restores only verified inputs and preserves different destination files', async t => {
@@ -101,11 +106,14 @@ test('local bootstrap restores only verified inputs and preserves different dest
 
 test('download bootstrap verifies each piece and never publishes a corrupt reconstruction', async t => {
   const f = await fixture(t)
+  const updatedUrl = 'https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.2-resources/'
+  f.manifest.files.find(entry => entry.path === '说明.txt').baseUrl = updatedUrl
   let changed = false
   const requested = []
   t.mock.method(globalThis, 'fetch', async url => {
-    assert.equal(new URL(url).href.startsWith(baseUrl), true)
     const name = decodeURIComponent(new URL(url).pathname.split('/').at(-1))
+    const entry = f.manifest.files.find(item => item.pieces.some(piece => piece.file === name))
+    assert.equal(new URL(url).href.startsWith(entry.baseUrl ?? baseUrl), true)
     requested.push(name)
     const bytes = await readFile(join(f.output, name))
     return new Response(changed ? Buffer.alloc(bytes.length, 42) : bytes)

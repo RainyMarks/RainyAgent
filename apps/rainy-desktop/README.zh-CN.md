@@ -6,7 +6,7 @@
 
 使用 Windows x64，新安装默认原生执行，无需先安装 WSL。核心安装包包含 Windows 与 Linux Host、Strata 引擎、Python 及所需运行依赖；主模型与 MTP 权重由用户提供。完整离线目录另含 WSL 安装介质、Ubuntu 26.04.1 镜像，以及 Windows/Linux 基础、科学计算 CPU/CUDA 和 Windows C/C++ 组件。已有 Python、Conda、项目虚拟环境或 WSL 可直接检测并复用，不向它们安装软件包。也可连接自行管理的推理服务。
 
-1. 运行 `RainyAgent-1.0.1-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `native-tools-<id>.tar.gz.*` 分卷及校验清单。原生工具分卷为可选项；不带分卷更新时保留已安装工具。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
+1. 运行 `RainyAgent-1.0.2-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `native-tools-<id>.tar.gz.*` 分卷及校验清单。原生工具分卷为可选项；不带分卷更新时保留已安装工具。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
 2. 提供匹配原生工具分卷时，工具安装窗口会校验文件和目标空间再安装。点击取消后等待安全停止；重新运行同一完整发行文件可重试并复用已验证暂存。损坏或缺少部分分卷时应补齐匹配文件后重试。
 3. 从桌面 RainyAgent 快捷方式启动，无需设备码、激活码或授权管理器。已有保存的 WSL 目标继续保留；新安装先使用 Windows。运行环境页可以选择已有 WSL，或点击准备环境并选择外置 `environment/` 目录创建专用 Ubuntu。需要系统组件时明确请求管理员确认；若提示重启，保存其他工作、自行重启后再次打开应用。
 4. 若原发行版丢失，恢复向导保留原名称供处理。执行目标切换前保存草稿，运行中或排队中的任务、程序、调试和终端会阻止切换。项目公开身份与项目记忆跨目标保留，旧聊天及其运行状态留在原 Host，重新选择原目标即可访问。
@@ -127,14 +127,14 @@ IceSky 从安装包本地加载。工作台和 RainyAgent 的模型设置分别�
 pnpm install --frozen-lockfile
 node apps/rainy-desktop/scripts/bootstrap-release-inputs.mjs --manifest apps/rainy-desktop/toolpacks/build-inputs.v1.json
 pnpm run build
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.1 -ComponentSource apps/rainy-desktop/release/offline-1.0.1/environment-components
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.2 -ComponentSource apps/rainy-desktop/release/offline-1.0.2/environment-components
 ```
 
-[bootstrap-release-inputs.mjs](scripts/bootstrap-release-inputs.mjs)按仓库中的 [1.0.1 输入清单](toolpacks/build-inputs.v1.json)下载发行分片、重组并校验原始文件，恢复 Git 不保存的 IDE、Strata、工具、WSL 和运行环境输入；其中 `build-inputs/strata-runtime.tar.gz` 会自动展开到核心构建使用的资源目录。已有完整输入目录可通过 `--inputs-dir` 指定，仍需通过清单校验。打包入口 [package.ps1](scripts/package.ps1)校验环境媒体和组件归档，分别生成 Windows 与 Linux Host，再生成 NSIS 安装包。`-ReuseNativeToolsRelease` 复用刚恢复的 `release/offline-1.0.1` 工具分卷，`-ComponentSource` 指向其 `environment-components`。`-Distribution` 必须匹配准备好的 WSL 构建发行版名称；省略 `-SkipUpstreamBuild` 会重新构建上游库。最终产物与干净 checkout 的实测情况由[验收记录](VALIDATION.md)记录，以上命令不代表已经完成该项验收。
+[bootstrap-release-inputs.mjs](scripts/bootstrap-release-inputs.mjs)按仓库中的 [1.0.2 输入清单](toolpacks/build-inputs.v1.json)从两个固定版本的资源存档下载发行分片、重组并校验原始文件，恢复 Git 不保存的 IDE、Strata、工具、WSL 和运行环境输入；其中 `build-inputs/strata-runtime.tar.gz` 会自动展开到核心构建使用的资源目录。已有完整输入目录可通过 `--inputs-dir` 指定，仍需通过清单校验。打包入口 [package.ps1](scripts/package.ps1)校验环境媒体和组件归档，分别生成 Windows 与 Linux Host，再生成 NSIS 安装包。`-ReuseNativeToolsRelease` 复用刚恢复的 `release/offline-1.0.2` 工具分卷，`-ComponentSource` 指向其 `environment-components`。`-Distribution` 必须匹配准备好的 WSL 构建发行版名称；省略 `-SkipUpstreamBuild` 会重新构建上游库。最终产物与干净 checkout 的实测情况由[验收记录](VALIDATION.md)记录，以上命令不代表已经完成该项验收。
 
 生产构建使用独立 Ed25519 发行密钥。默认在忽略提交的 `build/release-signing-key.pem` 创建并复用本机构建密钥；`RAINY_RELEASE_SIGNING_KEY` 可指定已有私钥文件，路径缺失、格式不符或与暂存公钥不匹配时构建失败。公开资源只包含发行公钥，载体将该公钥嵌入并校验签名资源清单。该流程不读取客户授权数据库。
 
-1.0.1 完整离线目录为 `release/offline-1.0.1/`，包含核心安装程序、原生工具分卷、`environment/` WSL 介质、`environment-components/` 独立运行环境及递归 SHA-256 清单。WSL 镜像和科学计算大依赖位于核心 EXE 之外。构建核对 IDE 固定来源、Linux APT 索引和组件逐文件摘要；Windows Host 使用实体依赖文件，Linux Host 使用包内相对链接。构建暂存位于 `runtime/` 与 Linux `/var/tmp`，最终容量和验收以本次产物报告为准。
+1.0.2 完整离线目录为 `release/offline-1.0.2/`，包含核心安装程序、原生工具分卷、`environment/` WSL 介质、`environment-components/` 独立运行环境及递归 SHA-256 清单。WSL 镜像和科学计算大依赖位于核心 EXE 之外。构建核对 IDE 固定来源、Linux APT 索引和组件逐文件摘要；Windows Host 使用实体依赖文件，Linux Host 使用包内相对链接。构建暂存位于 `runtime/` 与 Linux `/var/tmp`，最终容量和验收以本次产物报告为准。
 
 `tests/composition.ts` 通过真正的 Rainy profile 和文件工具连接确定性模拟服务；其结果不是本地模型能力评估。`tests/benchmark.mjs` 用相同真实 API、相同任务和独立 Python 断言比较上游 Web 组合与 Rainy。原始数据和复现边界见 [验收记录](VALIDATION.md)。
 
