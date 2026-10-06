@@ -29,7 +29,8 @@ function Composer({ draft, useIde, useDeferred, renderFactorySlot }:
   const phase = useIde(state => state.phase)
   const state = useDeferred(value => value)
   return renderFactorySlot('conversation.deferredComposer', {
-    ...state, disabled: workspace === null || phase !== 'ready', workspace: workspace?.title ?? '',
+    // The hero project context already names the project above this composer.
+    ...state, disabled: workspace === null || phase !== 'ready', workspace: '',
     onChange: (text) => { draft.change(text) }, onAddFiles: (files) => { draft.addFiles(files) },
     onRemoveFile: (index) => { draft.removeFile(index) }, onSubmit: () => { void draft.submit() },
   })

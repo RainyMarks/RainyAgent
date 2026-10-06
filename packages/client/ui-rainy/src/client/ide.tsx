@@ -27,6 +27,9 @@ declare module '@deepseek-ai/dsh-client-ui-slots' {
   }
 }
 
+/** Stable empty snapshot while no quick-open binding exists. */
+const NO_KEYS: readonly string[] = []
+
 /** Private model and service callbacks exposed to the workspace through framework injection. */
 export interface IdeShellInjected {
   readonly model: IdeModel
@@ -35,7 +38,8 @@ export interface IdeShellInjected {
     readonly ide: HostObservable<ReturnType<IdeModel['state']['getSnapshot']>>
     readonly appearance: HostObservable<EditorAppearance>
     readonly execution: HostObservable<ReturnType<IdeExecutionModel['state']['getSnapshot']>>
-    readonly quickOpenShortcut: HostObservable<string>
+    /** Effective key labels, including platform separators, for quick open. */
+    readonly quickOpenShortcut: HostObservable<readonly string[]>
     readonly directoryPending: HostObservable<boolean>
   }
   readonly openFolder: (mode?: 'open' | 'attach') => Promise<void>
@@ -163,7 +167,7 @@ export function installIde(ctx: Context, config: Config): IdeModel {
           execution,
           hooks: { ide: model.state, appearance, execution: execution.state, directoryPending: directorySelection.pending,
             quickOpenShortcut: { subscribe: listener => ctx.shortcuts.catalog.subscribe(listener),
-              getSnapshot: () => ctx.shortcuts.catalog.getSnapshot().find(entry => entry.id === 'workspace.files')?.keys.join('+') ?? '' } },
+              getSnapshot: () => ctx.shortcuts.catalog.getSnapshot().find(entry => entry.id === 'workspace.files')?.keys ?? NO_KEYS } },
           openFolder: mode => directorySelection.open(mode),
           nativeDirectory: (window as typeof window & { __RAINY_IDE_NATIVE__?: NativeIdeBridge }).__RAINY_IDE_NATIVE__ !== undefined,
           newChat,

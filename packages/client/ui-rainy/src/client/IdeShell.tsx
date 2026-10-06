@@ -6,13 +6,12 @@ import {
   Menu,
   Modal,
   Tooltip,
-  IconAgentPresetOutlineRegular,
+  ShortcutKeys,
   IconChevronDownOutlineRegular,
   IconChevronLeftOutlineRegular,
   IconChevronRightOutlineRegular,
   IconCloseOutlineRegular,
   IconClockOutlineRegular,
-  IconDeliverDocRegular,
   IconEllipsisOutlineRegular,
   IconFolderCloseRegular,
   IconNewChatOutlineRegular,
@@ -20,7 +19,8 @@ import {
   IconPlusOutlineRegular,
   IconSearchOutlineRegular,
   IconPlayOutlineRegular,
-  IconCodeOutlineRegular,
+  IconProjectAddOutlineRegular,
+  FileTypeIcon,
   IconShieldOutlineRegular,
   IconSettingsOutlineRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -42,6 +42,14 @@ import { QuickOpenDialog } from './QuickOpenDialog.tsx'
 import type { IdeRunConfiguration } from '../ide-execution-protocol.ts'
 import type {} from '@deepseek-ai/dsh-client-ui-directory-picker-browse/client'
 import css from './IdeShell.module.css'
+import { IconBugOutline, IconPanelBottomOutline, IconPanelRightOutline } from './icons.tsx'
+
+declare global {
+  interface Window {
+    /** Carrier identity injected into the Host index; absent outside the desktop Host. */
+    __RAINY_AGENT__?: { readonly name: string; readonly version: string; readonly environment: string }
+  }
+}
 import { fileKey, fileLabel, fileReference, keyFromAbsolute, workspaceRoots } from './ide-paths.ts'
 
 type Props = PropsRuntime<'shell.workspace'> &
@@ -118,7 +126,7 @@ function FileTree({
           >
             <span className={css.treeIcon} aria-hidden>
               {folder ? (expanded ? <IconChevronDownOutlineRegular size={14} /> : <IconChevronRightOutlineRegular size={14} />)
-                : <IconDeliverDocRegular size={14} />}
+                : <FileTypeIcon path={entry.name} size={16} />}
             </span>
             <span className={css.treeName}>{entry.name}</span>
           </button>
@@ -210,6 +218,63 @@ function PromptDialog({
   )
 }
 
+/** First view without a project: the two ways to open one, then recently registered projects. */
+function Welcome({ state, t, nativeDirectory, pending, open, browse, select }: {
+  state: IdeState
+  t: Props['t']
+  nativeDirectory: boolean
+  pending: boolean
+  open: () => void
+  browse: () => void
+  select: (workspace: IdeState['workspaces'][number]) => void
+}) {
+  return <div className={css.welcome}>
+    <div className={css.welcomeBody}>
+      <img src="/rainy/icon.png" alt="" className={css.welcomeMark} />
+      <h2 className={css.welcomeTitle}>{t('ideWelcomeTitle')}</h2>
+      <p className={css.welcomeText}>{t('ideWelcomeDescription')}</p>
+      <div className={css.welcomeActions}>
+        {nativeDirectory && <Button variant="primary" disabled={pending} onClick={open}>{t('ideOpenFolder')}</Button>}
+        <Button variant="outline" disabled={pending} onClick={browse}>{t('ideWslFolder')}</Button>
+      </div>
+      {state.workspaces.length > 0 && <section className={css.recent} aria-label={t('ideRecentProjects')}>
+        <h3>{t('ideRecentProjects')}</h3>
+        {state.workspaces.slice(0, 6).map(workspace => (
+          <button key={workspace.workspaceId} type="button" className={css.recentItem} title={workspace.path}
+            disabled={state.phase === 'loading'} onClick={() => { select(workspace) }}>
+            <IconFolderCloseRegular size={14} />
+            <span className={css.recentName}>{workspace.title}</span>
+            <span className={css.recentPath}>{workspace.path}</span>
+          </button>
+        ))}
+      </section>}
+    </div>
+  </div>
+}
+
+/** A project without an open file offers search, a new file, and the assistant instead of a blank editor. */
+function NoFile({ t, shortcut, search, create, agent }: {
+  t: Props['t']
+  shortcut: readonly string[]
+  search: () => void
+  create: () => void
+  agent: (() => void) | undefined
+}) {
+  return <div className={css.welcome}>
+    <div className={css.welcomeBody}>
+      <h2 className={css.welcomeTitle}>{t('ideNoFileTitle')}</h2>
+      <p className={css.welcomeText}>{t('ideNoFile')}</p>
+      <div className={css.shortcutList}>
+        <button type="button" className={css.shortcutRow} onClick={search}>
+          <span>{t('ideSearchFiles')}</span>{shortcut.length > 0 && <ShortcutKeys keys={shortcut} className={css.shortcut} />}
+        </button>
+        <button type="button" className={css.shortcutRow} onClick={create}><span>{t('ideCreateFile')}</span></button>
+        {agent !== undefined && <button type="button" className={css.shortcutRow} onClick={agent}><span>{t('ideOpenAgent')}</span></button>}
+      </div>
+    </div>
+  </div>
+}
+
 /** Compose the editor, real conversation, retained history, tools, and interactive execution panels.
  * @param props Slot geometry, locale, and private workspace controllers.
  * @returns The complete IDE shell.
@@ -235,7 +300,7 @@ export function IdeShell({
   const state = useIde(value => value)
   const appearance = useAppearance(value => value)
   const executionState = useExecution(value => value)
-  const quickOpenShortcut = useQuickOpenShortcut(value => value)
+  const quickOpenKeys = useQuickOpenShortcut(value => value)
   const directoryPending = useDirectoryPending(value => value)
   const [navigation, setNavigation] = useState<'files' | 'history'>('files')
   const [selected, setSelected] = useState<IdeFileEntry | undefined>()
@@ -277,6 +342,12 @@ export function IdeShell({
   const stoppedPath = debugFrame?.path !== undefined && state.workspace !== null
     ? keyFromAbsolute(state.workspace, debugFrame.path) ?? (debugFrame.path.startsWith('/') ? undefined : debugFrame.path)
     : undefined
+  const environment = typeof window === 'undefined' ? undefined : window.__RAINY_AGENT__
+  const caret = state.selection !== undefined && state.selection.path === activePath && state.center === 'editor' ? state.selection : undefined
+  const runningProgram = executionState.status.runs.find(entry => entry.phase === 'starting' || entry.phase === 'building' || entry.phase === 'running')
+  const activity = debug !== undefined && debug.phase !== 'terminated' && debug.phase !== 'failed'
+    ? `${t('ideDebugging')} · ${debug.name}`
+    : runningProgram === undefined ? undefined : `${t('ideRunning')} · ${runningProgram.name}`
   const stopped =
     debug?.phase === 'paused' && stoppedPath !== undefined && debugFrame !== undefined
       ? { path: stoppedPath, line: debugFrame.line }
@@ -559,92 +630,106 @@ export function IdeShell({
       style={{ gridTemplateColumns: `${leftWidth}px minmax(0, 1fr) ${rightWidth}px` }}
     >
       <header className={css.topbar} data-window-drag data-rainy-topbar aria-label={t('appMenu')}>
-        <img src="/rainy/icon.png" alt="" className={css.mark} />
-        {width < 900 ? <Menu open={menu === 'app'} onClose={() => { setMenu(undefined) }} portal compact
-          anchor={<IconAction label={t('appMenu')} expanded={menu === 'app'} onClick={() => { setMenu(menu === 'app' ? undefined : 'app') }}>
-            <IconEllipsisOutlineRegular size={16} />
-          </IconAction>}
-          items={[
-            { id: 'file-menu', label: t('fileMenu'), submenu: menuItems('file') },
-            { id: 'edit-menu', label: t('editMenu'), submenu: menuItems('edit') },
-            { id: 'view-menu', label: t('viewMenu'), submenu: menuItems('view') },
-            { id: 'help', label: t('helpMenu') },
-          ]} onSelect={action} /> : <>
-          {(['file', 'edit', 'view'] as const).map(kind => (
-            <Menu
-              key={kind}
-              open={menu === kind}
-              onClose={() => {
-                setMenu(undefined)
-              }}
-              portal
-              anchor={
-                <button
-                  type="button"
-                  className={css.button}
-                  aria-haspopup="menu"
-                  aria-expanded={menu === kind}
-                  onClick={() => {
-                    setMenu(menu === kind ? undefined : kind)
-                  }}
-                >
-                  {t(kind === 'file' ? 'fileMenu' : kind === 'edit' ? 'editMenu' : 'viewMenu')}
-                </button>
+        <div className={css.topStart}>
+          <img src="/rainy/icon.png" alt="" className={css.topMark} />
+          {width < 900 ? <Menu open={menu === 'app'} onClose={() => { setMenu(undefined) }} portal compact
+            anchor={<IconAction label={t('appMenu')} expanded={menu === 'app'} onClick={() => { setMenu(menu === 'app' ? undefined : 'app') }}>
+              <IconEllipsisOutlineRegular size={16} />
+            </IconAction>}
+            items={[
+              { id: 'file-menu', label: t('fileMenu'), submenu: menuItems('file') },
+              { id: 'edit-menu', label: t('editMenu'), submenu: menuItems('edit') },
+              { id: 'view-menu', label: t('viewMenu'), submenu: menuItems('view') },
+              { id: 'help', label: t('helpMenu') },
+            ]} onSelect={action} /> : <>
+            {(['file', 'edit', 'view'] as const).map(kind => (
+              <Menu
+                key={kind}
+                open={menu === kind}
+                onClose={() => {
+                  setMenu(undefined)
+                }}
+                portal
+                anchor={
+                  <button
+                    type="button"
+                    className={css.button}
+                    aria-haspopup="menu"
+                    aria-expanded={menu === kind}
+                    onClick={() => {
+                      setMenu(menu === kind ? undefined : kind)
+                    }}
+                  >
+                    {t(kind === 'file' ? 'fileMenu' : kind === 'edit' ? 'editMenu' : 'viewMenu')}
+                  </button>
+                }
+                items={menuItems(kind)}
+                onSelect={action}
+              />
+            ))}
+            <button
+              type="button"
+              className={css.button}
+              onClick={help}
+            >
+              {t('helpMenu')}
+            </button>
+          </>}
+        </div>
+        <div className={css.commandCenter}>
+          <Menu open={menu === 'workspace'} onClose={() => { setMenu(undefined) }} portal compact className={css.commandMenu}
+            anchor={<button type="button" className={css.commandWorkspace} aria-label={t('ideWorkspace')} title={state.workspace?.path}
+              aria-haspopup="menu" aria-expanded={menu === 'workspace'} disabled={state.phase === 'loading'}
+              onClick={() => { setMenu(menu === 'workspace' ? undefined : 'workspace') }}>
+              <IconFolderCloseRegular size={14} />
+              <span>{state.workspace?.title ?? t('ideOpenFolder')}</span>
+              <IconChevronDownOutlineRegular size={12} />
+            </button>}
+            items={[...state.workspaces.map(workspace => ({ id: workspace.workspaceId, label: workspace.title })),
+              { id: 'rainy:open-folder', label: t('ideOpenFolder') }]}
+            onSelect={(id) => {
+              setMenu(undefined)
+              if (id === 'rainy:open-folder') openDirectory()
+              else {
+                const workspace = state.workspaces.find(item => item.workspaceId === id)
+                if (workspace !== undefined) run(model.selectWorkspace(workspace))
               }
-              items={menuItems(kind)}
-              onSelect={action}
-            />
-          ))}
-          <button
-            type="button"
-            className={css.button}
-            onClick={help}
-          >
-            {t('helpMenu')}
-          </button>
-        </>}
-        <Menu open={menu === 'workspace'} onClose={() => { setMenu(undefined) }} portal compact
-          anchor={<button type="button" className={`${css.button} ${css.topWorkspace}`} aria-label={t('ideWorkspace')}
-            aria-haspopup="menu" aria-expanded={menu === 'workspace'} disabled={state.phase === 'loading'}
-            onClick={() => { setMenu(menu === 'workspace' ? undefined : 'workspace') }}>
-            <span>{state.workspace?.title ?? t('ideOpenFolder')}</span><IconChevronDownOutlineRegular size={14} />
-          </button>}
-          items={[...state.workspaces.map(workspace => ({ id: workspace.workspaceId, label: workspace.title })),
-            { id: 'rainy:open-folder', label: t('ideOpenFolder') }]}
-          onSelect={(id) => {
-            setMenu(undefined)
-            if (id === 'rainy:open-folder') openDirectory()
-            else {
-              const workspace = state.workspaces.find(item => item.workspaceId === id)
-              if (workspace !== undefined) run(model.selectWorkspace(workspace))
-            }
-          }} />
-        <Tooltip label={t('ideQuickOpen')} shortcutKeys={quickOpenShortcut === '' ? undefined : quickOpenShortcut.split('+')} side="bottom" portal>
-          <Button size="sm" className={css.iconButton} aria-label={t('ideQuickOpen')} disabled={state.workspace === null}
-            onClick={() => { model.quickOpen(true) }}>
-            <IconSearchOutlineRegular size={16} />
-          </Button>
-        </Tooltip>
-        <span className={css.caption} />
-        {editing && <>
-          <IconAction label={t('ideRun')} onClick={() => { run(launch(false)) }}><IconPlayOutlineRegular size={16} /></IconAction>
-          {sourceLanguage(activePath ?? '') !== 'php' && <IconAction label={t('ideDebug')} onClick={() => { run(launch(true)) }}><IconCodeOutlineRegular size={16} /></IconAction>}
-        </>}
-        <IconAction label={t('ctf')} onClick={() => { model.center('tools') }}>
-          <IconShieldOutlineRegular size={16} />
-        </IconAction>
-        <IconAction label={t('ideToggleFiles')} pressed={leftVisible} onClick={() => { action('files') }}>
-          <IconPanelLeftOutlineRegular size={16} />
-        </IconAction>
-        <IconAction label={t('ideToggleBottom')} pressed={layout.bottomVisible} onClick={() => { action('bottom') }}>
-          <IconPanelLeftOutlineRegular size={16} className={css.bottomIcon} />
-        </IconAction>
-        <IconAction label={t('ideToggleAgent')} pressed={layout.agentVisible} onClick={() => { action('agent') }}>
-          <IconAgentPresetOutlineRegular size={16} />
-        </IconAction>
-        <IconAction label={t('settings')} onClick={settings}>
-          <IconSettingsOutlineRegular size={16} />
-        </IconAction>
+            }} />
+          <Tooltip label={t('ideQuickOpen')} shortcutKeys={quickOpenKeys.length === 0 ? undefined : quickOpenKeys} side="bottom" portal>
+            <button type="button" className={css.commandSearch} aria-label={t('ideQuickOpen')} disabled={state.workspace === null}
+              onClick={() => { model.quickOpen(true) }}>
+              <IconSearchOutlineRegular size={14} />
+              <span className={css.commandLabel}>{t('ideSearchFiles')}</span>
+              {quickOpenKeys.length > 0 && <ShortcutKeys keys={quickOpenKeys} className={css.shortcut} />}
+            </button>
+          </Tooltip>
+        </div>
+        <div className={css.topEnd}>
+          {editing && <div className={css.toolGroup}>
+            <IconAction label={t('ideRun')} onClick={() => { run(launch(false)) }}><IconPlayOutlineRegular size={16} /></IconAction>
+            {sourceLanguage(activePath ?? '') !== 'php'
+              && <IconAction label={t('ideDebug')} onClick={() => { run(launch(true)) }}><IconBugOutline size={16} /></IconAction>}
+          </div>}
+          <div className={css.toolGroup}>
+            <IconAction label={t('ideToggleFiles')} pressed={leftVisible} onClick={() => { action('files') }}>
+              <IconPanelLeftOutlineRegular size={16} />
+            </IconAction>
+            <IconAction label={t('ideToggleBottom')} pressed={layout.bottomVisible} onClick={() => { action('bottom') }}>
+              <IconPanelBottomOutline size={16} />
+            </IconAction>
+            <IconAction label={t('ideToggleAgent')} pressed={layout.agentVisible} onClick={() => { action('agent') }}>
+              <IconPanelRightOutline size={16} />
+            </IconAction>
+          </div>
+          <div className={css.toolGroup}>
+            <IconAction label={t('ctf')} pressed={state.center === 'tools'} onClick={() => { model.center('tools') }}>
+              <IconShieldOutlineRegular size={16} />
+            </IconAction>
+            <IconAction label={t('settings')} onClick={settings}>
+              <IconSettingsOutlineRegular size={16} />
+            </IconAction>
+          </div>
+        </div>
       </header>
       <aside
         className={`${css.pane} ${css.left}`}
@@ -666,7 +751,7 @@ export function IdeShell({
           {navigation === 'files' && <div className={css.explorerActions}>
             <IconAction label={t('ideAddFolder')} disabled={state.phase === 'loading' || directoryPending}
               onClick={() => { openDirectory('attach') }}>
-              <IconFolderCloseRegular size={14} />
+              <IconProjectAddOutlineRegular size={14} />
             </IconAction>
             <IconAction label={t('ideNewFile')} disabled={state.workspace === null} onClick={() => { run(create(false)) }}>
               <IconPlusOutlineRegular size={14} />
@@ -739,7 +824,9 @@ export function IdeShell({
                   <button type="button" role="tab" className={css.button}
                     aria-selected={activePath === file.path && state.center === 'editor'} title={fileLabel(state.workspace, file.path)}
                     onClick={() => { run(model.openFile(file.path)) }}>
-                    {state.buffers[file.path]?.dirty ? '● ' : ''}{file.path.split('/').at(-1)}
+                    <FileTypeIcon path={file.path} size={14} />
+                    <span className={css.tabName}>{file.path.split('/').at(-1)}</span>
+                    {state.buffers[file.path]?.dirty && <span className={css.dirty} aria-hidden="true">●</span>}
                   </button>
                   <IconAction label={t('ideClose') + ' ' + fileLabel(state.workspace, file.path)} onClick={() => { run(closeFile(file.path)) }}>
                     <IconCloseOutlineRegular size={12} />
@@ -838,6 +925,12 @@ export function IdeShell({
                 run(Promise.resolve(execution.toggleBreakpoint(path, line)))
               }}
               stopped={stopped}
+              empty={state.workspace === null
+                ? <Welcome state={state} t={t} nativeDirectory={nativeDirectory} pending={directoryPending}
+                  open={() => { openDirectory('open') }} browse={() => { action('wsl') }}
+                  select={(workspace) => { run(model.selectWorkspace(workspace)) }} />
+                : <NoFile t={t} shortcut={quickOpenKeys} search={() => { model.quickOpen(true) }} create={() => { run(create(false)) }}
+                  agent={layout.agentVisible ? undefined : () => { model.layout({ agentVisible: true }) }} />}
             />
           </div>
           <div className={css.centerBody} hidden={state.center !== 'tools'}>
@@ -847,22 +940,6 @@ export function IdeShell({
                 model.center('editor')
               },
             })}
-          </div>
-          <div className={css.status} hidden={active === undefined && !state.saving}>
-            <span>
-              {state.saving
-                ? t('ideRecoverySaving')
-                : active?.source === 'snippet'
-                  ? activePath?.split('/').at(-1)
-                  : fileLabel(state.workspace, activePath ?? '')}
-            </span>
-            <span className={css.spacer} />
-            {active !== undefined && (
-              <span>
-                {sourceLanguage(active.document.path)} · {active.document.eol.toUpperCase()} · {t('ideEncoding')}
-                {active.document.bom ? ` ${t('ideBom')}` : ''}
-              </span>
-            )}
           </div>
         </div>
         <div
@@ -903,6 +980,22 @@ export function IdeShell({
           })}
         </div>
       </aside>
+      <footer className={css.statusBar} data-rainy-status>
+        {environment !== undefined && <span className={css.statusItem} title={`${environment.name} ${environment.version}`}>
+          <span className={css.statusDot} aria-hidden="true" />{environment.environment}
+        </span>}
+        {state.saving && <span className={css.statusItem}>{t('ideRecoverySaving')}</span>}
+        {activity !== undefined && <span className={css.statusItem} data-activity>{activity}</span>}
+        <span className={css.spacer} />
+        {caret !== undefined && <span className={css.statusItem}>{t('ideStatusPosition', { line: caret.endLine, column: caret.endColumn })}</span>}
+        {caret !== undefined && caret.text.length > 0
+          && <span className={css.statusItem}>{t('ideStatusSelected', { count: caret.text.length })}</span>}
+        {active !== undefined && <>
+          <span className={css.statusItem}>{sourceLanguage(active.document.path)}</span>
+          <span className={css.statusItem}>{active.document.eol.toUpperCase()}</span>
+          <span className={css.statusItem}>{t('ideEncoding')}{active.document.bom ? ` ${t('ideBom')}` : ''}</span>
+        </>}
+      </footer>
       <div className={css.auxiliary} aria-hidden>
         {renderFactorySlot('layout.region', {
           region: 'auxiliary',

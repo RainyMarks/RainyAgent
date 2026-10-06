@@ -135,7 +135,7 @@ async function fixture(width = 1440) {
     execution,
     useIde: bindSnapshotSelector(model.state),
     useExecution: bindSnapshotSelector(execution.state),
-    useQuickOpenShortcut: selector => selector('Ctrl+P'),
+    useQuickOpenShortcut: selector => selector(['Ctrl', '+', 'P']),
     useDirectoryPending: bindSnapshotSelector(directory.pending),
     useAppearance: bindSnapshotSelector(createSnapshotStore<EditorAppearance>({ dark: true, fontSize: 13 })),
     openFolder: vi.fn((mode?: 'open' | 'attach') => directory.open(mode)),

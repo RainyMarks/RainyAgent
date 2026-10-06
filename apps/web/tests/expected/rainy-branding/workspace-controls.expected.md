@@ -4,9 +4,9 @@
   - button "视图"
   - button "帮助"
   - button "工作区": 打开文件夹
-  - button "搜索工作区文件" [disabled]
-  - button "CTF 工具"
+  - button "搜索工作区文件" [disabled]: 搜索文件
   - button "显示或隐藏文件栏" [pressed]
   - button "显示或隐藏底部面板"
   - button "显示或隐藏 AI 助手"
+  - button "CTF 工具"
   - button "设置"

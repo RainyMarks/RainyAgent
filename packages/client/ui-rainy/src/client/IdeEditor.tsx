@@ -1,5 +1,6 @@
 /** Retained Monaco mount; editor buffers remain owned by the workspace model. */
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type { EditorAppearance, EditorInstance } from './editor-types.ts'
 import { loadEditorAssets } from './editor-loader.ts'
@@ -16,13 +17,15 @@ interface Props {
   readonly breakpoint: (path: string, line: number) => void
   readonly attach: (editor: EditorInstance | undefined) => void
   readonly stopped?: { readonly path: string; readonly line: number } | undefined
+  /** Shown instead of the editor while no file is open. */
+  readonly empty?: ReactNode
 }
 
 /** Keep one Monaco instance while tabs, source text, and shell geometry change.
  * @param props The private workspace model and localized editor actions.
  * @returns The editor mount and loading state.
  */
-export function IdeEditor({ model, state, appearance, t, sendSelection, breakpoint, attach, stopped }: Props) {
+export function IdeEditor({ model, state, appearance, t, sendSelection, breakpoint, attach, stopped, empty }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const instance = useRef<EditorInstance | undefined>(undefined)
   const revealed = useRef<IdeState['reveal']>()
@@ -219,7 +222,7 @@ export function IdeEditor({ model, state, appearance, t, sendSelection, breakpoi
           {t('ideEditorLoading')}
         </div>
       )}
-      {path === null && <div className={css.empty}>{t(state.workspace === null ? 'ideNoWorkspace' : 'ideNoFile')}</div>}
+      {path === null && (empty ?? <div className={css.empty}>{t(state.workspace === null ? 'ideNoWorkspace' : 'ideNoFile')}</div>)}
       {buffer !== undefined && reason !== null && reason !== undefined && (
         <div className={css.empty}>
           <span>
