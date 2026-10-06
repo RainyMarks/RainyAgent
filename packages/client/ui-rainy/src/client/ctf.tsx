@@ -42,7 +42,7 @@ interface WorkbenchInjected extends ToolCatalogActions {
  * @returns the retained workbench.
  */
 export function CtfWorkbench({ width, t, useWorkbench, useTools, useView, selectView,
-  loadTools, launchTool, toggleFavorite, attach, retry, loadFailed }:
+  loadTools, launchTool, toggleFavorite, downloadTools, cancelDownload, checkToolUpdates, attach, retry, loadFailed }:
   PropsRuntime<'rainy.ide.tools'> & PropsLocale<'rainy'> & InjectFace<WorkbenchInjected>) {
   const state = useWorkbench(value => value)
   const tools = useTools(value => value)
@@ -64,7 +64,8 @@ export function CtfWorkbench({ width, t, useWorkbench, useTools, useView, select
     </header>
     <div className={css.body}>
       <div id="rainy-tools-panel" role="tabpanel" aria-labelledby="rainy-tools-tab" className={css.panel} hidden={view !== 'catalog'}>
-        <ToolCatalog t={t} state={tools} loadTools={loadTools} launchTool={launchTool} toggleFavorite={toggleFavorite} />
+        <ToolCatalog t={t} state={tools} loadTools={loadTools} launchTool={launchTool} toggleFavorite={toggleFavorite}
+          downloadTools={downloadTools} cancelDownload={cancelDownload} checkToolUpdates={checkToolUpdates} />
       </div>
       <div id="rainy-icesky-panel" role="tabpanel" aria-labelledby="rainy-icesky-tab" className={css.panel} hidden={view !== 'icesky'}>
         {(view === 'icesky' || visitedIceSky) && <iframe ref={attach} className={css.frame} src="/rainy/icesky/index.html?embed=rainy"
@@ -113,10 +114,14 @@ export function installCtfWorkbench(ctx: Context, config: Config, editor: IdeMod
   const native = (globalThis as typeof globalThis & { __RAINY_TOOLS__?: NativeToolsBridge }).__RAINY_TOOLS__
   const tools = new NativeToolsController(native, { opened: name => t('toolsOpened', { name }),
     launchFailed: name => t('toolsLaunchFailed', { name }), favoritesFailed: () => t('toolsFavoritesFailed'),
-    favoriteSaved: selected => t(selected ? 'toolsFavoriteSaved' : 'toolsFavoriteRemoved') }, toast)
+    favoriteSaved: selected => t(selected ? 'toolsFavoriteSaved' : 'toolsFavoriteRemoved'),
+    downloadComplete: () => t('toolsDownloadComplete'), downloadFailed: () => t('toolsDownloadFailed') }, toast)
   const loadTools = (): Promise<void> => tools.load()
   const launchTool: ToolCatalogActions['launchTool'] = (id, variant) => tools.launch(id, variant)
   const toggleFavorite: ToolCatalogActions['toggleFavorite'] = id => tools.toggleFavorite(id)
+  const downloadTools = (): Promise<void> => tools.download()
+  const cancelDownload = (): Promise<void> => tools.cancelDownload()
+  const checkToolUpdates = (): Promise<void> => tools.checkUpdates()
   const selectView = (next: WorkbenchView): void => { view.set(next) }
   const attach = (frame: HTMLIFrameElement | null): void => { bridge.attach(frame) }
   const retry = (): Promise<boolean> => bridge.retry()
@@ -164,7 +169,7 @@ export function installCtfWorkbench(ctx: Context, config: Config, editor: IdeMod
   }, 'rainy: CTF frame bridge')
   ctx.slots.inject('rainy.ide.tools', () => ctx.slots.register({ name: 'rainy.ide.tools', locale: 'rainy',
     inject: (): WorkbenchInjected => ({ hooks: { workbench: bridge.state, tools: tools.state, view },
-      attach, retry, loadFailed, selectView, loadTools, launchTool, toggleFavorite }),
+      attach, retry, loadFailed, selectView, loadTools, launchTool, toggleFavorite, downloadTools, cancelDownload, checkToolUpdates }),
   }, CtfWorkbench))
   ctx.effect(() => ctx.sidebarRightTabs.register({ id: CTF_WORKBENCH_ID, kind: 'rainy-ctf', title: () => t('ctf') }), 'rainy: previous CTF navigation')
   ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({ name: 'sidebar.right.pane.tab', key: CTF_WORKBENCH_ID,

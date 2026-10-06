@@ -85,6 +85,7 @@
 .secondary { color: var(--dsw-alias-label-secondary); }
 .notice { justify-content: space-between; flex-wrap: wrap; padding: 12px; border-radius: var(--dsw-radius-sm); background: var(--dsw-alias-bg-layer-1); }
 .notice small { display: block; overflow-wrap: anywhere; }
+.downloadProgress { width: 100%; height: 8px; accent-color: var(--dsw-alias-label-primary); }
 .skeleton { flex-direction: column; align-items: stretch; min-height: 72px; }
 .skeleton span { height: 14px; width: 65%; background: var(--dsw-alias-interactive-bg-hover); border-radius: var(--dsw-radius-sm); }
 .skeleton span + span { width: 90%; }

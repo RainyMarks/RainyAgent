@@ -9,6 +9,9 @@ module.exports = {
   directories: { app: 'build/shell', output: 'release' },
   files: ['package.json', 'main.cjs', 'preload.cjs', 'setup/**', 'LICENSE', 'THIRD_PARTY_NOTICES.md', '!**/node_modules/**'],
   extraResources: [
+    { from: 'resources/native-tools-download.json', to: 'native-tools-download.json' },
+    { from: 'resources/native-tools-catalog.json', to: 'native-tools-catalog.json' },
+    { from: 'resources/native-tools-public-keys.json', to: 'native-tools-public-keys.json' },
     { from: 'resources/strata-runtime', to: 'strata-runtime' },
     { from: 'build/icon.ico', to: 'icon.ico' },
     { from: 'runtime/linux-runtime.tar.gz', to: 'linux-runtime.tar.gz' },

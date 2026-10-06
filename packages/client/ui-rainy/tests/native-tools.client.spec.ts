@@ -19,16 +19,54 @@ function deferred<T>() {
 
 function fixture() {
   const bridge = { listTools: vi.fn<NativeToolsBridge['listTools']>().mockResolvedValue(catalog),
+    checkToolUpdates: vi.fn<NativeToolsBridge['checkToolUpdates']>().mockResolvedValue({ phase: 'current', version: '1.0.0', error: '' }),
+    getDownloadState: vi.fn<NativeToolsBridge['getDownloadState']>().mockResolvedValue({ phase: 'idle', completedBytes: 0, totalBytes: 10, error: '' }),
+    downloadTools: vi.fn<NativeToolsBridge['downloadTools']>().mockResolvedValue(),
+    cancelDownload: vi.fn<NativeToolsBridge['cancelDownload']>().mockResolvedValue(),
+    onDownloadProgress: vi.fn<NativeToolsBridge['onDownloadProgress']>().mockReturnValue(vi.fn()),
     launchTool: vi.fn<NativeToolsBridge['launchTool']>().mockResolvedValue({ ok: true }),
     setFavorites: vi.fn<NativeToolsBridge['setFavorites']>().mockResolvedValue() }
   const toast = vi.fn()
   const copy = { opened: (name: string) => `Launch request sent for ${name}`, launchFailed: (name: string) => `Could not open ${name}`,
-    favoritesFailed: () => 'Could not save favorites', favoriteSaved: (selected: boolean) => selected ? 'Added favorite' : 'Removed favorite' }
+    favoritesFailed: () => 'Could not save favorites', favoriteSaved: (selected: boolean) => selected ? 'Added favorite' : 'Removed favorite',
+    downloadComplete: () => 'Installed tools', downloadFailed: () => 'Download failed' }
   const controller = new NativeToolsController(bridge, copy, toast)
   return { controller, bridge, toast, copy }
 }
 
 describe('native tool directory', () => {
+  it('coalesces downloads, retains progress while hidden and refreshes availability after completion', async () => {
+    const h = fixture()
+    await h.controller.load()
+    const pending = deferred<undefined>()
+    h.bridge.downloadTools.mockReturnValueOnce(pending.promise)
+    const running = h.controller.download()
+    expect(h.controller.download()).toBe(running)
+    const receive = h.bridge.onDownloadProgress.mock.calls[0]![0]
+    receive({ phase: 'downloading', completedBytes: 5, totalBytes: 10, error: '' })
+    expect(h.controller.state.getSnapshot().download.completedBytes).toBe(5)
+    await h.controller.cancelDownload()
+    expect(h.bridge.cancelDownload).toHaveBeenCalledOnce()
+    h.bridge.getDownloadState.mockResolvedValue({ phase: 'complete', completedBytes: 10, totalBytes: 10, error: '' })
+    pending.resolve(undefined)
+    await running
+    expect(h.bridge.downloadTools).toHaveBeenCalledOnce()
+    expect(h.bridge.listTools).toHaveBeenCalledTimes(2)
+    expect(h.toast).toHaveBeenCalledWith('Installed tools', 'success')
+  })
+
+  it('retains download errors for retry and removes its progress listener on disposal', async () => {
+    const h = fixture()
+    await h.controller.load()
+    h.bridge.downloadTools.mockRejectedValueOnce(new Error('offline'))
+    await h.controller.download()
+    expect(h.controller.state.getSnapshot().download).toMatchObject({ phase: 'error', error: 'offline' })
+    h.controller.dispose()
+    expect(h.bridge.onDownloadProgress.mock.results[0]!.value).toHaveBeenCalledOnce()
+    const before = h.controller.state.getSnapshot()
+    h.bridge.onDownloadProgress.mock.calls[0]![0]({ phase: 'complete', completedBytes: 10, totalBytes: 10, error: '' })
+    expect(h.controller.state.getSnapshot()).toBe(before)
+  })
   it('coalesces loads and keeps populated content when a refresh fails', async () => {
     const h = fixture()
     const pending = deferred<NativeToolCatalog>()

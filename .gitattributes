@@ -64,3 +64,4 @@ docs/persistence-changes/historical-formats/*.schema.json linguist-generated=tru
 /apps/rainy-desktop/resources/icesky/templates/tokenizer.html -text whitespace=trailing-space,space-before-tab,cr-at-eol
 /apps/rainy-desktop/resources/icesky/templates/transforms.html -text whitespace=trailing-space,space-before-tab,cr-at-eol
 /apps/rainy-desktop/toolpacks/strata-runtime.sources.json -text whitespace=trailing-space,space-before-tab,cr-at-eol
+/apps/rainy-desktop/resources/native-tools-catalog.json -text whitespace=trailing-space,space-before-tab,cr-at-eol

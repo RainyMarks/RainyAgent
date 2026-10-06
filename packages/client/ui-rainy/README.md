@@ -56,6 +56,8 @@ File and diff text follows the independent code-size setting; toolbar labels fol
 <a id="understand-the-implementation"></a>
 ## Understand the implementation
 
+The desktop catalog downloads the complete tool pack into per-user storage with progress, cancellation and retry. Partial downloads and verified media are reused; installed tools remain available offline across restarts and application updates. The catalog checks the signed publisher channel on its first visit and exposes Check tool updates. Added or updated tools require an explicit download; unchanged packs remain local. Newly published tool IDs use the authenticated catalog without requiring a hardcoded client entry.
+
 <details>
 <summary>Implementation details</summary>
 

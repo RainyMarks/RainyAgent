@@ -41,6 +41,24 @@ async function catalog(tools: unknown[] = [installedTool()]): Promise<string> {
 }
 
 describe('native tool catalog', () => {
+  it('uses the carrier catalog before downloading and switches to durable per-user tools', async () => {
+    const catalogPath = join(fixture, 'bundled-catalog.json')
+    await writeFile(catalogPath, JSON.stringify({ version: 1, tools: [installedTool()] }))
+    const onlineRoot = join(userData, 'native-tools')
+    await mkdir(onlineRoot, { recursive: true })
+    let selectedRoot = onlineRoot
+    const start = vi.fn()
+    const library = new NativeToolsLibrary({ installRoot, userData, catalogPath, selectRoot: async () => selectedRoot, start })
+    expect((await library.listTools()).tools[0]).toMatchObject({ id: '7zip', status: 'missing' })
+    await mkdir(join(onlineRoot, 'tools/7zip'), { recursive: true })
+    await writeFile(join(onlineRoot, 'tools/7zip/7z.exe'), 'downloaded tool')
+    await writeFile(join(onlineRoot, 'tools/manifest.json'), await readFile(catalogPath))
+    expect((await library.listTools()).tools[0]).toMatchObject({ status: 'ready' })
+    await library.launchTool('7zip')
+    expect(start.mock.calls[0][0]).toMatchObject({ target: join(onlineRoot, 'tools/7zip/7z.exe') })
+    selectedRoot = installRoot
+    expect((await library.listTools()).tools[0]).toMatchObject({ status: 'ready' })
+  })
   it('separates installed dependencies from functional acceptance and invalidates stale acceptance', async () => {
     const text = await catalog()
     const library = new NativeToolsLibrary({ installRoot, userData, start: vi.fn() })
@@ -52,13 +70,13 @@ describe('native tool catalog', () => {
     expect((await library.listTools()).tools[0]?.verified).toBe(false)
   })
 
-  it('rejects unknown identities, launch arguments, and variants at the wire boundary', () => {
+  it('rejects invalid identity syntax, launch arguments, and variants at the wire boundary', () => {
     expect(parseNativeLaunch({ id: 'x64dbg', variant: 'x32' })).toEqual({ id: 'x64dbg', variant: 'x32' })
     expect(() => parseNativeLaunch({ id: '7zip', args: ['arbitrary'] })).toThrow()
     expect(() => parseNativeLaunch({ id: '7zip', variant: 'x32' })).toThrow()
     expect(() => parseNativeLaunch({ id: '../outside' })).toThrow()
     expect(parseNativeFavorites(['7zip', '7zip', 'die'])).toEqual(['7zip', 'die'])
-    expect(() => parseNativeFavorites(['unknown'])).toThrow()
+    expect(() => parseNativeFavorites(['../outside'])).toThrow()
   })
 
   it('rejects duplicate tool IDs and file entries outside their declared tool directory', async () => {

@@ -1,0 +1,1343 @@
+{
+  "version": 1,
+  "tools": [
+    {
+      "id": "yakit",
+      "category": "web",
+      "name": "Yakit",
+      "description": {
+        "zh": "开源 HTTP 流量分析与手动请求调试工具。",
+        "en": "Open-source HTTP traffic analysis and manual request debugging."
+      },
+      "keywords": [
+        "http",
+        "proxy",
+        "request",
+        "yakit",
+        "请求",
+        "代理"
+      ],
+      "version": "1.4.8-0919",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/yakit/Yakit.exe",
+        "cwd": "tools/yakit",
+        "requiredFiles": [
+          "tools/yakit/resources/app.asar",
+          "tools/yakit/bins/yak.zip",
+          "tools/yakit/bins/engine-version.txt"
+        ]
+      },
+      "roots": [
+        "tools/yakit"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/yaklang/yakit/releases/tag/v1.4.8-0919",
+        "license": "AGPL-3.0",
+        "licenseUrl": "https://github.com/yaklang/yakit/blob/v1.4.8-0919/LICENSE.md",
+        "versionEvidence": "Official release asset SHA-256; bundled Yak engine 1.4.8-beta19"
+      },
+      "preserve": [
+        "tools/yakit/yakit-projects"
+      ],
+      "available": true,
+      "entrySha256": "1214392f15600007222d51996a9505971a70f98c4cf80b5ee8136f69bf58a786",
+      "fileCount": 85,
+      "bytes": 430239085
+    },
+    {
+      "id": "cyberchef",
+      "category": "web",
+      "name": "CyberChef",
+      "description": {
+        "zh": "离线分析编码、文本和文件数据。",
+        "en": "Analyze encodings, text, and file data offline."
+      },
+      "keywords": [
+        "encoding",
+        "decode",
+        "text",
+        "编解码",
+        "文本"
+      ],
+      "version": "10.19.4",
+      "entry": {
+        "kind": "web",
+        "path": "tools/cyberchef/CyberChef_v10.18.8.html",
+        "cwd": "tools/cyberchef"
+      },
+      "roots": [
+        "tools/cyberchef"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "HTML release link; source directory label differs"
+      },
+      "available": true,
+      "entrySha256": "f883db134241a752d271eac5fa9cdf159df9ec46bd790970ff8ec6b58527ac80",
+      "fileCount": 68,
+      "bytes": 45235831
+    },
+    {
+      "id": "7zip",
+      "category": "misc",
+      "name": "7-Zip",
+      "description": {
+        "zh": "查看、创建和解压归档文件。",
+        "en": "Inspect, create, and extract archives."
+      },
+      "keywords": [
+        "archive",
+        "zip",
+        "extract",
+        "压缩",
+        "解压"
+      ],
+      "version": "25.00",
+      "entry": {
+        "kind": "console",
+        "path": "tools/7zip/7z.exe",
+        "cwd": "tools/7zip"
+      },
+      "roots": [
+        "tools/7zip"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "available": true,
+      "entrySha256": "634d38c0c414178e2f35de5cc0fb29aa082eec227e630c4481e1af7694980ac9",
+      "fileCount": 4,
+      "bytes": 2645504
+    },
+    {
+      "id": "exiftool",
+      "category": "misc",
+      "name": "ExifTool",
+      "description": {
+        "zh": "读取和编辑文件元数据。",
+        "en": "Read and edit file metadata."
+      },
+      "keywords": [
+        "metadata",
+        "exif",
+        "image",
+        "元数据",
+        "图片"
+      ],
+      "version": "12.56",
+      "entry": {
+        "kind": "console",
+        "path": "tools/exiftool/exiftool.exe",
+        "cwd": "tools/exiftool"
+      },
+      "roots": [
+        "tools/exiftool"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Packaged executable -ver output; PE product version is 12.5.6.0"
+      },
+      "available": true,
+      "entrySha256": "049feb240d28efa4909ff50170b15690d2c83a1c97a7add156a0e69d0bc9352c",
+      "fileCount": 1,
+      "bytes": 9009213
+    },
+    {
+      "id": "wireshark",
+      "category": "misc",
+      "name": "Wireshark",
+      "description": {
+        "zh": "查看和分析保存的网络流量文件。",
+        "en": "Inspect and analyze saved network captures."
+      },
+      "keywords": [
+        "pcap",
+        "packet",
+        "network",
+        "流量",
+        "数据包"
+      ],
+      "version": "4.6.2",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/wireshark/Wireshark.exe",
+        "cwd": "tools/wireshark"
+      },
+      "roots": [
+        "tools/wireshark"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version and PortableApps metadata"
+      },
+      "available": true,
+      "entrySha256": "0b8e9bb5ab84713afe540af9646c35d993b44467ffe521d82bee12f7f478784b",
+      "fileCount": 1405,
+      "bytes": 387859038
+    },
+    {
+      "id": "binwalk",
+      "category": "misc",
+      "name": "Binwalk",
+      "description": {
+        "zh": "识别二进制文件中的嵌入内容。",
+        "en": "Identify embedded content in binary files."
+      },
+      "keywords": [
+        "binary",
+        "firmware",
+        "file",
+        "文件",
+        "固件"
+      ],
+      "version": "2.3.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/binwalk/binwalk.exe",
+        "cwd": "tools/binwalk"
+      },
+      "roots": [
+        "tools/binwalk"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Packaged executable help banner"
+      },
+      "available": true,
+      "entrySha256": "9361914ef9f3471092be20bcf6b80bb7adf375bd6bd7d3c06ad881f1fbd15cb8",
+      "fileCount": 146,
+      "bytes": 20703441
+    },
+    {
+      "id": "ffmpeg",
+      "category": "misc",
+      "name": "FFmpeg",
+      "description": {
+        "zh": "检查和转换音视频文件。",
+        "en": "Inspect and convert audio and video files."
+      },
+      "keywords": [
+        "audio",
+        "video",
+        "ffprobe",
+        "音频",
+        "视频"
+      ],
+      "version": "7.1-full_build-www.gyan.dev",
+      "entry": {
+        "kind": "console",
+        "path": "tools/ffmpeg/ffmpeg.exe",
+        "cwd": "tools/ffmpeg"
+      },
+      "roots": [
+        "tools/ffmpeg"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Packaged executable -version output"
+      },
+      "available": true,
+      "entrySha256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "fileCount": 3,
+      "bytes": 444020224
+    },
+    {
+      "id": "audacity",
+      "category": "misc",
+      "name": "Audacity",
+      "description": {
+        "zh": "查看波形、频谱并编辑音频。",
+        "en": "Inspect waveforms and spectrograms and edit audio."
+      },
+      "keywords": [
+        "audio",
+        "spectrum",
+        "waveform",
+        "音频",
+        "频谱"
+      ],
+      "version": "3.6.4",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/audacity/Audacity.exe",
+        "cwd": "tools/audacity"
+      },
+      "roots": [
+        "tools/audacity"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "preserve": [
+        "tools/audacity/Portable Settings"
+      ],
+      "available": true,
+      "entrySha256": "e60fc6da60317473a64a978774c073a007835ce1269d642a7ced7e5588f7a273",
+      "fileCount": 259,
+      "bytes": 81157984
+    },
+    {
+      "id": "stegsolve",
+      "category": "misc",
+      "name": "StegSolve",
+      "description": {
+        "zh": "查看图像通道和位平面。",
+        "en": "Inspect image channels and bit planes."
+      },
+      "keywords": [
+        "image",
+        "steganography",
+        "bitplane",
+        "图像",
+        "隐写"
+      ],
+      "version": "unverified",
+      "entry": {
+        "kind": "java",
+        "path": "tools/stegsolve/StegSolve.jar",
+        "cwd": "tools/stegsolve",
+        "runtime": "runtime/windows/java-21/bin/javaw.exe"
+      },
+      "roots": [
+        "tools/stegsolve",
+        "runtime/windows/java-21"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "JAR identity recorded by SHA-256"
+      },
+      "available": true,
+      "entrySha256": "ef8e1b1ad9137f581334bb26ef45aaf78c1f3aee2fb57de096b29800964ca0da",
+      "fileCount": 417,
+      "bytes": 330157372
+    },
+    {
+      "id": "pngcheck",
+      "category": "misc",
+      "name": "PNGcheck",
+      "description": {
+        "zh": "检查 PNG 文件结构与数据块。",
+        "en": "Inspect PNG structure and chunks."
+      },
+      "keywords": [
+        "png",
+        "image",
+        "chunk",
+        "图片",
+        "数据块"
+      ],
+      "version": "unverified",
+      "entry": {
+        "kind": "console",
+        "path": "tools/pngcheck/pngcheck.exe",
+        "cwd": "tools/pngcheck"
+      },
+      "roots": [
+        "tools/pngcheck"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Version command required"
+      },
+      "available": true,
+      "entrySha256": "b64baf6c4eab46692b0ea055cc9e10cdb17f69854d5d72a8d65ff2425c4eaf84",
+      "fileCount": 4,
+      "bytes": 939280
+    },
+    {
+      "id": "qrazybox",
+      "category": "misc",
+      "name": "QRazyBox",
+      "description": {
+        "zh": "分析和修复二维码。",
+        "en": "Analyze and repair QR codes."
+      },
+      "keywords": [
+        "qr",
+        "image",
+        "repair",
+        "二维码",
+        "修复"
+      ],
+      "version": "unversioned",
+      "entry": {
+        "kind": "web",
+        "path": "tools/qrazybox/index.html",
+        "cwd": "tools/qrazybox"
+      },
+      "roots": [
+        "tools/qrazybox"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Local web bundle identity recorded by SHA-256"
+      },
+      "available": true,
+      "entrySha256": "c909f5f92bbc5d093a903220aea10ed9a170b0fe8825895209329d06057a3a7c",
+      "fileCount": 121,
+      "bytes": 2946437
+    },
+    {
+      "id": "image-lsb-viewer",
+      "category": "misc",
+      "name": "ImageLSBViewer",
+      "description": {
+        "zh": "查看图像最低有效位中的信息。",
+        "en": "Inspect the least significant bits of images."
+      },
+      "keywords": [
+        "lsb",
+        "image",
+        "steganography",
+        "图像",
+        "隐写"
+      ],
+      "version": "unversioned",
+      "entry": {
+        "kind": "web",
+        "path": "tools/image-lsb-viewer/index.html",
+        "cwd": "tools/image-lsb-viewer"
+      },
+      "roots": [
+        "tools/image-lsb-viewer"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Local web bundle identity recorded by SHA-256"
+      },
+      "available": true,
+      "entrySha256": "a59a71cc5cc5490416f8b093fcc240faf3e3e012caadbcf6f476877f318bf7f3",
+      "fileCount": 8,
+      "bytes": 1293887
+    },
+    {
+      "id": "imagemagick",
+      "category": "misc",
+      "name": "ImageMagick",
+      "description": {
+        "zh": "检查、转换和处理图像文件。",
+        "en": "Inspect, convert, and process image files."
+      },
+      "keywords": [
+        "image",
+        "convert",
+        "identify",
+        "图片",
+        "转换"
+      ],
+      "version": "7.1.1-39",
+      "entry": {
+        "kind": "console",
+        "path": "tools/imagemagick/magick.exe",
+        "cwd": "tools/imagemagick"
+      },
+      "roots": [
+        "tools/imagemagick"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "available": true,
+      "entrySha256": "de4c28e5dc8429abca7d051f991711effbb71254681afe3ac2fa1f8861afda84",
+      "fileCount": 20,
+      "bytes": 209122022
+    },
+    {
+      "id": "ida",
+      "category": "reverse",
+      "name": "IDA",
+      "description": {
+        "zh": "分析程序的反汇编与函数结构。",
+        "en": "Inspect program disassembly and function structure."
+      },
+      "keywords": [
+        "disassembly",
+        "binary",
+        "reverse",
+        "反汇编",
+        "逆向"
+      ],
+      "version": "7.7.22.0118",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/ida/ida64.exe",
+        "cwd": "tools/ida",
+        "pythonRoot": "tools/ida/python38"
+      },
+      "roots": [
+        "tools/ida"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version; differs from ida8.3 source directory",
+        "identityNote": "Executable product field identifies a third-party distribution"
+      },
+      "preserve": [
+        "tools/ida/ida.key"
+      ],
+      "available": true,
+      "entrySha256": "763a0621408926f0487cf2d168f2c382d2988b533b3869cf72ef5d5be646a57b",
+      "fileCount": 2673,
+      "bytes": 659269758
+    },
+    {
+      "id": "x64dbg",
+      "category": "reverse",
+      "name": "x64dbg / x32dbg",
+      "description": {
+        "zh": "调试本地 64 位和 32 位 Windows 程序。",
+        "en": "Debug local 64-bit and 32-bit Windows programs."
+      },
+      "keywords": [
+        "debug",
+        "windows",
+        "x32dbg",
+        "调试",
+        "断点"
+      ],
+      "version": "0.0.2.5",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/x64dbg/x64/x64dbg.exe",
+        "cwd": "tools/x64dbg/x64"
+      },
+      "variants": [
+        {
+          "id": "x32",
+          "name": "x32dbg",
+          "entry": {
+            "kind": "gui",
+            "path": "tools/x64dbg/x32/x32dbg.exe",
+            "cwd": "tools/x64dbg/x32"
+          }
+        }
+      ],
+      "roots": [
+        "tools/x64dbg"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version; snapshot directory dated 2024-07-21"
+      },
+      "preserve": [
+        "tools/x64dbg/x64/db",
+        "tools/x64dbg/x64/memdumps",
+        "tools/x64dbg/x64/minidump",
+        "tools/x64dbg/x64/x64dbg.ini",
+        "tools/x64dbg/x32/db",
+        "tools/x64dbg/x32/memdumps",
+        "tools/x64dbg/x32/minidump",
+        "tools/x64dbg/x32/x32dbg.ini"
+      ],
+      "available": true,
+      "entrySha256": "5abd9adb364b74ac0692f72ff960b845cd2a8594abf4134485859e656bcabe87",
+      "fileCount": 174,
+      "bytes": 84459313
+    },
+    {
+      "id": "die",
+      "category": "reverse",
+      "name": "Detect It Easy",
+      "description": {
+        "zh": "识别可执行文件格式、编译器与封装信息。",
+        "en": "Identify executable formats, compilers, and packers."
+      },
+      "keywords": [
+        "pe",
+        "elf",
+        "format",
+        "格式",
+        "编译器"
+      ],
+      "version": "3.10.0.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/die/die.exe",
+        "cwd": "tools/die"
+      },
+      "roots": [
+        "tools/die"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable product version"
+      },
+      "preserve": [
+        "tools/die/die.ini"
+      ],
+      "available": true,
+      "entrySha256": "580569917362a3351987a87170f68d04fef4c193dbc1eebb73bbef68b059e1c6",
+      "fileCount": 1808,
+      "bytes": 57516421
+    },
+    {
+      "id": "imhex",
+      "category": "reverse",
+      "name": "ImHex",
+      "description": {
+        "zh": "以十六进制和结构化视图分析文件。",
+        "en": "Analyze files with hexadecimal and structured views."
+      },
+      "keywords": [
+        "hex",
+        "binary",
+        "pattern",
+        "十六进制",
+        "结构"
+      ],
+      "version": "1.35.3",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/imhex/imhex-gui.exe",
+        "cwd": "tools/imhex",
+        "dotnetRoot": "runtime/windows/dotnet-8"
+      },
+      "roots": [
+        "tools/imhex",
+        "runtime/windows/dotnet-8"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Portable directory version; executable identity recorded by SHA-256"
+      },
+      "preserve": [
+        "tools/imhex/config",
+        "tools/imhex/backups",
+        "tools/imhex/recent",
+        "tools/imhex/workspaces"
+      ],
+      "available": true,
+      "entrySha256": "cb41ab4a303ed4d4741260a7f3a3a8137d77fdd719c790b72f1d844d2ae16e0a",
+      "fileCount": 2337,
+      "bytes": 300005973
+    },
+    {
+      "id": "jadx",
+      "category": "reverse",
+      "name": "JADX",
+      "description": {
+        "zh": "查看 Android 和 Java 字节码的反编译结果。",
+        "en": "Inspect decompiled Android and Java bytecode."
+      },
+      "keywords": [
+        "android",
+        "java",
+        "decompile",
+        "反编译",
+        "安卓"
+      ],
+      "version": "dev",
+      "entry": {
+        "kind": "java",
+        "path": "tools/jadx/jadx-gui-dev-all.jar",
+        "cwd": "tools/jadx",
+        "runtime": "runtime/windows/java-21/bin/javaw.exe"
+      },
+      "roots": [
+        "tools/jadx",
+        "runtime/windows/java-21"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "JAR manifest jadx-version field; development JAR identity recorded by SHA-256"
+      },
+      "available": true,
+      "entrySha256": "a7ab0c0052ffd438ca49440dc56a2c79588b510a72f3636eda4d52e7355472f9",
+      "fileCount": 417,
+      "bytes": 462307258
+    },
+    {
+      "id": "dnspy",
+      "category": "reverse",
+      "name": "dnSpy",
+      "description": {
+        "zh": "查看和调试 .NET 程序。",
+        "en": "Inspect and debug .NET programs."
+      },
+      "keywords": [
+        "dotnet",
+        ".net",
+        "decompile",
+        "反编译",
+        "调试"
+      ],
+      "version": "6.1.8.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/dnspy/dnSpy.exe",
+        "cwd": "tools/dnspy"
+      },
+      "roots": [
+        "tools/dnspy"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "Executable file version; includes .NET Desktop 5.0.0"
+      },
+      "preserve": [
+        "tools/dnspy/dnSpy.xml",
+        "tools/dnspy/bin/FileLists"
+      ],
+      "available": true,
+      "entrySha256": "bc1c4e0fc49c138bbfc223d3e94231cd4884439c663646d91e48fa005df6704a",
+      "fileCount": 865,
+      "bytes": 212800638
+    },
+    {
+      "id": "pyinstxtractor-ng",
+      "category": "reverse",
+      "name": "PyInstaller Extractor",
+      "description": {
+        "zh": "检查和提取 PyInstaller 程序中的文件。",
+        "en": "Inspect and extract files from PyInstaller applications."
+      },
+      "keywords": [
+        "python",
+        "pyinstaller",
+        "extract",
+        "提取",
+        "解包"
+      ],
+      "version": "unverified",
+      "entry": {
+        "kind": "console",
+        "path": "tools/pyinstxtractor-ng/pyinstxtractor-ng.exe",
+        "cwd": "tools/pyinstxtractor-ng"
+      },
+      "roots": [
+        "tools/pyinstxtractor-ng"
+      ],
+      "source": {
+        "kind": "local",
+        "versionEvidence": "No version resource; packaged Python executable"
+      },
+      "available": true,
+      "entrySha256": "17757f3b30f052a4f72701dfae44fc5add49bd0b0cdec49c4658c0d33c02188b",
+      "fileCount": 132,
+      "bytes": 24312197
+    },
+    {
+      "id": "winmerge",
+      "category": "misc",
+      "name": "WinMerge",
+      "description": {
+        "zh": "比较文本、图片和目录中的文件差异。",
+        "en": "Compare text, images, and files in directories."
+      },
+      "keywords": [
+        "diff",
+        "compare",
+        "merge",
+        "对比",
+        "差异"
+      ],
+      "version": "2.16.46.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/winmerge/WinMergeU.exe",
+        "cwd": "tools/winmerge"
+      },
+      "roots": [
+        "tools/winmerge"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://winmerge.org/source-code/",
+        "versionEvidence": "Executable product version; bundled README and GPL notice"
+      },
+      "preserve": [
+        "tools/winmerge/WinMerge.ini"
+      ],
+      "available": true,
+      "entrySha256": "77a255f9178b6e5f1927004e6243b3fe8729e68bab1932e1a2d0c430c7cb0b0f",
+      "fileCount": 328,
+      "bytes": 32050829
+    },
+    {
+      "id": "qalculate",
+      "category": "misc",
+      "name": "Qalculate!",
+      "description": {
+        "zh": "计算表达式、换算进制与单位，并绘制函数图像。",
+        "en": "Evaluate expressions, convert number bases and units, and plot functions."
+      },
+      "keywords": [
+        "calculator",
+        "number base",
+        "plot",
+        "计算",
+        "进制"
+      ],
+      "version": "5.8.0",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/qalculate/qalculate-qt.exe",
+        "cwd": "tools/qalculate"
+      },
+      "roots": [
+        "tools/qalculate"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://qalculate.github.io/",
+        "versionEvidence": "Bundled qalc --version output; bundled GPL notice"
+      },
+      "preserve": [
+        "tools/qalculate/user"
+      ],
+      "available": true,
+      "entrySha256": "284ac3f1dabc3ce2b84c418f9f4f765b58650fad84e6f658c6ef8f25b2579197",
+      "fileCount": 1208,
+      "bytes": 160361908
+    },
+    {
+      "id": "sonic-visualiser",
+      "category": "misc",
+      "name": "Sonic Visualiser",
+      "description": {
+        "zh": "查看音频波形、频谱图和时间标注。",
+        "en": "Inspect audio waveforms, spectrograms, and time annotations."
+      },
+      "keywords": [
+        "audio",
+        "spectrogram",
+        "waveform",
+        "音频",
+        "频谱"
+      ],
+      "version": "5.0.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/sonic-visualiser/SonicVisualiser.exe",
+        "cwd": "tools/sonic-visualiser"
+      },
+      "roots": [
+        "tools/sonic-visualiser"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://sonicvisualiser.org/",
+        "versionEvidence": "Bundled CHANGELOG identifies 5.0.1; GUI version not independently observed; missing MSVC companion DLLs supplied from publisher-verified DB Browser 3.13.1 ZIP, matching bundled MSVC 14.29.30153.0"
+      },
+      "available": true,
+      "entrySha256": "41b036dd0551a558327c0e1251e750fbfd5bc7fd467ca1e4bf8b7b71087025df",
+      "fileCount": 37,
+      "bytes": 48798421
+    },
+    {
+      "id": "tesseract-ocr",
+      "category": "misc",
+      "name": "Tesseract OCR",
+      "description": {
+        "zh": "离线识别图片中的英文、简体和繁体中文。",
+        "en": "Recognize English, Simplified Chinese, and Traditional Chinese in local images."
+      },
+      "keywords": [
+        "ocr",
+        "image",
+        "text",
+        "文字识别",
+        "图片"
+      ],
+      "version": "5.3.0.20221214",
+      "entry": {
+        "kind": "console",
+        "path": "tools/tesseract-ocr/tesseract.exe",
+        "cwd": "tools/tesseract-ocr"
+      },
+      "roots": [
+        "tools/tesseract-ocr"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://tesseract-ocr.github.io/",
+        "versionEvidence": "tesseract --version output; selected PE dependencies and eng/chi_sim/chi_tra/osd data"
+      },
+      "available": true,
+      "entrySha256": "294a843e691b449b68b486d4c11629fd9a0539a0832844a096bdf7149b7bf69f",
+      "fileCount": 65,
+      "bytes": 179908288
+    },
+    {
+      "id": "sox",
+      "category": "misc",
+      "name": "SoX",
+      "description": {
+        "zh": "分析音频参数、转换采样格式和生成频谱图。",
+        "en": "Analyze audio properties, convert sample formats, and generate spectrograms."
+      },
+      "keywords": [
+        "audio",
+        "spectrogram",
+        "sample rate",
+        "音频",
+        "采样"
+      ],
+      "version": "14.4.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/sox/sox.exe",
+        "cwd": "tools/sox"
+      },
+      "roots": [
+        "tools/sox"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://sox.sourceforge.net/",
+        "versionEvidence": "sox --version output; selected PE dependency closure"
+      },
+      "available": true,
+      "entrySha256": "e0e3cdc4bcdfbb5b91ac8f53b024964d092f89ba90130ba74b223a1df11b5439",
+      "fileCount": 18,
+      "bytes": 5250916
+    },
+    {
+      "id": "tweakpng",
+      "category": "misc",
+      "name": "TweakPNG",
+      "description": {
+        "zh": "查看和编辑 PNG 数据块、调色板及文本信息。",
+        "en": "Inspect and edit PNG chunks, palettes, and text metadata."
+      },
+      "keywords": [
+        "png",
+        "chunk",
+        "palette",
+        "图片",
+        "数据块"
+      ],
+      "version": "1.4.6.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/tweakpng/tweakpng.exe",
+        "cwd": "tools/tweakpng"
+      },
+      "roots": [
+        "tools/tweakpng"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://entropymine.com/jason/tweakpng/",
+        "versionEvidence": "Executable product version; publisher identifies portable 1.4.6 release"
+      },
+      "available": true,
+      "entrySha256": "8b561d19c01f0f37becf0afffa6532f962a1bb6813dcab90d610430c87955485",
+      "fileCount": 2,
+      "bytes": 426477
+    },
+    {
+      "id": "multimon-ng",
+      "category": "misc",
+      "name": "multimon-ng",
+      "description": {
+        "zh": "从本地音频解码 DTMF 按键音和摩尔斯信号。",
+        "en": "Decode DTMF tones and Morse signals from local audio."
+      },
+      "keywords": [
+        "audio",
+        "dtmf",
+        "morse",
+        "音频",
+        "摩尔斯"
+      ],
+      "version": "1.1.8",
+      "entry": {
+        "kind": "console",
+        "path": "tools/multimon-ng/multimon-ng.exe",
+        "cwd": "tools/multimon-ng"
+      },
+      "roots": [
+        "tools/multimon-ng"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://github.com/EliasOenal/multimon-ng",
+        "versionEvidence": "multimon-ng -h output; standalone Windows executable"
+      },
+      "available": true,
+      "entrySha256": "4eb292c6e48f101c27b395d4e03c1f424f2b05f31a6512b8745fb5f6720a0fed",
+      "fileCount": 2,
+      "bytes": 203030
+    },
+    {
+      "id": "gnu-strings",
+      "category": "misc",
+      "name": "GNU strings",
+      "description": {
+        "zh": "查看二进制文件中可打印的文本及其偏移量。",
+        "en": "Inspect printable text and its offsets in binary files."
+      },
+      "keywords": [
+        "strings",
+        "binary",
+        "text",
+        "字符串",
+        "二进制"
+      ],
+      "version": "2.30",
+      "entry": {
+        "kind": "console",
+        "path": "tools/gnu-strings/strings.exe",
+        "cwd": "tools/gnu-strings"
+      },
+      "roots": [
+        "tools/gnu-strings"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://www.gnu.org/software/binutils/",
+        "versionEvidence": "strings --version output; standalone Windows executable"
+      },
+      "available": true,
+      "entrySha256": "166be635db94f1aa75f3b55603dd3b80c46bc266a010a172d465dbb4c5994861",
+      "fileCount": 2,
+      "bytes": 1091405
+    },
+    {
+      "id": "gimp",
+      "category": "misc",
+      "name": "GIMP",
+      "description": {
+        "zh": "编辑图像图层、通道、调色板和透明度。",
+        "en": "Edit image layers, channels, palettes, and transparency."
+      },
+      "keywords": [
+        "image",
+        "layer",
+        "channel",
+        "图片",
+        "通道"
+      ],
+      "version": "3.0.4",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/gimp/bin/gimp-3.0.exe",
+        "cwd": "tools/gimp"
+      },
+      "roots": [
+        "tools/gimp"
+      ],
+      "source": {
+        "kind": "local",
+        "url": "https://www.gimp.org/",
+        "versionEvidence": "gimp-console-3.0 --version output; local distribution directories only; unsigned local binary; packaged Python and Script-Fu interpreters resolve relative to tools/gimp"
+      },
+      "available": true,
+      "entrySha256": "441a00d3067f4d3ba3365b652107af3d515780d80409914a866cfb0ac3499684",
+      "fileCount": 8338,
+      "bytes": 772292135
+    },
+    {
+      "id": "curl",
+      "category": "web",
+      "name": "curl",
+      "description": {
+        "zh": "手动发送 HTTP 请求并检查响应头和正文。",
+        "en": "Send HTTP requests manually and inspect response headers and bodies."
+      },
+      "keywords": [
+        "http",
+        "request",
+        "headers",
+        "请求",
+        "响应"
+      ],
+      "version": "8.22.0_2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/curl/bin/curl.exe",
+        "cwd": "tools/curl"
+      },
+      "roots": [
+        "tools/curl"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://curl.se/windows/",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "b028548a8c0d3dc2c899fe415dce1ef1d2406801b3adc43df9921683026e86cc",
+      "fileCount": 357,
+      "bytes": 22378099
+    },
+    {
+      "id": "jq",
+      "category": "web",
+      "name": "jq",
+      "description": {
+        "zh": "格式化、筛选和转换 JSON 数据。",
+        "en": "Format, filter, and transform JSON data."
+      },
+      "keywords": [
+        "json",
+        "query",
+        "format",
+        "筛选",
+        "格式化"
+      ],
+      "version": "1.8.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/jq/jq.exe",
+        "cwd": "tools/jq"
+      },
+      "roots": [
+        "tools/jq"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://jqlang.org/download/",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "a6fc67fedaf9128a3309a1e2ebb8b986aeccf70122ee46d2cb4849e423f0c627",
+      "fileCount": 2,
+      "bytes": 1043151
+    },
+    {
+      "id": "yq",
+      "category": "web",
+      "name": "yq",
+      "description": {
+        "zh": "查询和转换 YAML、JSON、XML 与 CSV 数据。",
+        "en": "Query and convert YAML, JSON, XML, and CSV data."
+      },
+      "keywords": [
+        "yaml",
+        "json",
+        "xml",
+        "csv",
+        "转换"
+      ],
+      "version": "4.54.1",
+      "entry": {
+        "kind": "console",
+        "path": "tools/yq/yq.exe",
+        "cwd": "tools/yq"
+      },
+      "roots": [
+        "tools/yq"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/mikefarah/yq/releases/tag/v4.54.1",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "b645f47ebb3a0d2fbab52998550bbd0a1706f23b5ca5f5b48e638c580bb70928",
+      "fileCount": 2,
+      "bytes": 14616117
+    },
+    {
+      "id": "sqlite",
+      "category": "misc",
+      "name": "SQLite",
+      "description": {
+        "zh": "检查本地 SQLite 数据库结构和查询结果。",
+        "en": "Inspect local SQLite database schemas and query results."
+      },
+      "keywords": [
+        "sqlite",
+        "database",
+        "sql",
+        "数据库",
+        "查询"
+      ],
+      "version": "3.53.4",
+      "entry": {
+        "kind": "console",
+        "path": "tools/sqlite/sqlite3.exe",
+        "cwd": "tools/sqlite"
+      },
+      "roots": [
+        "tools/sqlite"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://sqlite.org/download.html",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "5da2398d4913b893bd1ea578d85403b3a83a06fabf9d2303ca9f63ef0849fc6f",
+      "fileCount": 4,
+      "bytes": 14929920
+    },
+    {
+      "id": "sqlite-browser",
+      "category": "misc",
+      "name": "DB Browser for SQLite",
+      "description": {
+        "zh": "以表格界面浏览和编辑本地 SQLite 数据库。",
+        "en": "Browse and edit local SQLite databases in a table interface."
+      },
+      "keywords": [
+        "sqlite",
+        "database",
+        "table",
+        "数据库",
+        "表格"
+      ],
+      "version": "3.13.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/sqlite-browser/DB Browser for SQLite.exe",
+        "cwd": "tools/sqlite-browser"
+      },
+      "roots": [
+        "tools/sqlite-browser"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/sqlitebrowser/sqlitebrowser/releases/tag/v3.13.1",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "8baa96174172f2df10747be48e2cdae2ab7a22fecf8aace5a965f4f9f57b18b1",
+      "fileCount": 107,
+      "bytes": 50918964
+    },
+    {
+      "id": "qpdf",
+      "category": "misc",
+      "name": "qpdf",
+      "description": {
+        "zh": "检查 PDF 结构并提取页面和附件。",
+        "en": "Inspect PDF structure and extract pages and attachments."
+      },
+      "keywords": [
+        "pdf",
+        "document",
+        "attachment",
+        "文档",
+        "附件"
+      ],
+      "version": "12.4.2",
+      "entry": {
+        "kind": "console",
+        "path": "tools/qpdf/bin/qpdf.exe",
+        "cwd": "tools/qpdf"
+      },
+      "roots": [
+        "tools/qpdf"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/qpdf/qpdf/releases/tag/v12.4.2",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "7a155e0fe51833087d13b7b6a29f4f877bcd2fbcae4354fe41ff2bea2f79e090",
+      "fileCount": 286,
+      "bytes": 48441027
+    },
+    {
+      "id": "ripgrep",
+      "category": "misc",
+      "name": "ripgrep",
+      "description": {
+        "zh": "使用文本和正则表达式搜索本地文件。",
+        "en": "Search local files using text and regular expressions."
+      },
+      "keywords": [
+        "search",
+        "regex",
+        "text",
+        "搜索",
+        "正则"
+      ],
+      "version": "15.2.0",
+      "entry": {
+        "kind": "console",
+        "path": "tools/ripgrep/rg.exe",
+        "cwd": "tools/ripgrep"
+      },
+      "roots": [
+        "tools/ripgrep"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/BurntSushi/ripgrep/releases/tag/15.2.0",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "14231169855ec5205cf5a1b6f1db358ff4aed4247c86b69ce8aae647c77f6680",
+      "fileCount": 13,
+      "bytes": 4601750
+    },
+    {
+      "id": "bruno",
+      "category": "web",
+      "name": "Bruno",
+      "description": {
+        "zh": "管理本地请求集合并手动调试 HTTP API。",
+        "en": "Manage local request collections and debug HTTP APIs manually."
+      },
+      "keywords": [
+        "http",
+        "api",
+        "request",
+        "请求",
+        "接口"
+      ],
+      "version": "4.2.1",
+      "entry": {
+        "kind": "gui",
+        "path": "tools/bruno/Bruno.exe",
+        "cwd": "tools/bruno"
+      },
+      "roots": [
+        "tools/bruno"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://github.com/usebruno/bruno/releases/tag/v4.2.1",
+        "versionEvidence": "Publisher release and verified publisher checksum"
+      },
+      "available": true,
+      "entrySha256": "e41709ff9b98ba3cb73c6ada042c333bbffc0d116b20cc4181abf1b59e45d16d",
+      "fileCount": 83,
+      "bytes": 561871303
+    },
+    {
+      "id": "pcapfix",
+      "category": "misc",
+      "name": "pcapfix",
+      "description": {
+        "zh": "修复本地 PCAP 和 PCAPNG 抓包文件的结构。",
+        "en": "Repair the structure of local PCAP and PCAPNG capture files."
+      },
+      "keywords": [
+        "pcap",
+        "pcapng",
+        "repair",
+        "流量",
+        "修复"
+      ],
+      "version": "1.1.7",
+      "entry": {
+        "kind": "console",
+        "path": "tools/pcapfix/pcapfix.exe",
+        "cwd": "tools/pcapfix"
+      },
+      "roots": [
+        "tools/pcapfix"
+      ],
+      "source": {
+        "kind": "upstream",
+        "url": "https://f00l.de/pcapfix/",
+        "versionEvidence": "Publisher versioned archive; locally pinned SHA-256; publisher-provided Cygwin DLL file version 3.2.0"
+      },
+      "available": true,
+      "entrySha256": "c6db4347f18d9e412601ac9aa093b04351a1f3f73a16adb06eabe8e7ce6f93ff",
+      "fileCount": 17,
+      "bytes": 4080510
+    }
+  ]
+}

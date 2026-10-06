@@ -9,8 +9,9 @@ import { toolPackFileSystem } from './toolpack-fs.ts'
 const { readFile, writeFile, rename, mkdir, realpath, stat, rm } = toolPackFileSystem.promises
 
 const ids = nativeToolIds
-const toolIdSchema = z.enum(ids)
-const storedToolIdSchema = z.enum([...ids, 'burp-community'])
+const toolIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
+  .refine(value => value !== 'burp-community' && !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/.test(value)).transform(value => value as NativeToolId)
+const storedToolIdSchema = z.union([toolIdSchema, z.literal('burp-community')])
 const relativePath = z.string().min(1).refine(value => !value.includes('\0') && !value.includes('\\')
   && !isAbsolute(value) && !win32.isAbsolute(value) && !value.split('/').some(part => part === '..' || part === '.' || part === '')
   && !value.includes(':'), 'Expected an installation-relative path')
@@ -55,7 +56,7 @@ const catalogSchema = z.object({ version: z.literal(1), tools: z.array(toolSchem
   }
 })
 const preferencesSchema = z.object({ version: z.literal(1),
-  favorites: z.array(storedToolIdSchema).max(ids.length + 1), recent: z.array(storedToolIdSchema).max(ids.length + 1) })
+  favorites: z.array(storedToolIdSchema).max(256), recent: z.array(storedToolIdSchema).max(256) })
 const verificationSchema = z.object({ version: z.literal(1),
   catalogSha256: z.string().regex(/^[a-f0-9]{64}$/), tools: z.array(storedToolIdSchema) })
 
@@ -82,6 +83,8 @@ export interface NativeInvocation {
 export interface NativeToolsOptions {
   readonly installRoot: string
   readonly userData: string
+  readonly catalogPath?: string | (() => Promise<string>)
+  readonly selectRoot?: () => Promise<string>
   /** Starts the checked invocation and resolves when the operating system accepts it. */
   readonly start: (invocation: NativeInvocation) => Promise<void>
 }
@@ -101,8 +104,11 @@ export function parseNativeLaunch(value: unknown): { readonly id: NativeToolId; 
  * @returns deduplicated catalog identities.
  */
 export function parseNativeFavorites(value: unknown): NativeToolId[] {
-  return [...new Set(z.array(toolIdSchema).max(ids.length).parse(value))]
+  return [...new Set(z.array(toolIdSchema).max(256).parse(value))]
 }
+
+/** Validate a publisher catalog before caching or displaying it. @param text - JSON catalog. @returns validated catalog. */
+export function parseNativeToolCatalog(text: string): z.infer<typeof catalogSchema> { return catalogSchema.parse(JSON.parse(text)) }
 
 function inside(root: string, path: string): boolean {
   const suffix = relative(root, path)
@@ -142,11 +148,22 @@ export class NativeToolsLibrary {
     this.preferencesPath = resolve(options.userData, 'native-tools.json')
   }
 
-  private async catalog(): Promise<{ readonly tools: InstalledNativeTool[]; readonly verified: ReadonlySet<string> }> {
-    const file = resolve(this.options.installRoot, 'tools/manifest.json')
-    const text = await readFile(file, 'utf8')
-    const catalog = catalogSchema.parse(JSON.parse(text))
-    const record = await optionalJson(resolve(this.options.installRoot, 'tools/verified.json'))
+  private async catalog(): Promise<{
+    readonly root: string
+    readonly tools: InstalledNativeTool[]
+    readonly verified: ReadonlySet<string>
+  }> {
+    const root = this.options.selectRoot ? await this.options.selectRoot() : this.options.installRoot
+    const file = resolve(root, 'tools/manifest.json')
+    let text: string
+    try { text = await readFile(file, 'utf8') }
+    catch (error) {
+      if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT' || !this.options.catalogPath) throw error
+      const fallback = typeof this.options.catalogPath === 'function' ? await this.options.catalogPath() : this.options.catalogPath
+      text = await readFile(fallback, 'utf8')
+    }
+    const catalog = parseNativeToolCatalog(text)
+    const record = await optionalJson(resolve(root, 'tools/verified.json'))
     const verified = new Set<string>()
     if (record !== undefined) {
       const parsed = verificationSchema.parse(record)
@@ -156,7 +173,7 @@ export class NativeToolsLibrary {
       const { id } = tool
       return id === 'burp-community' ? [] : [{ ...tool, id }]
     })
-    return { tools, verified }
+    return { root, tools, verified }
   }
 
   private async preferences(): Promise<CurrentPreferences> {
@@ -165,16 +182,16 @@ export class NativeToolsLibrary {
     const stored = preferencesSchema.parse(value)
     return { version: 1,
       favorites: [...new Set(stored.favorites.map(id => id === 'burp-community' ? 'yakit' : id))],
-      recent: [...new Set(stored.recent.filter(id => id !== 'burp-community'))],
+      recent: [...new Set(stored.recent.filter((id): id is NativeToolId => id !== 'burp-community'))],
     }
   }
 
-  private async missing(tool: InstalledNativeTool, entry = tool.entry): Promise<string[]> {
+  private async missing(root: string, tool: InstalledNativeTool, entry = tool.entry): Promise<string[]> {
     const missing: string[] = []
     for (const path of new Set([entry.path, entry.cwd, ...tool.roots, ...entry.runtime ? [entry.runtime] : [],
       ...entry.dotnetRoot ? [entry.dotnetRoot] : [], ...entry.pythonRoot ? [entry.pythonRoot] : [], ...entry.requiredFiles ?? []])) {
       try {
-        const resolved = await resolveNativePath(this.options.installRoot, path)
+        const resolved = await resolveNativePath(root, path)
         const info = await stat(resolved)
         const fileRequired = path === entry.path || path === entry.runtime || entry.requiredFiles?.includes(path)
         const directoryRequired = path === entry.cwd || path === entry.dotnetRoot || path === entry.pythonRoot || tool.roots.includes(path)
@@ -192,16 +209,16 @@ export class NativeToolsLibrary {
    * @returns tool summaries; availability does not imply a completed functional acceptance run.
    */
   async listTools(): Promise<NativeToolCatalog> {
-    const [{ tools, verified }, preferences] = await Promise.all([this.catalog(), this.preferences()])
+    const [{ root, tools, verified }, preferences] = await Promise.all([this.catalog(), this.preferences()])
     return {
       tools: await Promise.all(tools.map(async (tool) => {
-        const missing = await this.missing(tool)
+        const missing = await this.missing(root, tool)
         return {
           id: tool.id, name: tool.name, category: tool.category, version: tool.version,
           launchKind: tool.entry.kind === 'console' ? 'terminal' as const : tool.entry.kind === 'web' ? 'web' as const : 'desktop' as const,
           status: missing.length ? 'missing' as const : 'ready' as const, missing, verified: verified.has(tool.id),
           ...tool.variants ? { variants: await Promise.all(tool.variants.map(async variant => ({ id: variant.id, name: variant.name,
-            status: (await this.missing(tool, variant.entry)).length ? 'missing' as const : 'ready' as const }))) } : {},
+            status: (await this.missing(root, tool, variant.entry)).length ? 'missing' as const : 'ready' as const }))) } : {},
         }
       })), preferences: { favorites: preferences.favorites, recent: preferences.recent },
     }
@@ -257,21 +274,21 @@ export class NativeToolsLibrary {
   }
 
   private async launch(id: NativeToolId, variant?: 'x32'): Promise<NativeToolLaunchResult> {
-    const { tools } = await this.catalog()
+    const { root, tools } = await this.catalog()
     const tool = tools.find(value => value.id === id)
     if (tool === undefined) throw new Error('工具不在已安装目录中')
     const entry = variant === undefined ? tool.entry : tool.variants?.at(0)?.entry
     if (entry === undefined) throw new Error('工具启动选项不可用')
-    const missing = await this.missing(tool, entry)
+    const missing = await this.missing(root, tool, entry)
     if (missing.length) throw new Error(`工具文件缺失，请修复工具包：${missing.join('、')}`)
-    const target = await resolveNativePath(this.options.installRoot, entry.path)
-    const executable = entry.runtime === undefined ? target : await resolveNativePath(this.options.installRoot, entry.runtime)
+    const target = await resolveNativePath(root, entry.path)
+    const executable = entry.runtime === undefined ? target : await resolveNativePath(root, entry.runtime)
     await this.options.start({ id, name: tool.name, kind: entry.kind, target, executable,
-      cwd: await resolveNativePath(this.options.installRoot, entry.cwd),
+      cwd: await resolveNativePath(root, entry.cwd),
       args: entry.kind === 'java' ? ['-jar', target, ...entry.args] : entry.args,
-      roots: await Promise.all(tool.roots.map(path => resolveNativePath(this.options.installRoot, path))),
-      ...entry.dotnetRoot ? { dotnetRoot: await resolveNativePath(this.options.installRoot, entry.dotnetRoot) } : {},
-      ...entry.pythonRoot ? { pythonRoot: await resolveNativePath(this.options.installRoot, entry.pythonRoot) } : {},
+      roots: await Promise.all(tool.roots.map(path => resolveNativePath(root, path))),
+      ...entry.dotnetRoot ? { dotnetRoot: await resolveNativePath(root, entry.dotnetRoot) } : {},
+      ...entry.pythonRoot ? { pythonRoot: await resolveNativePath(root, entry.pythonRoot) } : {},
     })
     try { await this.change((current) => { current.recent = [id, ...current.recent.filter(value => value !== id)].slice(0, ids.length) }) }
     catch (error) {

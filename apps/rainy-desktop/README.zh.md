@@ -8,7 +8,7 @@ RainyAgent 使用 Windows x64 Electron 外壳；核心安装包包含 Windows Ho
 
 ## 离线安装与恢复
 
-[1.0.0 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0)分为核心安装程序、原生工具分卷、`environment/` WSL 安装介质和 `environment-components/` 运行环境归档。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。离线部署使用完整 `release/offline-1.0.0` 目录。原生工具可选：安装程序旁存在匹配分卷时安装工具，不带分卷的更新保留已有工具。每个原生工具分卷最大为 2 GiB。
+[1.0.1 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.1)提供核心安装程序。匹配的原生工具分卷、`environment/` WSL 安装介质和 `environment-components/` 运行环境归档保留在[资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。源码打包将这些输入恢复至 `release/offline-1.0.1`。原生工具为可选项：可在目录中联网安装，也可把匹配分卷放在安装程序旁离线安装。每个原生工具分卷最大为 2 GiB。
 
 工具安装窗口显示当前阶段、文件及阶段进度。点击取消后请求安全停止，并等待必要的回滚。重新运行同一套完整发行文件时，会重新校验分卷并复用已校验的暂存文件。缺卷、分卷损坏或空间不足会在工具目录替换前停止安装。更新前请保存工作并关闭 RainyAgent、原生工具及其命令行窗口；安装程序报告占用，不自动结束这些进程。
 
@@ -53,6 +53,10 @@ Monaco 提供多文件标签、语法高亮、查找替换、撤销、显式保�
 离线组件提供隔离的 Python 3.12、Node 24、Windows PHP、原生 C/C++ 工具，以及独立 CPU 或 CUDA 科学计算环境。科学组件包含 NumPy、SciPy、pandas、scikit-learn、图像处理、Jupyter 和常用深度学习库，并配套 PyTorch 2.11、torchvision 0.26 与 torchaudio 2.11。导入先核对发行目录、归档及逐文件清单，再选择按摘要存放的代际。已有用户环境和全局 PATH 保持不变。CUDA 需要兼容的 NVIDIA 驱动。Ubuntu 26.04 amd64 开发工具向导使用经过校验的 C/C++、GDB、CMake、clangd 和 PHP 软件包，安装时禁用下载。
 
 ## CTF 工作台
+
+工具发布者先将校验后的分片上传到固定版本的资源 Release，再使用 `scripts/sign-tool-channel.mjs` 指定来源清单、安装元数据、工具目录、发行版本及更大的 `--revision`。将公开输出提交到 `toolpacks/native-tools-channel.signed.json`。签名身份须匹配 `resources/native-tools-public-keys.json`；重新构建应用只需保留这些公钥，无需持有工具签名私钥。客户端不会从通道接受新的信任公钥。工具包身份未变化的通道修订不会再次提示下载。
+
+联网时在“常用工具”点击“下载全部工具”。应用逐片及逐卷校验后安装到用户应用数据目录。支持取消、断点续传和重试；安装后可离线使用，重启和应用更新仍保留。首次访问目录会检查签名工具通道，“检查工具更新”可再次检查。新增或更新工具由用户明确下载，当前已安装目录仍可使用。应用拒绝无效签名、目录摘要不匹配及低于已保存序号的通道版本。
 
 未选择会话时也能打开 CTF 入口。默认“常用工具”页可搜索名称和用途、筛选分类，并显示收藏、最近启动请求、版本及可用状态。收藏和最近记录属于 Windows 用户，在会话之间共享。已保存的 Burp 收藏迁移到 Yakit；旧 Burp 最近启动记录会移除，不会据此记录一次 Yakit 启动。工具包目录包含以下 38 项：
 

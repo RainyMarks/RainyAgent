@@ -1,6 +1,6 @@
 /** User-level tool directory state; native operations never enter the Session log. */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { NativeToolCatalog, NativeToolId, NativeToolsBridge } from '../native-tools-protocol.ts'
+import type { NativeToolCatalog, NativeToolId, NativeToolsBridge, NativeToolsDownloadState, NativeToolsUpdateState } from '../native-tools-protocol.ts'
 
 /** Retained directory state and in-flight operations. */
 export interface NativeToolsState extends NativeToolCatalog {
@@ -8,6 +8,8 @@ export interface NativeToolsState extends NativeToolCatalog {
   readonly error: string
   readonly pending: readonly NativeToolId[]
   readonly savingFavorites: boolean
+  readonly download: NativeToolsDownloadState
+  readonly update: NativeToolsUpdateState
 }
 
 /** Localized outcomes are supplied by the registered locale owner. */
@@ -16,6 +18,8 @@ export interface NativeToolsCopy {
   readonly launchFailed: (name: string) => string
   readonly favoritesFailed: () => string
   readonly favoriteSaved: (selected: boolean) => string
+  readonly downloadComplete: () => string
+  readonly downloadFailed: () => string
 }
 
 /** Owns requests independently of a visible catalog panel. */
@@ -23,6 +27,10 @@ export class NativeToolsController {
   readonly state
   private disposed = false
   private loading: Promise<void> | undefined
+  private downloading: Promise<void> | undefined
+  private readonly unsubscribe: (() => void) | undefined
+  private checking: Promise<void> | undefined
+  private checked = false
 
   /**
    * @param bridge - desktop preload, absent in a browser-only deployment.
@@ -32,7 +40,12 @@ export class NativeToolsController {
   constructor(private readonly bridge: NativeToolsBridge | undefined, private readonly copy: NativeToolsCopy,
     private readonly toast: (message: string, kind: 'success' | 'error' | 'warning') => void) {
     this.state = createSnapshotStore<NativeToolsState>({ phase: bridge === undefined ? 'desktop-only' : 'idle',
-      tools: [], preferences: { favorites: [], recent: [] }, error: '', pending: [], savingFavorites: false })
+      tools: [], preferences: { favorites: [], recent: [] }, error: '', pending: [], savingFavorites: false,
+      download: { phase: 'idle', completedBytes: 0, totalBytes: 0, error: '' },
+      update: { phase: 'unchecked', version: '', error: '' } })
+    this.unsubscribe = bridge?.onDownloadProgress((download) => {
+      if (!this.disposed) this.state.set({ ...this.state.getSnapshot(), download })
+    })
   }
 
   /** Read current availability without discarding a populated catalog. @returns settled load. */
@@ -101,16 +114,70 @@ export class NativeToolsController {
   }
 
   /** Suppress late IPC responses and feedback after the plugin unloads. */
-  dispose(): void { this.disposed = true }
+  dispose(): void { this.disposed = true; this.unsubscribe?.() }
+
+  /** Install the fixed complete pack once, then refresh availability. @returns settled download and refresh. */
+  download(): Promise<void> {
+    if (this.disposed || !this.bridge) return Promise.resolve()
+    if (this.downloading) return this.downloading
+    const bridge = this.bridge
+    this.state.set({ ...this.state.getSnapshot(), download: { ...this.state.getSnapshot().download, phase: 'downloading', error: '' } })
+    this.downloading = (async () => {
+      try {
+        await bridge.downloadTools()
+        if (this.disposed) return
+        const download = await bridge.getDownloadState()
+        this.state.set({ ...this.state.getSnapshot(), download })
+        if (download.phase === 'complete') {
+          this.state.set({ ...this.state.getSnapshot(), update: { ...this.state.getSnapshot().update, phase: 'current', error: '' } })
+          await this.load()
+          this.toast(this.copy.downloadComplete(), 'success')
+        }
+      } catch (error) {
+        if (this.disposed) return
+        const message = error instanceof Error ? error.message : this.copy.downloadFailed()
+        this.state.set({ ...this.state.getSnapshot(), download: { ...this.state.getSnapshot().download, phase: 'error', error: message } })
+        this.toast(message, 'error')
+      }
+    })().finally(() => { this.downloading = undefined })
+    return this.downloading
+  }
+
+  /** Safely stop the current download without discarding retained state. @returns cancellation completion. */
+  async cancelDownload(): Promise<void> {
+    if (this.disposed || !this.bridge) return
+    try { await this.bridge.cancelDownload() }
+    catch (error) { if (!this.isDisposed()) this.toast(error instanceof Error ? error.message : this.copy.downloadFailed(), 'error') }
+  }
+
+  /** Check for publisher additions and updates while retaining the current catalog. @returns settled check. */
+  checkUpdates(): Promise<void> {
+    if (this.disposed || !this.bridge) return Promise.resolve()
+    if (this.checking) return this.checking
+    this.state.set({ ...this.state.getSnapshot(), update: { ...this.state.getSnapshot().update, phase: 'checking', error: '' } })
+    const bridge = this.bridge
+    this.checking = (async () => {
+      try {
+        const update = await bridge.checkToolUpdates()
+        const download = await bridge.getDownloadState()
+        if (this.disposed) return
+        this.state.set({ ...this.state.getSnapshot(), update, download })
+      } catch (error) {
+        if (!this.disposed) this.state.set({ ...this.state.getSnapshot(), update: { phase: 'error', version: '', error: error instanceof Error ? error.message : this.copy.downloadFailed() } })
+      }
+    })().finally(() => { this.checking = undefined })
+    return this.checking
+  }
 
   private isDisposed(): boolean { return this.disposed }
 
   private async read(bridge: NativeToolsBridge): Promise<void> {
     try {
-      const catalog = await bridge.listTools()
+      const [catalog, download] = await Promise.all([bridge.listTools(), bridge.getDownloadState()])
       if (this.disposed) return
       const current = this.state.getSnapshot()
-      this.state.set({ ...current, ...catalog, phase: 'ready', error: '' })
+      this.state.set({ ...current, ...catalog, download, phase: 'ready', error: '' })
+      if (!this.checked) { this.checked = true; void this.checkUpdates() }
     } catch (error) {
       if (!this.disposed) this.state.set({ ...this.state.getSnapshot(), phase: 'error', error: error instanceof Error ? error.message : '' })
     }

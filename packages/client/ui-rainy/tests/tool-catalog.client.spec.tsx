@@ -15,20 +15,44 @@ afterEach(cleanup)
 const t = ((key: keyof typeof zh, values?: Record<string, string>) => zh[key].replace(/\{(\w+)\}/g,
   (match, name: string) => values?.[name] ?? match)) as TranslateNS<'rainy'>
 
-const state: NativeToolsState = { phase: 'ready', error: '', pending: [], savingFavorites: false, tools: [
-  { id: 'cyberchef', name: 'CyberChef', category: 'web', version: '10', launchKind: 'web', status: 'ready', verified: false, missing: [] },
-  { id: 'x64dbg', name: 'x64dbg', category: 'reverse', version: '2026', launchKind: 'desktop', status: 'ready', verified: true,
-    missing: [], variants: [{ id: 'x32', name: 'x32dbg', status: 'ready' }] },
-  { id: '7zip', name: '7-Zip', category: 'misc', version: '25', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
-], preferences: { favorites: ['cyberchef'], recent: ['x64dbg', 'cyberchef'] } }
+const state: NativeToolsState = { phase: 'ready', error: '', pending: [], savingFavorites: false,
+  update: { phase: 'unchecked', version: '', error: '' },
+  download: { phase: 'idle', completedBytes: 0, totalBytes: 2318669038, error: '' }, tools: [
+    { id: 'cyberchef', name: 'CyberChef', category: 'web', version: '10', launchKind: 'web', status: 'ready', verified: false, missing: [] },
+    { id: 'x64dbg', name: 'x64dbg', category: 'reverse', version: '2026', launchKind: 'desktop', status: 'ready', verified: true,
+      missing: [], variants: [{ id: 'x32', name: 'x32dbg', status: 'ready' }] },
+    { id: '7zip', name: '7-Zip', category: 'misc', version: '25', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
+  ], preferences: { favorites: ['cyberchef'], recent: ['x64dbg', 'cyberchef'] } }
 
 function fixture(next = state) {
-  const actions = { loadTools: vi.fn(async () => {}), launchTool: vi.fn(async () => {}), toggleFavorite: vi.fn(async () => {}) }
+  const actions = { loadTools: vi.fn(async () => {}), launchTool: vi.fn(async () => {}), toggleFavorite: vi.fn(async () => {}),
+    downloadTools: vi.fn(async () => {}), cancelDownload: vi.fn(async () => {}), checkToolUpdates: vi.fn(async () => {}) }
   const view = render(<ToolCatalog t={t} state={next} {...actions} />)
   return { ...actions, ...view }
 }
 
 describe('common tool catalog', () => {
+  it('offers a signed pack update when all currently installed tools are available', () => {
+    const h = fixture({ ...state, tools: state.tools.filter(tool => tool.status === 'ready'),
+      update: { phase: 'available', version: '1.0.1', error: '' } })
+    expect(screen.getByText('有新工具或更新：1.0.1')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: '下载或更新工具包' }))
+    expect(h.downloadTools).toHaveBeenCalledOnce()
+    fireEvent.click(screen.getByRole('button', { name: '检查工具更新' }))
+    expect(h.checkToolUpdates).toHaveBeenCalledOnce()
+  })
+  it('offers online installation, displays progress and prevents a repeated download when tools are available', () => {
+    const h = fixture()
+    fireEvent.click(screen.getByRole('button', { name: '下载全部工具' }))
+    expect(h.downloadTools).toHaveBeenCalledOnce()
+    h.rerender(<ToolCatalog t={t} state={{ ...state, download: { phase: 'downloading', completedBytes: 5, totalBytes: 10, error: '' } }} {...h} />)
+    expect(screen.getByText('正在下载 50%')).toBeTruthy()
+    expect(screen.getByRole('progressbar').getAttribute('value')).toBe('50')
+    fireEvent.click(screen.getByRole('button', { name: '取消下载或安装' }))
+    expect(h.cancelDownload).toHaveBeenCalledOnce()
+    h.rerender(<ToolCatalog t={t} state={{ ...state, tools: state.tools.filter(tool => tool.status === 'ready') }} {...h} />)
+    expect(screen.getByRole('button', { name: '工具已安装' }).hasAttribute('disabled')).toBe(true)
+  })
   it('filters by category, localized use, favorites and recent order', () => {
     const h = fixture()
     fireEvent.click(screen.getByRole('button', { name: 'Reverse' }))
@@ -134,6 +158,7 @@ describe('CTF directory and IceSky tabs', () => {
         useWorkbench: selector => selector({ phase: 'ready', saving: 'idle', error: undefined, message: '' }),
         useTools: selector => selector(state), useView: selector => selector(view), selectView,
         attach, loadTools, launchTool: vi.fn(async () => {}), toggleFavorite: vi.fn(async () => {}),
+        downloadTools: vi.fn(async () => {}), cancelDownload: vi.fn(async () => {}), checkToolUpdates: vi.fn(async () => {}),
         retry: vi.fn(async () => true), loadFailed: vi.fn(),
       }
       return <CtfWorkbench {...props} />
