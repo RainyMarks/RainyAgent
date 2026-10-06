@@ -6,7 +6,7 @@
 
 使用 Windows x64，新安装默认原生执行，无需先安装 WSL。核心安装包包含 Windows 与 Linux Host、Strata 引擎、Python 及所需运行依赖；主模型与 MTP 权重由用户提供。完整离线目录另含 WSL 安装介质、Ubuntu 26.04.1 镜像，以及 Windows/Linux 基础、科学计算 CPU/CUDA 和 Windows C/C++ 组件。已有 Python、Conda、项目虚拟环境或 WSL 可直接检测并复用，不向它们安装软件包。也可连接自行管理的推理服务。
 
-1. 运行 `RainyAgent-1.0.2-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `native-tools-<id>.tar.gz.*` 分卷及校验清单。原生工具分卷为可选项；不带分卷更新时保留已安装工具。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
+1. 运行 `RainyAgent-1.0.3-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `native-tools-<id>.tar.gz.*` 分卷及校验清单。原生工具分卷为可选项；不带分卷更新时保留已安装工具。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
 2. 提供匹配原生工具分卷时，工具安装窗口会校验文件和目标空间再安装。点击取消后等待安全停止；重新运行同一完整发行文件可重试并复用已验证暂存。损坏或缺少部分分卷时应补齐匹配文件后重试。
 3. 从桌面 RainyAgent 快捷方式启动，无需设备码、激活码或授权管理器。已有保存的 WSL 目标继续保留；新安装先使用 Windows。运行环境页可以选择已有 WSL，或点击准备环境并选择外置 `environment/` 目录创建专用 Ubuntu。需要系统组件时明确请求管理员确认；若提示重启，保存其他工作、自行重启后再次打开应用。
 4. 若原发行版丢失，恢复向导保留原名称供处理。执行目标切换前保存草稿，运行中或排队中的任务、程序、调试和终端会阻止切换。项目公开身份与项目记忆跨目标保留，旧聊天及其运行状态留在原 Host，重新选择原目标即可访问。
@@ -103,7 +103,9 @@ MCP 也支持 `streamable-http` 与 `url`。只向该会话注册 `tools` 中列
 
 Yakit 使用官方 1.4.8-0919 完整发行包，内置 `bins/yak.zip` 提供 Yak 1.4.8-beta19 的离线恢复来源，无需单独下载引擎。其数据目录遵循 Yakit 已配置的 `YAKIT_HOME`，Windows 默认值为 `Yakit.exe` 旁的 `yakit-projects`。原生界面的首次初始化仍须在 Yakit 内完成。工具包保留 AGPLv3 许可证及上游声明。ImHex 位于 Reverse 分类，可用于二进制编辑。
 
-IDA 附带独立的 Python 3.12.14、匹配的 SIP 绑定和 `imp` 兼容模块；启动时使用应用数据目录下的独立 `IDAUSR`。StegSolve、JADX 使用包内 Java 21.0.12.1，dnSpy 6.6.0 附带 .NET Desktop 10.0.9。multimon-ng 默认打开帮助终端；分析 WAV 时，在音频所在目录依次运行 `sox.exe -R -t wav sample.wav -esigned-integer -b 16 -r 22050 -t raw sample.raw` 和 `multimon-ng.exe -a DTMF -t raw sample.raw`，文件名换成实际文件名。
+自有 IDA Pro 9.5 使用正式安装和自己的许可证。将其安装到本机工具根目录的 `tools/ida/`，通过 `%APPDATA%/RainyAgent/native-tools.local.json` 指定该绝对根目录及 ID 为 `ida` 的工具条目，入口为 `tools/ida/ida.exe`。应用优先使用这一本机条目，后续下载或更新公共工具包时保留选择；安装路径、配置和许可证留在本机。配置字段与约束见[本机工具目录说明](README.md#ctf-workbench)。
+
+下载工具包中的 IDA 附带独立的 Python 3.12.14、匹配的 SIP 绑定和 `imp` 兼容模块；启动时使用应用数据目录下的独立 `IDAUSR`。StegSolve、JADX 使用包内 Java 21.0.12.1，dnSpy 6.6.0 附带 .NET Desktop 10.0.9。multimon-ng 默认打开帮助终端；分析 WAV 时，在音频所在目录依次运行 `sox.exe -R -t wav sample.wav -esigned-integer -b 16 -r 22050 -t raw sample.raw` 和 `multimon-ng.exe -a DTMF -t raw sample.raw`，文件名换成实际文件名。
 
 “已发送某工具的启动请求”仅表示系统接受了请求；首次确认窗口、界面是否就绪及实际样例操作需分别验证。文件和依赖存在不等于通过功能验收：缺少文件时禁止启动，未经实际验收时显示“待验证”。版本按目录记录显示，具体版本依据与文件摘要保存在工具清单中。目录显示 38 项不能作为“38 项全部通过”的结论。
 
