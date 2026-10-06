@@ -62,7 +62,7 @@ beforeEach(async () => {
   await mkdir(join(fixture, 'assets'))
   await writeFile(control.path, '<html>offline</html>')
   page = await serveNativeTool({ id: 'cyberchef', name: 'CyberChef', kind: 'web', target: control.path,
-    executable: control.path, cwd: join(fixture, 'assets'), args: [], roots: [fixture] })
+    executable: control.path, cwd: join(fixture, 'assets'), args: [], roots: [fixture], userData: fixture })
 })
 
 afterEach(async () => {

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import test from 'node:test'
 import { zipSync } from 'fflate'
+import { create as createTar } from 'tar'
 import { childPath, planCopies, preparePack, validateArchiveListing, validateDefinition, verifyPack } from '../scripts/prepare-native-tools.mjs'
 
 async function fixture(t) {
@@ -274,6 +275,70 @@ test('a substituted required ZIP file stops before copying application files', a
   assert.deepEqual(await readdir(state.cacheRoot), [`${digest}.download`])
 })
 
+test('a pinned runtime ZIP selects its release directory without requiring a system installation', async t => {
+  const state = await fixture(t)
+  const bytes = zipSync({ 'jre-release/bin/javaw.exe': Buffer.from('private java'), 'unrelated.txt': Buffer.from('other') })
+  const digest = createHash('sha256').update(bytes).digest('hex')
+  state.definition.runtimes = [{ id: 'java', archives: [{ format: 'zip', url: 'https://example.invalid/java.zip', sha256: digest,
+    from: 'jre-release', to: 'runtime/windows/java' }] }]
+  state.definition.tools[0].roots.push('runtime/windows/java')
+  state.definition.tools[0].entry.runtime = 'runtime/windows/java/bin/javaw.exe'
+  await mkdir(state.cacheRoot)
+  await writeFile(resolve(state.cacheRoot, `${digest}.download`), bytes)
+  await preparePack(state)
+  assert.equal(await readFile(resolve(state.stageRoot, state.definition.tools[0].entry.runtime), 'utf8'), 'private java')
+  await assert.rejects(stat(resolve(state.stageRoot, 'runtime/windows/java/unrelated.txt')), { code: 'ENOENT' })
+  state.definition.runtimes[0].archives.push({ ...state.definition.runtimes[0].archives[0], from: 'absent-release', to: 'runtime/windows/java-extra' })
+  await assert.rejects(preparePack(state), /Runtime archive directory is missing/)
+  state.definition.runtimes[0].archives.pop()
+  state.definition.runtimes[0].archives[0].from = 'absent-release'
+  await assert.rejects(preparePack(state), /Runtime archive directory is missing/)
+  state.definition.runtimes[0].archives[0].from = '../outside'
+  assert.throws(() => validateDefinition(state.definition), /Invalid package path/)
+  state.definition.runtimes[0].archives[0].from = 'jre-release'
+  state.definition.runtimes[0].archives[0].sha512 = '0'.repeat(128)
+  assert.throws(() => validateDefinition(state.definition), /Unpinned runtime archive/)
+})
+
+test('a pinned gzip tar can supply a private Python runtime and application-local DLLs', async t => {
+  const state = await fixture(t)
+  const tree = resolve(state.root, 'python-archive')
+  await mkdir(resolve(tree, 'python'), { recursive: true })
+  for (const name of ['python.exe', 'python3.dll', 'python312.dll']) await writeFile(resolve(tree, 'python', name), name)
+  const archive = resolve(state.root, 'python.tar.gz')
+  await createTar({ file: archive, cwd: tree, gzip: true }, ['python'])
+  const bytes = await readFile(archive)
+  const digest = createHash('sha256').update(bytes).digest('hex')
+  const tool = state.definition.tools[0]
+  tool.entry.pythonRoot = 'tools/sample/python312'
+  tool.entry.requiredFiles = ['tools/sample/python312/python312.dll', 'tools/sample/python3.dll']
+  tool.archives = [
+    { format: 'tar.gz', url: 'https://example.invalid/python.tar.gz', sha256: digest, from: 'python', to: tool.entry.pythonRoot },
+    { format: 'tar.gz', url: 'https://example.invalid/python.tar.gz', sha256: digest, from: 'python', to: 'tools/sample', include: ['python3.dll', 'python312.dll'] },
+  ]
+  await mkdir(state.cacheRoot)
+  await writeFile(resolve(state.cacheRoot, `${digest}.download`), bytes)
+  await preparePack(state)
+  await verifyPack(state.stageRoot)
+  assert.equal(await readFile(resolve(state.stageRoot, 'tools/sample/python3.dll'), 'utf8'), 'python3.dll')
+  assert.equal(await readFile(resolve(state.stageRoot, 'tools/sample/python312/python.exe'), 'utf8'), 'python.exe')
+  assert.deepEqual(await readdir(state.cacheRoot), [`${digest}.download`])
+})
+
+test('a gzip tar with a parent directory member is rejected before tool files are copied', async t => {
+  const state = await fixture(t)
+  const archive = resolve(state.root, 'invalid.tar.gz')
+  await createTar({ file: archive, cwd: state.sourceRoot, gzip: true, prefix: '../outside' }, ['app/tool.exe'])
+  const bytes = await readFile(archive)
+  const digest = createHash('sha256').update(bytes).digest('hex')
+  state.definition.tools[0].archives = [{ format: 'tar.gz', url: 'https://example.invalid/invalid.tar.gz', sha256: digest, to: 'tools/sample' }]
+  await mkdir(state.cacheRoot)
+  await writeFile(resolve(state.cacheRoot, `${digest}.download`), bytes)
+  await assert.rejects(preparePack(state), /Unsafe release path/)
+  await assert.rejects(stat(resolve(state.stageRoot, 'tools/sample/tool.exe')), { code: 'ENOENT' })
+  assert.deepEqual(await readdir(state.cacheRoot), [`${digest}.download`])
+})
+
 test('native ZIP traversal entries are rejected and temporary files are removed', async t => {
   const state = await fixture(t)
   const bytes = zipSync({ '../outside.txt': Buffer.from('invalid archive path') })
@@ -347,7 +412,9 @@ test('the shipped definition has thirty-eight tools and a packaged x32dbg varian
   assert.ok(yakit.preserve.includes('tools/yakit/yakit-projects'))
   assert.deepEqual(definition.tools.find(tool => tool.id === 'x64dbg').variants.map(variant => variant.id), ['x32'])
   const ida = definition.tools.find(tool => tool.id === 'ida')
-  assert.equal(ida.entry.pythonRoot, 'tools/ida/python38')
+  assert.equal(ida.entry.pythonRoot, 'tools/ida/python312')
+  assert.ok(ida.copies[0].exclude.includes('python38'))
+  assert.ok(ida.entry.requiredFiles.includes('tools/ida/python312/Lib/site-packages/PyQt5/sip.cp312-win_amd64.pyd'))
   assert.ok(ida.preserve.includes('tools/ida/ida.key'))
   assert.equal(definition.tools.find(tool => tool.id === 'imhex').entry.dotnetRoot, 'runtime/windows/dotnet-8')
   assert.equal(ida.copies[0].exclude.includes('ida.key'), false)

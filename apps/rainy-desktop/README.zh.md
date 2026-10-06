@@ -66,6 +66,10 @@ x64dbg 与 x32dbg 共用一个条目，分别提供启动按钮。FFmpeg 包含 
 
 Yakit 1.4.8-0919 的 `bins/yak.zip` 包含官方 Yak 引擎 1.4.8-beta19，供其内置引擎恢复机制使用，无需另行下载该引擎。Yakit 遵循已配置的 `YAKIT_HOME`；Windows 默认目录为 `Yakit.exe` 旁的 `yakit-projects`。工具包保留 Yakit 的 [AGPLv3 许可证](https://github.com/yaklang/yakit/blob/v1.4.8-0919/LICENSE.md)及上游声明。ImHex 继续位于 Reverse 分类，用于二进制编辑。
 
+IDA 附带独立的 Python 3.12.14、匹配的 SIP 绑定和 `imp` 兼容模块。RainyAgent 为它使用应用数据目录下独立的 `IDAUSR`，并清除继承的 Python、Qt 环境设置。StegSolve 和 JADX 使用包内 Java 21.0.12.1；dnSpy 6.6.0 附带 .NET Desktop 10.0.9。原生工具启动时只搜索包内程序和 Windows 系统工具，不依赖第三方系统 PATH。正常的操作系统 DLL 和设备驱动仍由 Windows 提供。
+
+Windows 版 multimon-ng 读取 16 位单声道 raw 音频；同目录附带 SoX，用于转换其他格式。在含有 `sample.wav` 的目录中运行 `sox.exe -R -t wav sample.wav -esigned-integer -b 16 -r 22050 -t raw sample.raw`，再运行 `multimon-ng.exe -a DTMF -t raw sample.raw`。工具卡片会打开显示帮助内容的终端，不会自动采集麦克风声音。
+
 工具文件缺失的卡片和目录读取失败提示提供“修复工具包”入口。点击后展开离线修复指引：保存工作并退出 RainyAgent 及全部工具窗口，将匹配的安装 EXE 和全部工具包分卷放在同一目录，再次运行安装程序。安装完成后，重新打开 RainyAgent 并刷新工具状态。该入口只展示指引，不自动启动安装程序。
 
 IceSky 标签打开固定版本的浏览器工作台。一个保留的 iframe 提供其原有 22 个手动工具，各工具的模板与组件在首次选择时加载。切回目录会保留该 iframe。每个会话拥有独立草稿；未选中会话或处于空白“新会话”页面时打开 IceSky，会使用单独的通用草稿。工作台跟随应用的主题和字号。导航与状态控件跟随应用语言，捆绑工具正文保留原有语言。

@@ -3,11 +3,14 @@
   "runtimes": [
     {
       "id": "java-21",
-      "version": "21.0.2",
-      "versionEvidence": "Oracle Java executable product version; release file",
-      "copies": [
+      "version": "21.0.12.1+1",
+      "versionEvidence": "Eclipse Temurin JRE release and publisher SHA-256",
+      "archives": [
         {
-          "from": "libdll/jdk-21",
+          "format": "zip",
+          "url": "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12.1%2B1/OpenJDK21U-jre_x64_windows_hotspot_21.0.12.1_1.zip",
+          "sha256": "d35f31e712f0fcf6ac5a093edc90204fbff22f720ba3950bd09d331d5e621636",
+          "from": "jdk-21.0.12.1+1-jre",
           "to": "runtime/windows/java-21"
         }
       ]
@@ -553,7 +556,20 @@
         "kind": "gui",
         "path": "tools/ida/ida64.exe",
         "cwd": "tools/ida",
-        "pythonRoot": "tools/ida/python38"
+        "pythonRoot": "tools/ida/python312",
+        "requiredFiles": [
+          "tools/ida/python3.dll",
+          "tools/ida/python312.dll",
+          "tools/ida/python312/python.exe",
+          "tools/ida/python312/python3.dll",
+          "tools/ida/python312/python312.dll",
+          "tools/ida/python312/Lib/encodings/__init__.py",
+          "tools/ida/python312/DLLs/_ssl.pyd",
+          "tools/ida/python312/Lib/site-packages/imp.py",
+          "tools/ida/python312/Lib/site-packages/PyQt5/sip.cp312-win_amd64.pyd",
+          "tools/ida/plugins/idapython3_64.dll",
+          "tools/ida/python/3/PyQt5/QtCore.pyd"
+        ]
       },
       "roots": [
         "tools/ida"
@@ -561,7 +577,13 @@
       "source": {
         "kind": "local",
         "versionEvidence": "Executable product version; differs from ida8.3 source directory",
-        "identityNote": "Executable product field identifies a third-party distribution"
+        "identityNote": "Executable product field identifies a third-party distribution",
+        "runtime": {
+          "python": "3.12.14",
+          "sip": "12.18.0",
+          "impCompatibility": "zombie-imp 0.0.4",
+          "versionEvidence": "Pinned CPython, SIP and imp compatibility archives; application-local Python DLLs; unmodified IDAPython scripts"
+        }
       },
       "copies": [
         {
@@ -574,8 +596,17 @@
             "idacolor.cf",
             "使用说明.txt",
             "plugins",
-            "python38/Lib/site-packages/finger_sdk",
-            "python38/Lib/site-packages/openai"
+            "python38",
+            "python/2",
+            "python/3/PyQt5/sip.pyd",
+            "python/3/PyQt5/python_3.4",
+            "python/3/PyQt5/python_3.8",
+            "python/3/PyQt5/python_3.9",
+            "python/3/PyQt5/python_3.10",
+            "python3.dll",
+            "python312.dll",
+            "vcruntime140.dll",
+            "vcruntime140_1.dll"
           ]
         },
         {
@@ -664,20 +695,44 @@
           "from": "msvcp140_1.dll",
           "to": "tools/ida/msvcp140_1.dll",
           "sha256": "a65249861238e1c18b84ae5d112617c438d83a76b67eddc170ad82dbc2338665"
-        },
-        {
-          "from": "vcruntime140.dll",
-          "to": "tools/ida/vcruntime140.dll",
-          "sha256": "da72e6677bd1bcd01c453c1998aaa19aeaf6659f4774cf6848409da8232a95b2"
-        },
-        {
-          "from": "vcruntime140_1.dll",
-          "to": "tools/ida/vcruntime140_1.dll",
-          "sha256": "26e470b29bed3d873e0c328186e53f95e9edbfe0b0fd0cda44743a0b1a04a828"
         }
       ],
       "preserve": [
         "tools/ida/ida.key"
+      ],
+      "archives": [
+        {
+          "format": "tar.gz",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260901/cpython-3.12.14%2B20260901-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+          "sha256": "7c45c9622400d578709a9b2cddbe8124cc21d382409d9f13406d706d28e31b14",
+          "from": "python",
+          "to": "tools/ida/python312"
+        },
+        {
+          "format": "tar.gz",
+          "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260901/cpython-3.12.14%2B20260901-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+          "sha256": "7c45c9622400d578709a9b2cddbe8124cc21d382409d9f13406d706d28e31b14",
+          "from": "python",
+          "to": "tools/ida",
+          "include": [
+            "python3.dll",
+            "python312.dll",
+            "vcruntime140.dll",
+            "vcruntime140_1.dll"
+          ]
+        },
+        {
+          "format": "zip",
+          "url": "https://files.pythonhosted.org/packages/ab/e7/ef87178d5afa5f63be38556dc0df8af89f9bf74f2555f4dab6824c0fd150/pyqt5_sip-12.18.0-cp312-cp312-win_amd64.whl",
+          "sha256": "9b689e02e400abd1ce0a30cd6eae8eceabcf1bbba0395cb5c86e64ba74351d68",
+          "to": "tools/ida/python312/Lib/site-packages"
+        },
+        {
+          "format": "zip",
+          "url": "https://files.pythonhosted.org/packages/4e/43/8704451c1a8ad255aa27acf302243c9f2cc8e96953696d2968242cb5e235/zombie_imp-0.0.4-py3-none-any.whl",
+          "sha256": "6ba08bf13602358c7c39561b939e97bba181c7c5f96ff1b2d707e0f43d9e05a7",
+          "to": "tools/ida/python312/Lib/site-packages"
+        }
       ]
     },
     {
@@ -901,31 +956,37 @@
         "反编译",
         "调试"
       ],
-      "version": "6.1.8.0",
+      "version": "6.6.0",
       "entry": {
         "kind": "gui",
         "path": "tools/dnspy/dnSpy.exe",
-        "cwd": "tools/dnspy"
+        "cwd": "tools/dnspy",
+        "requiredFiles": [
+          "tools/dnspy/bin/coreclr.dll",
+          "tools/dnspy/bin/hostfxr.dll",
+          "tools/dnspy/bin/PresentationFramework.dll"
+        ]
       },
       "roots": [
         "tools/dnspy"
       ],
       "source": {
-        "kind": "local",
-        "versionEvidence": "Executable file version; includes .NET Desktop 5.0.0"
+        "kind": "upstream",
+        "url": "https://github.com/dnSpyEx/dnSpy/releases/tag/v6.6.0",
+        "license": "GPL-3.0",
+        "licenseUrl": "https://github.com/dnSpyEx/dnSpy/blob/v6.6.0/LICENSE.txt",
+        "versionEvidence": "Official self-contained Windows x64 release; bundled .NET Desktop 10.0.9; publisher SHA-256"
       },
       "preserve": [
         "tools/dnspy/dnSpy.xml",
         "tools/dnspy/bin/FileLists"
       ],
-      "copies": [
+      "archives": [
         {
-          "from": "libdll/qemu/dnSpy",
-          "to": "tools/dnspy",
-          "exclude": [
-            "dnSpy.xml",
-            "bin/FileLists"
-          ]
+          "format": "zip",
+          "url": "https://github.com/dnSpyEx/dnSpy/releases/download/v6.6.0/dnSpy-net-win64.zip",
+          "sha256": "8ed48f165dc355e869f3a0037ad4f9216147f995a5ae0258b296eeef1f73aab0",
+          "to": "tools/dnspy"
         }
       ]
     },
@@ -1344,32 +1405,68 @@
         "音频",
         "摩尔斯"
       ],
-      "version": "1.1.8",
+      "version": "1.6.1",
       "entry": {
         "kind": "console",
         "path": "tools/multimon-ng/multimon-ng.exe",
-        "cwd": "tools/multimon-ng"
+        "cwd": "tools/multimon-ng",
+        "requiredFiles": [
+          "tools/multimon-ng/sox.exe",
+          "tools/multimon-ng/libsox-3.dll"
+        ],
+        "args": [
+          "-h"
+        ]
       },
       "roots": [
         "tools/multimon-ng"
       ],
       "source": {
-        "kind": "local",
-        "url": "https://github.com/EliasOenal/multimon-ng",
-        "versionEvidence": "multimon-ng -h output; standalone Windows executable"
+        "kind": "upstream",
+        "url": "https://github.com/EliasOenal/multimon-ng/releases/tag/1.6.1",
+        "license": "GPL-2.0-or-later",
+        "licenseUrl": "https://github.com/EliasOenal/multimon-ng/blob/1.6.1/COPYING",
+        "versionEvidence": "Publisher SHA-256 for Windows x64 1.6.1 asset; executable reports 1.6.0; private SoX converts WAV to raw"
       },
       "copies": [
         {
-          "from": "libdll/up3/multimon-ng.exe",
-          "to": "tools/multimon-ng/multimon-ng.exe",
-          "sha256": "4eb292c6e48f101c27b395d4e03c1f424f2b05f31a6512b8745fb5f6720a0fed"
+          "from": "libdll/up3/sox",
+          "to": "tools/multimon-ng",
+          "include": [
+            "libflac-8.dll",
+            "libgcc_s_sjlj-1.dll",
+            "libgomp-1.dll",
+            "libid3tag-0.dll",
+            "libogg-0.dll",
+            "libpng16-16.dll",
+            "libsox-3.dll",
+            "libssp-0.dll",
+            "libvorbis-0.dll",
+            "libvorbisenc-2.dll",
+            "libvorbisfile-3.dll",
+            "libwavpack-1.dll",
+            "libwinpthread-1.dll",
+            "sox.exe",
+            "zlib1.dll"
+          ]
         }
       ],
       "downloads": [
         {
-          "url": "https://raw.githubusercontent.com/EliasOenal/multimon-ng/1.1.8/COPYING",
+          "url": "https://raw.githubusercontent.com/EliasOenal/multimon-ng/1.6.1/COPYING",
           "path": "tools/multimon-ng/COPYING.txt",
           "sha256": "8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643"
+        }
+      ],
+      "archives": [
+        {
+          "format": "zip",
+          "url": "https://github.com/EliasOenal/multimon-ng/releases/download/1.6.1/multimon-ng-win64.zip",
+          "sha256": "115946771798e110c76b9dc40eedf285692c5ac0a37386509586d904d92244a0",
+          "to": "tools/multimon-ng",
+          "include": [
+            "multimon-ng.exe"
+          ]
         }
       ]
     },

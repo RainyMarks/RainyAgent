@@ -101,6 +101,8 @@ MCP 也支持 `streamable-http` 与 `url`。只向该会话注册 `tools` 中列
 
 Yakit 使用官方 1.4.8-0919 完整发行包，内置 `bins/yak.zip` 提供 Yak 1.4.8-beta19 的离线恢复来源，无需单独下载引擎。其数据目录遵循 Yakit 已配置的 `YAKIT_HOME`，Windows 默认值为 `Yakit.exe` 旁的 `yakit-projects`。原生界面的首次初始化仍须在 Yakit 内完成。工具包保留 AGPLv3 许可证及上游声明。ImHex 位于 Reverse 分类，可用于二进制编辑。
 
+IDA 附带独立的 Python 3.12.14、匹配的 SIP 绑定和 `imp` 兼容模块；启动时使用应用数据目录下的独立 `IDAUSR`。StegSolve、JADX 使用包内 Java 21.0.12.1，dnSpy 6.6.0 附带 .NET Desktop 10.0.9。multimon-ng 默认打开帮助终端；分析 WAV 时，在音频所在目录依次运行 `sox.exe -R -t wav sample.wav -esigned-integer -b 16 -r 22050 -t raw sample.raw` 和 `multimon-ng.exe -a DTMF -t raw sample.raw`，文件名换成实际文件名。
+
 “已发送某工具的启动请求”仅表示系统接受了请求；首次确认窗口、界面是否就绪及实际样例操作需分别验证。文件和依赖存在不等于通过功能验收：缺少文件时禁止启动，未经实际验收时显示“待验证”。版本按目录记录显示，具体版本依据与文件摘要保存在工具清单中。目录显示 38 项不能作为“38 项全部通过”的结论。
 
 工具文件缺失的卡片和目录读取失败提示提供“修复工具包”入口。点击后展开以下离线修复指引；该入口只展示说明，不自动启动安装程序：

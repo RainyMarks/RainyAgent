@@ -177,7 +177,7 @@ describe('native tool catalog', () => {
 describe('native process preparation', () => {
   function invocation(): NativeInvocation {
     return { id: '7zip', name: '7-Zip', kind: 'console', target: "C:\\应用 O'Brien\\7z.exe", executable: "C:\\应用 O'Brien\\7z.exe",
-      cwd: "C:\\应用 O'Brien", args: ["literal'quote", '$(not-code)', '& unchanged'], roots: [] }
+      cwd: "C:\\应用 O'Brien", args: ["literal'quote", '$(not-code)', '& unchanged'], roots: [], userData: 'C:\\test-user-data' }
   }
 
   it('quotes console paths and arguments as literals rather than PowerShell expressions', () => {
@@ -223,13 +223,17 @@ describe('native process preparation', () => {
     expect(result.QT_PLUGIN_PATH).toBeUndefined()
     expect(result.QML2_IMPORT_PATH).toBeUndefined()
     expect(result.Path).toBeUndefined()
-    expect(result.PATH).toContain('C:\\system')
+    expect(result.PATH).not.toContain('C:\\system')
+    expect(result.PATH).toContain(join('C:\\Windows', 'System32'))
+    expect(result.PATH).toContain(invocation().cwd)
   })
 
   it('sets only the selected private Python and dotnet runtimes', () => {
-    const selected = { ...invocation(), dotnetRoot: 'C:\\应用 Rainy\\runtime\\dotnet', pythonRoot: 'C:\\应用 Rainy\\tools\\python' }
+    const selected: NativeInvocation = { ...invocation(), id: 'ida', dotnetRoot: 'C:\\应用 Rainy\\runtime\\dotnet', pythonRoot: 'C:\\应用 Rainy\\tools\\python' }
     const result = nativeToolEnvironment({ Path: 'C:\\system', PYTHONHOME: 'ambient', PYTHONPATH: 'ambient',
-      DOTNET_ROOT: 'ambient', DOTNET_ROOT_X64: 'ambient', DOTNET_MULTILEVEL_LOOKUP: '1', DOTNET_STARTUP_HOOKS: 'ambient' }, selected)
+      DOTNET_ROOT: 'ambient', DOTNET_ROOT_X64: 'ambient', DOTNET_MULTILEVEL_LOOKUP: '1', DOTNET_STARTUP_HOOKS: 'ambient',
+      IDAUSR: 'ambient', IDADIR: 'ambient', PYTHONUSERBASE: 'ambient', VIRTUAL_ENV: 'ambient', CONDA_PREFIX: 'ambient',
+      CLASSPATH: 'ambient', JDK_JAVA_OPTIONS: 'ambient', PERL5LIB: 'ambient', TESSDATA_PREFIX: 'ambient', MAGICK_HOME: 'ambient' }, selected)
     expect(result.DOTNET_ROOT).toBe(selected.dotnetRoot)
     expect(result.DOTNET_ROOT_X64).toBe(selected.dotnetRoot)
     expect(result.DOTNET_MULTILEVEL_LOOKUP).toBe('0')
@@ -237,8 +241,13 @@ describe('native process preparation', () => {
     expect(result.PYTHONHOME).toBe(selected.pythonRoot)
     expect(result.PYTHONPATH).toBeUndefined()
     expect(result.PYTHONNOUSERSITE).toBe('1')
+    expect(result.PYTHONUTF8).toBe('1')
+    expect(result.IDAUSR).toBe(selected.userData)
+    for (const name of ['IDADIR', 'PYTHONUSERBASE', 'VIRTUAL_ENV', 'CONDA_PREFIX', 'CLASSPATH', 'JDK_JAVA_OPTIONS', 'PERL5LIB', 'TESSDATA_PREFIX', 'MAGICK_HOME']) {
+      expect(result[name]).toBeUndefined()
+    }
     expect(result.PATH).toContain(selected.pythonRoot)
-    expect(result.PATH).toContain(join(selected.pythonRoot, 'DLLs'))
+    expect(result.PATH).toContain(join(selected.pythonRoot!, 'DLLs'))
   })
 })
 
@@ -250,7 +259,7 @@ describe('offline tool resources', () => {
     await writeFile(join(folder, 'asset.js'), 'window.ready=true')
     await writeFile(join(installRoot, 'private.txt'), 'private')
     const page = await serveNativeTool({ id: 'cyberchef', name: 'CyberChef', kind: 'web', target: join(folder, 'index.html'),
-      executable: join(folder, 'index.html'), cwd: folder, args: [], roots: [folder] })
+      executable: join(folder, 'index.html'), cwd: folder, args: [], roots: [folder], userData })
     pages.push(page)
     const response = await fetch(page.url)
     expect(await response.text()).toBe('<html>tool</html>')

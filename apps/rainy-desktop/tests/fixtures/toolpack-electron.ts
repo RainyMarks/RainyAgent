@@ -113,7 +113,7 @@ async function run(): Promise<void> {
 
   phase = 'offline webpage streams opaque third-party ASAR bytes'
   const page = await serveNativeTool({ id: 'bruno', name: 'Bruno fixture', kind: 'web',
-    target: webpage, executable: webpage, cwd: nativeRoot, args: [], roots: [nativeRoot] })
+    target: webpage, executable: webpage, cwd: nativeRoot, args: [], roots: [nativeRoot], userData: nativeRoot })
   try {
     for (const [path, expected] of [
       ['resources/app.asar', await original.promises.readFile(installedArchive)],

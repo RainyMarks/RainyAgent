@@ -74,6 +74,8 @@ export interface NativeInvocation {
   readonly cwd: string
   readonly args: readonly string[]
   readonly roots: readonly string[]
+  /** Private directory for the selected tool's user configuration. */
+  readonly userData: string
   readonly dotnetRoot?: string
   readonly pythonRoot?: string
 }
@@ -267,6 +269,7 @@ export class NativeToolsLibrary {
     const target = await resolveNativePath(this.options.installRoot, entry.path)
     const executable = entry.runtime === undefined ? target : await resolveNativePath(this.options.installRoot, entry.runtime)
     await this.options.start({ id, name: tool.name, kind: entry.kind, target, executable,
+      userData: resolve(this.options.userData, 'native-tools', id),
       cwd: await resolveNativePath(this.options.installRoot, entry.cwd),
       args: entry.kind === 'java' ? ['-jar', target, ...entry.args] : entry.args,
       roots: await Promise.all(tool.roots.map(path => resolveNativePath(this.options.installRoot, path))),

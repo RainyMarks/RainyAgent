@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { pipeline } from 'node:stream/promises'
 import { promisify } from 'node:util'
 import { unzipSync } from 'fflate'
+import { extractBuildInput } from './bootstrap-release-inputs.mjs'
 
 const appRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const markerName = '.native-tools-stage'
@@ -47,7 +48,10 @@ export function validateDefinition(definition) {
   const runtimeRoots = definition.runtimes.flatMap(runtime => [...(runtime.copies ?? []).map(copy => copy.to), ...(runtime.archives ?? []).map(archive => archive.to)])
   for (const runtime of definition.runtimes) {
     for (const archive of runtime.archives ?? []) {
-      if (archive.format !== 'zip' || !/^[a-f0-9]{128}$/.test(archive.sha512) || new URL(archive.url).protocol !== 'https:') throw new Error(`Unpinned runtime archive: ${runtime.id}`)
+      const pinned = archive.sha512 === undefined && /^[a-f0-9]{64}$/.test(archive.sha256)
+        || archive.sha256 === undefined && /^[a-f0-9]{128}$/.test(archive.sha512)
+      if (archive.format !== 'zip' || !pinned || new URL(archive.url).protocol !== 'https:') throw new Error(`Unpinned runtime archive: ${runtime.id}`)
+      if (archive.from !== undefined) childPath(appRoot, archive.from)
     }
   }
   for (const root of runtimeRoots) {
@@ -91,7 +95,7 @@ export function validateDefinition(definition) {
     }
     for (const archive of tool.archives ?? []) {
       childPath(appRoot, archive.to)
-      if (!['zip', 'nsis-7z'].includes(archive.format) || !belongsTo(archive.to, [`tools/${tool.id}`]) || !/^[a-f0-9]{64}$/.test(archive.sha256) || new URL(archive.url).protocol !== 'https:') throw new Error(`Unpinned native tool archive: ${tool.id}`)
+      if (!['zip', 'tar.gz', 'nsis-7z'].includes(archive.format) || !belongsTo(archive.to, [`tools/${tool.id}`]) || !/^[a-f0-9]{64}$/.test(archive.sha256) || new URL(archive.url).protocol !== 'https:') throw new Error(`Unpinned native tool archive: ${tool.id}`)
       if (archive.from !== undefined) childPath(appRoot, archive.from)
       if (archive.include !== undefined) {
         if (!Array.isArray(archive.include)) throw new Error(`Invalid native archive inclusion list: ${tool.id}`)
@@ -266,6 +270,7 @@ async function addRuntimeArchives(definition, options, cacheRoot, plan, temporar
       temporaryRoots.push(unpackRoot)
       const entries = unzipSync(await readFile(downloaded))
       const names = new Set()
+      let selectedFiles = 0
       for (const [name, contents] of Object.entries(entries)) {
         const directory = name.endsWith('/')
         const normalized = directory ? name.slice(0, -1) : name
@@ -275,10 +280,14 @@ async function addRuntimeArchives(definition, options, cacheRoot, plan, temporar
         if (directory) { await mkdir(target, { recursive: true }); continue }
         await mkdir(dirname(target), { recursive: true })
         await writeFile(target, contents, { flag: 'wx' })
-        const path = `${archive.to}/${normalized}`
+        if (archive.from && !normalized.startsWith(`${archive.from}/`)) continue
+        const selected = archive.from ? normalized.slice(archive.from.length + 1) : normalized
+        const path = `${archive.to}/${selected}`
         if (plan.files.some(file => file.path.toLowerCase() === path.toLowerCase())) throw new Error(`Duplicate package destination: ${path}`)
         plan.files.push({ owner: runtime.id, source: target, path, bytes: contents.length })
+        selectedFiles++
       }
+      if (archive.from && !selectedFiles) throw new Error(`Runtime archive directory is missing: ${runtime.id}/${archive.from}`)
     }
   }
 }
@@ -324,6 +333,8 @@ async function addToolArchives(definition, options, cacheRoot, plan, temporaryRo
           await mkdir(dirname(target), { recursive: true })
           await writeFile(target, contents, { flag: 'wx' })
         }
+      } else if (archive.format === 'tar.gz') {
+        await extractBuildInput(downloaded, appFiles)
       } else {
         const environment = Object.fromEntries(Object.entries(process.env).filter(([key]) => !/KEY|SECRET|TOKEN|PASSWORD/i.test(key)))
         const run = (args) => execFileAsync(options.sevenZip, args, { windowsHide: true, timeout: 300_000, maxBuffer: 8 * 1024 * 1024, encoding: 'utf8', env: environment })
@@ -504,7 +515,7 @@ export async function preparePack(options) {
       for (const entry of [tool.entry, ...(tool.variants ?? []).map(variant => variant.entry)]) {
         if ((!byPath.has(entry.path) || (entry.runtime && !byPath.has(entry.runtime))) && !unavailable.has(tool.id)) throw new Error(`Packaged entry or runtime is missing: ${tool.id}`)
         if (entry.dotnetRoot && !byPath.has(`${entry.dotnetRoot}/dotnet.exe`)) throw new Error(`Packaged .NET host is missing: ${tool.id}`)
-        if (entry.pythonRoot && !byPath.has(`${entry.pythonRoot}/python38.dll`)) throw new Error(`Packaged Python runtime is missing: ${tool.id}`)
+        if (entry.pythonRoot && (!byPath.has(`${entry.pythonRoot}/python.exe`) || !byPath.has(`${entry.pythonRoot}/python3.dll`))) throw new Error(`Packaged Python runtime is missing: ${tool.id}`)
         for (const path of entry.requiredFiles ?? []) if (!byPath.has(path) && !unavailable.has(tool.id)) throw new Error(`Packaged required entry file is missing: ${tool.id}/${path}`)
       }
       const owned = files.filter(file => belongsTo(file.path, tool.roots))
