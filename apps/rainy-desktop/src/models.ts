@@ -33,6 +33,16 @@ export const DEEPSEEK_FLASH: ModelSetup = {
 }
 const reasoningEfforts = { off: 'none', low: 'low', high: 'high', max: 'max' } as const
 
+/** Credential variable owned by Rainy for one provider; repair recognizes only these profiles. */
+function credentialEnv(provider: string): string {
+  return provider === DEEPSEEK_FLASH.provider ? 'DEEPSEEK_API_KEY' : `RAINY_${provider.replaceAll('-', '_').toUpperCase()}_KEY`
+}
+
+/** Display name Rainy writes for a provider it configures. */
+function ownedDisplayName(provider: string, local: boolean): string {
+  return local ? '本地模型' : provider === DEEPSEEK_FLASH.provider ? 'DeepSeek V4.1 Flash' : provider
+}
+
 /** Validate discovery connection fields without including credentials in diagnostics.
  * @param value Renderer or process input.
  * @returns Validated endpoint and optional request credential.
@@ -76,7 +86,7 @@ export function parseModelSetup(value: unknown): ModelSetup {
 /** Save a key separately, then atomically activate the provider through DSH's validated config editor. */
 export async function configureModel(ctx: Context, raw: unknown): Promise<{ provider: string; model: string }> {
   const setup = parseModelSetup(raw)
-  const ref = credentialRef(setup.provider === DEEPSEEK_FLASH.provider ? 'DEEPSEEK_API_KEY' : `RAINY_${setup.provider.replaceAll('-', '_').toUpperCase()}_KEY`)
+  const ref = credentialRef(credentialEnv(setup.provider))
   if (setup.apiKey?.trim()) await ctx.credentials.set(ref, setup.apiKey.trim())
   else if (setup.local && !(await ctx.credentials.describe(ref)).configured) await ctx.credentials.set(ref, 'rainy-local-no-key')
   else if (!(await ctx.credentials.describe(ref)).configured) throw new Error('请填写 API 密钥。')
@@ -84,7 +94,7 @@ export async function configureModel(ctx: Context, raw: unknown): Promise<{ prov
   if (!entry) throw new Error('模型适配器尚未就绪。')
   const budget = resolveBudget(setup.contextWindow, setup.maxTokens)
   const profile = {
-    displayName: setup.local ? '本地模型' : setup.provider === DEEPSEEK_FLASH.provider ? 'DeepSeek V4.1 Flash' : setup.provider,
+    displayName: ownedDisplayName(setup.provider, setup.local),
     baseURL: setup.baseURL, api: setup.api, apiKeyEnv: ref,
     defaultContextWindow: setup.contextWindow, defaultMaxTokens: budget.outputTokens,
     streamIdleTimeoutMs: 300000, timeoutMs: 1800000,
@@ -145,10 +155,8 @@ function repairThinkingProfiles(value: unknown): { config: Record<string, unknow
   let changedModels = 0
   const providers = Object.fromEntries(Object.entries(objectRecord(config.providers)).map(([provider, value]) => {
     const profile = objectRecord(value)
-    const ref = provider === DEEPSEEK_FLASH.provider ? 'DEEPSEEK_API_KEY' : `RAINY_${provider.replaceAll('-', '_').toUpperCase()}_KEY`
-    const ownedName = profile.displayName === '本地模型'
-      || profile.displayName === (provider === DEEPSEEK_FLASH.provider ? 'DeepSeek V4.1 Flash' : provider)
-    if (!ownedName || profile.apiKeyEnv !== ref || profile.reasoning !== 'off' || !Array.isArray(profile.models)) return [provider, value]
+    const ownedName = profile.displayName === ownedDisplayName(provider, true) || profile.displayName === ownedDisplayName(provider, false)
+    if (!ownedName || profile.apiKeyEnv !== credentialEnv(provider) || profile.reasoning !== 'off' || !Array.isArray(profile.models)) return [provider, value]
     const models = profile.models.map((value: unknown) => {
       const model = objectRecord(value)
       if (model.reasoningEfforts !== false) return value
