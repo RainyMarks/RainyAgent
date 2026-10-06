@@ -29,7 +29,9 @@ import { createProjectRegistry } from './project-registry.ts'
 import { environmentComponentSchema, installWindowsComponent, readEnvironmentComponentCatalog } from './environment-components.ts'
 import { readFile, stat } from 'node:fs/promises'
 import { embeddedReleaseKeys, parseReleaseKeyring } from './release-trust.ts'
-import { verifyReleaseResources } from './release-integrity.ts'
+import { ensureReleaseIntegrity, ReleaseIntegrityError } from './release-integrity.ts'
+import type { ReleaseIntegrity } from './release-integrity.ts'
+import { startupPage, startupProgress, WINDOW_BACKGROUND } from './startup-splash.ts'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import { allowsClipboardWrite } from './clipboard-policy.ts'
 
@@ -78,6 +80,48 @@ async function wslPath(distro: string, direction: '-u' | '-w', path: string): Pr
   return (await run('wsl.exe', ['-d', distro, '--exec', 'wslpath', direction, path], { windowsHide: true, timeout: 15000 })).stdout.trim()
 }
 
+/** Translate several Windows paths with one wsl.exe call, which also absorbs a cold VM start; one output line per path. */
+async function wslPaths(distro: string, paths: readonly string[]): Promise<string[]> {
+  const output = (await run('wsl.exe', ['-d', distro, '--exec', 'sh', '-c', 'for p in "$@"; do wslpath -u "$p"; done', 'sh', ...paths],
+    { windowsHide: true, timeout: 120000 })).stdout
+  const lines = output.split('\n').map(line => line.replace(/\r$/u, '')).filter(line => line !== '')
+  if (lines.length !== paths.length || !lines.every(line => posix.isAbsolute(line))) throw new Error('WSL 路径转换结果无效。')
+  return lines
+}
+
+/** @param logPath - carrier log for a missing launcher. @returns the Windows uvx executable used by the official IDA MCP server. */
+async function findUvx(logPath: string): Promise<string | undefined> {
+  try {
+    const candidates = (await run('where.exe', ['uvx.exe'], { windowsHide: true, timeout: 5000 })).stdout
+    return candidates.split(/\r?\n/).find(path => win32.isAbsolute(path) && existsSync(path))
+  } catch (error) {
+    appendFileSync(logPath, `IDA MCP launcher unavailable: ${error instanceof Error ? error.name : 'unknown error'}\n`)
+    return undefined
+  }
+}
+
+/** @param value - persisted preference. @param target - resolved target. @returns whether the preference already records it. */
+function sameTarget(value: unknown, target: ExecutionTarget): boolean {
+  return value !== null && typeof value === 'object' && 'id' in value && value.id === target.id && 'kind' in value && value.kind === target.kind
+    && 'label' in value && value.label === target.label && ('distro' in value ? value.distro : undefined) === target.distro
+}
+
+/** Per-phase startup durations written to the carrier log. */
+function startupTimeline(): { mark(phase: string): void; summary(): string } {
+  const started = performance.now()
+  let previous = started
+  const phases: string[] = []
+  return {
+    mark(phase) { const now = performance.now(); phases.push(`${phase} ${Math.round(now - previous)} ms`); previous = now },
+    summary() { return `${phases.join(', ')}; total ${Math.round(performance.now() - started)} ms` },
+  }
+}
+
+/** A full resource re-verification is due at most once per day after the stamp was confirmed. */
+const RELEASE_RECHECK_INTERVAL_MS = 24 * 60 * 60 * 1000
+/** Background checks wait until the workbench has settled. */
+const BACKGROUND_CHECK_DELAY_MS = 60_000
+
 /** Bodies of private Host control responses are untrusted and may not be JSON. */
 async function controlBody(response: Response): Promise<unknown> {
   try { return await response.json() }
@@ -93,41 +137,85 @@ function quitAfterSave(draftsSaved = false): void {
 }
 
 async function start(): Promise<void> {
-  const settingsPath = join(app.getPath('userData'), 'desktop.json')
+  const timeline = startupTimeline()
+  const userData = app.getPath('userData')
+  mkdirSync(userData, { recursive: true })
+  const logPath = join(userData, 'host.log')
+  const settingsPath = join(userData, 'desktop.json')
   const installRoot = app.isPackaged ? dirname(app.getPath('exe')) : resolve(__dirname, '..')
   const resourceRoot = app.isPackaged ? process.resourcesPath : resolve(__dirname, '..', 'runtime')
-  releaseToolPack = await acquireToolPackLock(installRoot)
+  const [lock, preferences] = await Promise.all([acquireToolPackLock(installRoot), readDesktopPreferences(settingsPath)])
+  releaseToolPack = lock
+  let target = savedExecutionTarget(preferences)
+  // A launch that already recorded its resolved WSL target skips the environment window and the registry lookup.
+  const knownTarget = target.kind === 'wsl' && preferences.executionTarget !== undefined
+  // Booting the WSL VM and locating the IDA launcher overlap with resource admission and the first paint.
+  if (knownTarget) void run('wsl.exe', ['-d', requireWslDistribution(target), '--exec', 'true'], { windowsHide: true, timeout: 120000 })
+    .catch((error: unknown) => { appendFileSync(logPath, `WSL warm-up failed: ${errorText(error)}\n`) })
+  const uvxLookup = findUvx(logPath)
+  const preloadPath = join(__dirname, 'preload.cjs')
+  const icon = app.isPackaged ? join(resourceRoot, 'icon.ico') : resolve(__dirname, '../build/icon.ico')
+  const dark = nativeTheme.shouldUseDarkColors
+  const window = new BrowserWindow({ title: 'RainyAgent', width: 1380, height: 920, minWidth: 950, minHeight: 650, icon,
+    titleBarStyle: 'hidden', titleBarOverlay: { height: CAPTION_HEIGHT, color: '#00000000', symbolColor: dark ? '#eeeeee' : '#171717' },
+    backgroundColor: dark ? WINDOW_BACKGROUND.dark : WINDOW_BACKGROUND.light,
+    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, preload: preloadPath } })
+  mainWindowCreated = true
+  window.setMenuBarVisibility(false)
+  await window.loadURL(startupPage(dark))
+  const progress = startupProgress(window)
+  timeline.mark('window')
+  let integrity: ReleaseIntegrity | undefined
   if (app.isPackaged) {
     const keys = embeddedReleaseKeys()
     if (!keys) throw new Error('发行包缺少资源验证公钥，请重新安装完整发行包。')
-    await verifyReleaseResources(resourceRoot, join(resourceRoot, 'release-manifest.signed.json'), keys)
+    integrity = await ensureReleaseIntegrity({ root: resourceRoot, signedPath: join(resourceRoot, 'release-manifest.signed.json'), keys,
+      stampPath: join(userData, 'release-verified.json'), recheckIntervalMs: RELEASE_RECHECK_INTERVAL_MS,
+      onProgress: (completed, total) => {
+        progress.step(`首次启动，正在校验安装文件 ${completed.toLocaleString('zh-CN')} / ${total.toLocaleString('zh-CN')}`, completed / total)
+      } })
+    timeline.mark(integrity.verified === 'full' ? 'verify (full)' : 'verify (stamp)')
   }
   const strata = createStrataManager({
     runtimeRoot: app.isPackaged ? join(resourceRoot, 'strata-runtime') : resolve(__dirname, '../resources/strata-runtime'),
-    userData: app.getPath('userData'),
+    userData,
   })
   closeStrata = () => strata.close()
-  const preferences = await readDesktopPreferences(settingsPath)
-  let target = savedExecutionTarget(preferences)
-  const availableTargets = await listExecutionTargets()
-  if (target.kind === 'wsl') target = availableTargets.find(value => value.kind === 'wsl' && value.distro === target.distro) ?? target
-  const preloadPath = join(__dirname, 'preload.cjs')
-  const icon = app.isPackaged ? join(resourceRoot, 'icon.ico') : resolve(__dirname, '../build/icon.ico')
-  const environmentSetup = { installRoot, userData: app.getPath('userData'), settingsPath, preloadPath,
-    pagePath: join(__dirname, 'setup/index.html'), mediaRoot: join(resourceRoot, 'environment'), icon }
-  const environment = target.kind === 'wsl' ? await prepareDesktopEnvironment(environmentSetup) : undefined
-  if (environment) target = (await listExecutionTargets()).find(value => value.kind === 'wsl' && value.distro === environment.distro)
-    ?? { ...target, kind: 'wsl', distro: environment.distro, label: `WSL · ${environment.distro}` }
+  const environmentSetup = { installRoot, userData, settingsPath, preloadPath,
+    pagePath: join(__dirname, 'setup/index.html'), mediaRoot: join(resourceRoot, 'environment'), icon, parent: window }
+  const carrierState = join(userData, 'carrier-state')
+  mkdirSync(carrierState, { recursive: true })
+  const uvx = await uvxLookup
+  const runtimeFiles = {
+    archive: join(resourceRoot, 'linux-runtime.tar.gz'),
+    metadata: join(resourceRoot, 'linux-runtime.json'),
+    installer: app.isPackaged ? join(resourceRoot, 'install-runtime.py') : resolve(__dirname, '../scripts/install-runtime.py'),
+  }
+  /** Map the carrier paths into the distribution and unpack its Host, with one wsl.exe call per step. */
+  const prepareWsl = async (distribution: string) => {
+    progress.step(`正在启动 WSL · ${distribution}…`)
+    const [archive, metadata, installer, state, mappedUvx] = await wslPaths(distribution,
+      [runtimeFiles.archive, runtimeFiles.metadata, runtimeFiles.installer, carrierState, ...uvx === undefined ? [] : [uvx]])
+    const output = (await run('wsl.exe', ['-d', distribution, '--exec', 'python3', installer, archive, metadata],
+      { windowsHide: true, timeout: 180000 })).stdout
+    return { installed: JSON.parse(output) as unknown, carrierState: state, uvx: mappedUvx }
+  }
+  let prepared: Awaited<ReturnType<typeof prepareWsl>> | undefined
+  if (target.kind === 'wsl' && knownTarget) {
+    try { prepared = await prepareWsl(requireWslDistribution(target)) }
+    catch (error) { appendFileSync(logPath, `Recorded WSL target unavailable, checking the environment: ${errorText(error)}\n`) }
+  }
+  if (target.kind === 'wsl' && prepared === undefined) {
+    progress.step('正在检查运行环境…')
+    const environment = await prepareDesktopEnvironment(environmentSetup)
+    target = (await listExecutionTargets()).find(value => value.kind === 'wsl' && value.distro === environment.distro)
+      ?? { ...target, kind: 'wsl', distro: environment.distro, label: `WSL · ${environment.distro}` }
+    environment.closeSetup()
+    prepared = await prepareWsl(requireWslDistribution(target))
+  }
+  timeline.mark('runtime')
   const distro = target.kind === 'wsl' ? requireWslDistribution(target) : 'Windows'
   const convert = async (path: string) => target.kind === 'windows' ? path : wslPath(distro, '-u', path)
-  mkdirSync(app.getPath('userData'), { recursive: true })
-  const logPath = join(app.getPath('userData'), 'host.log')
-  const window = new BrowserWindow({ title: 'RainyAgent', width: 1380, height: 920, minWidth: 950, minHeight: 650, icon,
-    titleBarStyle: 'hidden', titleBarOverlay: { height: CAPTION_HEIGHT,
-      color: '#00000000', symbolColor: nativeTheme.shouldUseDarkColors ? '#eeeeee' : '#171717' },
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#16191e' : '#f6f7f9',
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true,
-      preload: preloadPath, additionalArguments: [`--rainy-distro=${encodeURIComponent(distro)}`] } })
   const ipcDisposers: (() => void)[] = []
   const onIpc = (channel: string, listener: (event: Electron.IpcMainEvent, value: unknown) => void): void => {
     ipcMain.on(channel, listener)
@@ -137,7 +225,6 @@ async function start(): Promise<void> {
     ipcMain.handle(channel, handler)
     ipcDisposers.push(() => { ipcMain.removeHandler(channel) })
   }
-  mainWindowCreated = true
   let updateLocale: 'zh' | 'en' = app.getLocale().startsWith('zh') ? 'zh' : 'en'
   updates = new RainyUpdates(electronUpdater.autoUpdater, {
     enabled: app.isPackaged,
@@ -188,7 +275,6 @@ async function start(): Promise<void> {
       }
     },
   })
-  environment?.closeSetup()
   const reloadAfterSave = createSavedReload({
     flush: () => flushWorkbench(),
     reload: (ignoreCache) => { if (ignoreCache) window.webContents.reloadIgnoringCache(); else window.webContents.reload() },
@@ -230,16 +316,9 @@ async function start(): Promise<void> {
     { label: '编辑', submenu: [{ role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' }] },
     { label: '视图', submenu: [{ label: '重新加载', accelerator: 'CmdOrCtrl+R', click: () => { requestReload() } }, { role: 'toggleDevTools' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
   ]))
-  window.setAutoHideMenuBar(false)
-  window.setMenuBarVisibility(false)
-  await window.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<html lang="zh"><body style="color-scheme:light dark;margin:0;background:Canvas;color:CanvasText;font:16px system-ui;display:grid;place-items:center;height:100vh"><main><h1>RainyAgent</h1><p>正在连接执行环境…</p></main></body></html>'))
   let installed: unknown
-  if (target.kind === 'wsl') {
-    const archive = await convert(join(resourceRoot, 'linux-runtime.tar.gz'))
-    const metadata = await convert(join(resourceRoot, 'linux-runtime.json'))
-    const installer = await convert(app.isPackaged ? join(resourceRoot, 'install-runtime.py') : resolve(__dirname, '../scripts/install-runtime.py'))
-    installed = JSON.parse((await run('wsl.exe', ['-d', distro, '--exec', 'python3', installer, archive, metadata], { windowsHide: true, timeout: 180000 })).stdout)
-  } else {
+  if (prepared !== undefined) installed = prepared.installed
+  else {
     const root = join(resourceRoot, 'windows-host')
     const node = join(root, 'node', 'node.exe')
     const host = join(root, 'app', 'lib', 'host.js')
@@ -250,20 +329,15 @@ async function start(): Promise<void> {
     || !(target.kind === 'windows' ? win32.isAbsolute(installed.node) : posix.isAbsolute(installed.node))
     || !('host' in installed) || typeof installed.host !== 'string'
     || !(target.kind === 'windows' ? win32.isAbsolute(installed.host) : posix.isAbsolute(installed.host))) throw new Error('执行环境运行文件无效。')
-  let idaMcpCommand: string | undefined
-  let candidates = ''
-  try { candidates = (await run('where.exe', ['uvx.exe'], { windowsHide: true, timeout: 5000 })).stdout }
-  catch (error) { appendFileSync(logPath, `IDA MCP launcher unavailable: ${error instanceof Error ? error.name : 'unknown error'}\n`) }
-  const uvx = candidates.split(/\r?\n/).find(path => win32.isAbsolute(path) && existsSync(path))
-  if (uvx) idaMcpCommand = await convert(uvx)
-  const carrierState = join(app.getPath('userData'), 'carrier-state')
-  mkdirSync(carrierState, { recursive: true })
+  const idaMcpCommand = prepared === undefined ? uvx : prepared.uvx
   const hostEnvironment: Record<string, string> = {
     RAINY_EXECUTION_TARGET_ID: target.id,
-    RAINY_CARRIER_STATE_ROOT: await convert(carrierState),
-    ...(target.kind === 'windows' ? { RAINY_HOME: join(app.getPath('userData'), 'native-home'),
-      RAINY_TOOLCHAIN_ROOT: join(app.getPath('userData'), 'env'),
-      RAINY_PWSH_PATH: join(resourceRoot, 'windows-host', 'pwsh', 'pwsh.exe') } : {}),
+    RAINY_CARRIER_STATE_ROOT: prepared === undefined ? carrierState : prepared.carrierState,
+    ...(target.kind === 'windows' ? { RAINY_HOME: join(userData, 'native-home'),
+      RAINY_TOOLCHAIN_ROOT: join(userData, 'env'),
+      RAINY_PWSH_PATH: join(resourceRoot, 'windows-host', 'pwsh', 'pwsh.exe'),
+      // Module compilation is cached across launches; resolution still dominates the native Host's startup.
+      NODE_COMPILE_CACHE: join(userData, 'node-compile-cache') } : {}),
   }
   const pending = preferences.pendingProject
   if (pending !== null && typeof pending === 'object' && 'projectId' in pending && typeof pending.projectId === 'string'
@@ -282,8 +356,12 @@ async function start(): Promise<void> {
     },
   }
   transport = target.kind === 'windows' ? new WindowsHostTransport({ ...hostOptions, cwd: installRoot }) : new WslHostTransport({ ...hostOptions, distro })
+  progress.step('正在启动执行后端…')
   const ready = await transport.start()
-  if (preferences.pendingProject !== undefined && preferences.pendingProject !== null) await saveExecutionTarget(settingsPath, target)
+  timeline.mark('host')
+  // Recording the resolved target lets the next launch skip the registry lookup and the environment window.
+  if ((preferences.pendingProject !== undefined && preferences.pendingProject !== null) || !sameTarget(preferences.executionTarget, target))
+    await saveExecutionTarget(settingsPath, target)
   const origin = new URL(ready.url).origin
   const toolKeys = parseReleaseKeyring(JSON.parse(await readFile(app.isPackaged
     ? join(resourceRoot, 'native-tools-public-keys.json') : join(installRoot, 'resources/native-tools-public-keys.json'), 'utf8')))
@@ -549,8 +627,42 @@ async function start(): Promise<void> {
     callback(allowsClipboardWrite(permission, url, origin))
   })
   window.webContents.on('page-title-updated', (event) => { event.preventDefault(); window.setTitle('RainyAgent') })
+  progress.step('正在加载工作台…')
   await window.loadURL(ready.url)
+  timeline.mark('workbench')
+  appendFileSync(logPath, `RainyAgent startup (${target.label}): ${timeline.summary()}\n`)
   void updates.check()
+  const background = setTimeout(() => {
+    void runBackgroundChecks({ integrity, target, settingsPath, logPath, window, busy: () => lifecycle.closing || lifecycle.switching })
+  }, BACKGROUND_CHECK_DELAY_MS)
+  window.on('closed', () => { clearTimeout(background) })
+}
+
+/** Resource consistency and WSL target identity are confirmed after the workbench is usable. */
+async function runBackgroundChecks(options: {
+  readonly integrity: ReleaseIntegrity | undefined
+  readonly target: ExecutionTarget
+  readonly settingsPath: string
+  readonly logPath: string
+  readonly window: BrowserWindow
+  readonly busy: () => boolean
+}): Promise<void> {
+  try { await options.integrity?.recheck() }
+  catch (error) {
+    appendFileSync(options.logPath, `Release resource recheck failed: ${errorText(error)}\n`)
+    if (error instanceof ReleaseIntegrityError && !options.window.isDestroyed()) {
+      await dialog.showMessageBox(options.window, { type: 'warning', title: 'RainyAgent', message: 'RainyAgent 安装文件已被修改或损坏',
+        detail: `${error.message}\n下次启动时会重新完整校验；如果问题仍然存在，请重新安装 RainyAgent。` })
+    }
+  }
+  if (options.target.kind !== 'wsl') return
+  try {
+    // A distribution re-registered under the same name receives a new identity; the next launch adopts it.
+    const current = (await listExecutionTargets()).find(value => value.kind === 'wsl' && value.distro === options.target.distro)
+    if (current === undefined || sameTarget(current, options.target) || options.busy()) return
+    if (!sameTarget(savedExecutionTarget(await readDesktopPreferences(options.settingsPath)), options.target)) return
+    await saveExecutionTarget(options.settingsPath, current)
+  } catch (error) { appendFileSync(options.logPath, `Execution target refresh failed: ${errorText(error)}\n`) }
 }
 
 const maintenanceIndex = process.argv.indexOf('--rainy-install-tools')

@@ -1,6 +1,6 @@
 /** Isolated runtime selection, platform rejection and public project migration checks. */
 import { afterEach, describe, expect, it } from 'vitest'
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { isAbsolute, join, relative } from 'node:path'
@@ -81,6 +81,34 @@ describe('runtime selection', () => {
     expect(reopened.resolve(join(root, 'first')).executables.python).toBe(executable)
     await reopened.select(first, 'python', null)
     expect(reopened.resolve(join(root, 'first')).executables.python).toBeUndefined()
+  })
+
+  it('probes discovered interpreters concurrently within the configured bound and keeps candidate order', async () => {
+    const root = await directory()
+    const workspace = WorkspaceId('discovery')
+    const project = join(root, 'project')
+    for (const name of ['.venv', 'venv']) {
+      await mkdir(join(project, name, 'Scripts'), { recursive: true })
+      await writeFile(join(project, name, 'Scripts', 'python.exe'), '')
+    }
+    let inFlight = 0
+    let peak = 0
+    const started: string[] = []
+    const runtime = new RuntimeEnvironments({ root, targetId: 'windows-local', platform: 'windows', probeTimeoutMs: 1000, maxCandidates: 16,
+      probeConcurrency: 2, resolveWorkspace: id => id === workspace ? { path: project } : undefined,
+      run: async (command) => {
+        started.push(command.executable)
+        peak = Math.max(peak, ++inFlight)
+        await new Promise(resolve => setTimeout(resolve, 15))
+        inFlight--
+        return JSON.stringify({ platform: 'windows', version: '3.12.14', executable: command.executable, capabilities: [] })
+      } })
+    await runtime.initialize()
+    const snapshot = await runtime.discover(workspace)
+    expect(started.length).toBeGreaterThanOrEqual(2)
+    expect(peak).toBe(2)
+    expect(snapshot.candidates.map(candidate => candidate.path)).toEqual(started.filter((path, index) => started.indexOf(path) === index))
+    expect(snapshot.candidates.slice(0, 2).map(candidate => candidate.source)).toEqual(['project', 'project'])
   })
 })
 

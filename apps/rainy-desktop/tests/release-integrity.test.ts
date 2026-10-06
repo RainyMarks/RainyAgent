@@ -1,10 +1,12 @@
 /** Resource authenticity uses real build signatures and filesystem mutation evidence. */
 import { createHash, generateKeyPairSync, sign } from 'node:crypto'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { afterEach, expect, it } from 'vitest'
-import { authenticateReleaseManifest, RELEASE_SIGNATURE_DOMAIN, verifyReleaseResources } from '../src/release-integrity.ts'
+import {
+  authenticateReleaseManifest, ensureReleaseIntegrity, ReleaseIntegrityError, RELEASE_SIGNATURE_DOMAIN, verifyReleaseResources,
+} from '../src/release-integrity.ts'
 import { embeddedReleaseKeys, parseReleaseKeyring, releasePublicKeyId } from '../src/release-trust.ts'
 
 const directories: string[] = []
@@ -41,6 +43,64 @@ it.each([
   await expect(verifyReleaseResources(directory, path, keys)).rejects.toThrow('资源')
   expect(JSON.parse(await readFile(path, 'utf8'))).toEqual(signed)
   expect(() => authenticateReleaseManifest(envelope({ ...input, files: [{ ...input.files[0], path: '../outside.js' }] }), keys)).toThrow()
+})
+
+async function signedRelease(files: Record<string, string>) {
+  const directory = await mkdtemp(join(tmpdir(), 'rainy-integrity-'))
+  directories.push(directory)
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519')
+  const pem = publicKey.export({ type: 'spki', format: 'pem' }).toString()
+  const keyId = releasePublicKeyId(pem)
+  const keys = parseReleaseKeyring({ version: 1, keys: { [keyId]: pem } })
+  const inventory = []
+  for (const [name, contents] of Object.entries(files)) {
+    await mkdir(dirname(join(directory, name)), { recursive: true })
+    await writeFile(join(directory, name), contents)
+    inventory.push({ path: name, bytes: Buffer.byteLength(contents), sha256: createHash('sha256').update(contents).digest('hex') })
+  }
+  const payload = Buffer.from(JSON.stringify({ version: 1, product: 'RainyAgent', buildVersion: 'test', createdAt: new Date().toISOString(),
+    keyId, files: inventory }))
+  const signedPath = join(directory, 'release-manifest.signed.json')
+  await writeFile(signedPath, JSON.stringify({ version: 1, payload: payload.toString('base64url'),
+    signature: sign(null, Buffer.concat([Buffer.from(RELEASE_SIGNATURE_DOMAIN), payload]), privateKey).toString('base64url') }))
+  return { directory, keys, signedPath, stampPath: join(directory, 'user-data', 'release-verified.json') }
+}
+
+it('hashes an inventory once, then reuses its stamp until the inventory or root changes', async () => {
+  const release = await signedRelease({ 'windows-host/app/lib/host.js': 'host', 'windows-host/node/node.exe': 'node' })
+  let clock = 1000
+  const options = { root: release.directory, signedPath: release.signedPath, keys: release.keys, stampPath: release.stampPath,
+    recheckIntervalMs: 60_000, now: () => clock }
+  const progress: number[] = []
+  const first = await ensureReleaseIntegrity({ ...options, onProgress: (completed) => { progress.push(completed) } })
+  expect(first.verified).toBe('full')
+  expect(progress).toEqual([1, 2])
+  expect(JSON.parse(await readFile(release.stampPath, 'utf8'))).toMatchObject({ version: 2, checkedAt: 1000 })
+  const second = await ensureReleaseIntegrity(options)
+  expect(second.verified).toBe('stamp')
+  expect(await second.recheck()).toBe('skipped')
+  clock += 60_000
+  expect(await second.recheck()).toBe('unchanged')
+  expect(JSON.parse(await readFile(release.stampPath, 'utf8'))).toMatchObject({ checkedAt: 61_000 })
+  // A stamp written by an earlier release format is not trusted.
+  await writeFile(release.stampPath, JSON.stringify({ version: 1, manifestSha256: 'a'.repeat(64), root: release.directory }))
+  expect((await ensureReleaseIntegrity(options)).verified).toBe('full')
+})
+
+it('detects changed resources in the background check and verifies fully on the next launch', async () => {
+  const release = await signedRelease({ 'host.js': 'published host bytes' })
+  let clock = 0
+  const options = { root: release.directory, signedPath: release.signedPath, keys: release.keys, stampPath: release.stampPath,
+    recheckIntervalMs: 10, now: () => clock }
+  await ensureReleaseIntegrity(options)
+  const launched = await ensureReleaseIntegrity(options)
+  await writeFile(join(release.directory, 'host.js'), 'tampered host bytes!')
+  clock = 100
+  await expect(launched.recheck()).rejects.toBeInstanceOf(ReleaseIntegrityError)
+  await expect(readFile(release.stampPath, 'utf8')).rejects.toMatchObject({ code: 'ENOENT' })
+  await expect(ensureReleaseIntegrity(options)).rejects.toThrow('发行资源')
+  await rm(join(release.directory, 'host.js'))
+  await expect(ensureReleaseIntegrity(options)).rejects.toThrow('发行资源缺失：host.js')
 })
 
 it('rejects empty, private, non-Ed25519, and mismatched public trust data', () => {

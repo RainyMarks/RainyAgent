@@ -23,6 +23,8 @@ export const inject = ['subprocess', 'workspaceRegistry', 'connection', 'webServ
 export interface Config {
   probeTimeoutMs: number
   maxCandidates: number
+  /** Interpreter probes run at the same time during discovery. */
+  probeConcurrency: number
   maxRequestBytes: number
   /** Explicit owned state location for isolated profiles; absence uses the launched Harness home. */
   dataRoot?: string
@@ -37,6 +39,7 @@ export interface Config {
 export const Config: z<Config> = z.object({
   probeTimeoutMs: z.number().min(1000).max(120000).default(30000),
   maxCandidates: z.number().min(1).max(64).default(16),
+  probeConcurrency: z.number().min(1).max(16).step(1).default(4),
   maxRequestBytes: z
     .number()
     .min(1024)
@@ -137,6 +140,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     bundledRoot: config.bundledRoot ?? process.env.RAINY_TOOLCHAIN_ROOT ?? join(home, 'components'),
     probeTimeoutMs: config.probeTimeoutMs,
     maxCandidates: config.maxCandidates,
+    probeConcurrency: config.probeConcurrency,
     resolveWorkspace: id => ctx.workspaceRegistry.get(id),
   })
   await environments.initialize()

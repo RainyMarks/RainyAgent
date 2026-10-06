@@ -41,6 +41,8 @@ export interface RuntimeEnvironmentOptions {
   bundledRoot?: string
   probeTimeoutMs: number
   maxCandidates: number
+  /** Probes run at the same time; each candidate is an independent process. */
+  probeConcurrency?: number
   run?: RuntimeProbeRunner
   resolveWorkspace: (workspaceId: WorkspaceId) => { path: string } | undefined
 }
@@ -264,11 +266,15 @@ export class RuntimeEnvironments {
   async discover(workspaceId: WorkspaceId): Promise<RuntimeSnapshot> {
     await this.refreshComponents()
     const candidates = await this.candidates(workspaceId)
-    const results: RuntimeCandidate[] = []
-    for (const candidate of candidates) {
-      results.push(await probeRuntimeCandidate({ ...candidate, targetId: this.target, platform: this.platform,
-        timeoutMs: this.options.probeTimeoutMs, run: this.run }))
-    }
+    const results = new Array<RuntimeCandidate>(candidates.length)
+    let next = 0
+    // Results keep candidate order; probes never throw, they record failures on the candidate.
+    await Promise.all(Array.from({ length: Math.min(this.options.probeConcurrency ?? 1, candidates.length) }, async () => {
+      for (let index = next++; index < candidates.length; index = next++) {
+        results[index] = await probeRuntimeCandidate({ ...candidates[index], targetId: this.target, platform: this.platform,
+          timeoutMs: this.options.probeTimeoutMs, run: this.run })
+      }
+    }))
     this.observations.set(workspaceId, results)
     return this.status(workspaceId)
   }
@@ -289,7 +295,11 @@ export class RuntimeEnvironments {
   }
 
   /** @param workspaceId - current Host workspace. @returns saved choices and cached functional observations. */
-  async status(workspaceId: WorkspaceId): Promise<RuntimeSnapshot> {
+  status(workspaceId: WorkspaceId): Promise<RuntimeSnapshot> {
+    return Promise.resolve().then(() => this.snapshot(workspaceId))
+  }
+
+  private snapshot(workspaceId: WorkspaceId): RuntimeSnapshot {
     this.workspace(workspaceId)
     const candidates = this.observations.get(workspaceId) ?? []
     const selected: RuntimeSnapshot['selected'] = {}
