@@ -268,28 +268,41 @@ async function addRuntimeArchives(definition, options, cacheRoot, plan, temporar
       const downloaded = await downloadPinned(archive, cacheRoot, options.offline ?? false)
       const unpackRoot = await mkdtemp(resolve(cacheRoot, 'unpack-'))
       temporaryRoots.push(unpackRoot)
-      const entries = unzipSync(await readFile(downloaded))
-      const names = new Set()
       let selectedFiles = 0
-      for (const [name, contents] of Object.entries(entries)) {
-        const directory = name.endsWith('/')
-        const normalized = directory ? name.slice(0, -1) : name
-        const target = childPath(unpackRoot, normalized)
-        if (names.has(normalized.toLowerCase())) throw new Error(`Duplicate runtime ZIP entry: ${name}`)
-        names.add(normalized.toLowerCase())
-        if (directory) { await mkdir(target, { recursive: true }); continue }
-        await mkdir(dirname(target), { recursive: true })
-        await writeFile(target, contents, { flag: 'wx' })
-        if (archive.from && !normalized.startsWith(`${archive.from}/`)) continue
-        const selected = archive.from ? normalized.slice(archive.from.length + 1) : normalized
+      for (const file of await extractZip(await readFile(downloaded), unpackRoot, 'runtime')) {
+        if (archive.from && !file.name.startsWith(`${archive.from}/`)) continue
+        const selected = archive.from ? file.name.slice(archive.from.length + 1) : file.name
         const path = `${archive.to}/${selected}`
-        if (plan.files.some(file => file.path.toLowerCase() === path.toLowerCase())) throw new Error(`Duplicate package destination: ${path}`)
-        plan.files.push({ owner: runtime.id, source: target, path, bytes: contents.length })
+        if (plan.files.some(entry => entry.path.toLowerCase() === path.toLowerCase())) throw new Error(`Duplicate package destination: ${path}`)
+        plan.files.push({ owner: runtime.id, source: file.target, path, bytes: file.bytes })
         selectedFiles++
       }
       if (archive.from && !selectedFiles) throw new Error(`Runtime archive directory is missing: ${runtime.id}/${archive.from}`)
     }
   }
+}
+
+/** Extract a ZIP under one owned root, refusing escaping and case-colliding entries.
+ * @param {Uint8Array} bytes ZIP archive.
+ * @param {string} root Owned extraction directory.
+ * @param {string} label Archive kind named in duplicate-entry errors.
+ * @returns {Promise<{ name: string, target: string, bytes: number }[]>} Extracted files in archive order.
+ */
+async function extractZip(bytes, root, label) {
+  const names = new Set()
+  const files = []
+  for (const [name, contents] of Object.entries(unzipSync(bytes))) {
+    const directory = name.endsWith('/')
+    const normalized = directory ? name.slice(0, -1) : name
+    const target = childPath(root, normalized)
+    if (names.has(normalized.toLowerCase())) throw new Error(`Duplicate ${label} ZIP entry: ${name}`)
+    names.add(normalized.toLowerCase())
+    if (directory) { await mkdir(target, { recursive: true }); continue }
+    await mkdir(dirname(target), { recursive: true })
+    await writeFile(target, contents, { flag: 'wx' })
+    files.push({ name: normalized, target, bytes: contents.length })
+  }
+  return files
 }
 
 /** Validate a 7-Zip technical listing before extracting its files.
@@ -322,17 +335,7 @@ async function addToolArchives(definition, options, cacheRoot, plan, temporaryRo
       const appFiles = childPath(unpackRoot, 'application')
       await mkdir(appFiles)
       if (archive.format === 'zip') {
-        const names = new Set()
-        for (const [name, contents] of Object.entries(unzipSync(await readFile(downloaded)))) {
-          const directory = name.endsWith('/')
-          const normalized = directory ? name.slice(0, -1) : name
-          const target = childPath(appFiles, normalized)
-          if (names.has(normalized.toLowerCase())) throw new Error(`Duplicate native ZIP entry: ${name}`)
-          names.add(normalized.toLowerCase())
-          if (directory) { await mkdir(target, { recursive: true }); continue }
-          await mkdir(dirname(target), { recursive: true })
-          await writeFile(target, contents, { flag: 'wx' })
-        }
+        await extractZip(await readFile(downloaded), appFiles, 'native')
       } else if (archive.format === 'tar.gz') {
         await extractBuildInput(downloaded, appFiles)
       } else {
