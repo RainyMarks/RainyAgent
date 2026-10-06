@@ -33,6 +33,8 @@ describe('THIRD_PARTY_NOTICES.md', () => {
   }, async () => {
     const generated = await render()
     expect(generated).toContain('It depends on the third-party software listed below.')
+    expect(generated).toContain('DeepSeek Harness code under [MIT](LICENSE.upstream)')
+    expect(generated).toContain('RainyAgent-specific material under [LICENSE.RainyAgent](LICENSE.RainyAgent)')
     expect(generated).toContain(`| [\`numpy\`](https://github.com/numpy/numpy) | ${primaryRuntimeLock.pythonPackages.numpy} | BSD-3-Clause |`)
     expect(generated).toContain('## LibreOffice conversion kit')
     expect(generated).toContain('Recipients must have access to those corresponding sources and notices.')
@@ -51,6 +53,57 @@ function workspace(entries: Record<string, Manifest>): { manifests: Map<string, 
 }
 
 describe('tierExternalDeps', () => {
+  it('classifies the Rainy editor declarations as shipped while retaining ordinary license checks', () => {
+    const shipped = [
+      '@codingame/monaco-vscode-api',
+      '@codingame/monaco-vscode-configuration-service-override',
+      '@codingame/monaco-vscode-cpp-default-extension',
+      '@codingame/monaco-vscode-files-service-override',
+      '@codingame/monaco-vscode-json-default-extension',
+      '@codingame/monaco-vscode-languages-service-override',
+      '@codingame/monaco-vscode-python-default-extension',
+      '@codingame/monaco-vscode-textmate-service-override',
+      '@codingame/monaco-vscode-theme-defaults-default-extension',
+      '@codingame/monaco-vscode-theme-service-override',
+      '@codingame/monaco-vscode-typescript-basics-default-extension',
+      '@xterm/xterm', '@xterm/addon-fit', 'monaco-editor', 'monaco-languageclient',
+      'vscode', 'vscode-languageclient', 'vscode-ws-jsonrpc',
+    ]
+    const { manifests, names } = workspace({
+      'apps/rainy-desktop/package.json': {
+        name: '@deepseek-ai/dsh-rainy-desktop', private: true,
+        devDependencies: {
+          ...Object.fromEntries(shipped.map(name => [name, '^1'])),
+          'monaco-editor': 'npm:@codingame/monaco-vscode-editor-api@37.1.0',
+          vscode: 'npm:@codingame/monaco-vscode-extension-api@37.1.0',
+          '@vscode/debugprotocol': '^1', 'electron-builder': '^1', vitest: '^1', esbuild: '^1',
+          '@codingame/monaco-vscode-unrelated': '^1',
+        },
+      },
+    })
+    const tiers = tierExternalDeps(manifests, names)
+    expect([...tiers].filter(([, runtime]) => runtime).map(([name]) => name)).toEqual(['tsx', ...shipped])
+    for (const name of ['@vscode/debugprotocol', 'electron-builder', 'vitest', 'esbuild', '@codingame/monaco-vscode-unrelated']) {
+      expect(tiers.get(name)).toBe(false)
+    }
+    const runtime = [{ name: 'monaco-editor', license: 'GPL-3.0-only' }].filter(dep => tiers.get(dep.name))
+    expect(() => { assertRuntimeLicenses(runtime) }).toThrow('monaco-editor (GPL-3.0-only)')
+    expect(() => { assertRuntimeLicenses([{ name: 'monaco-editor', license: 'MIT' }]) }).not.toThrow()
+  })
+
+  it.each([
+    'apps/other-desktop/package.json',
+    'apps/rainy-desktop-fixture/package.json',
+    'packages/test-support/rainy-editor/package.json',
+  ])('does not apply the Rainy editor classification to %s', (path) => {
+    const { manifests, names } = workspace({
+      [path]: { devDependencies: { 'monaco-editor': '^1', '@codingame/monaco-vscode-api': '^1' } },
+    })
+    expect(tierExternalDeps(manifests, names)).toEqual(new Map([
+      ['tsx', true], ['monaco-editor', false], ['@codingame/monaco-vscode-api', false],
+    ]))
+  })
+
   it('limits the LibreOffice exception to its reviewed package identity and MPL terms', () => {
     for (const name of [
       '@deepseek-ai/libreoffice-kit', '@deepseek-ai/libreoffice-kit-wasm',
