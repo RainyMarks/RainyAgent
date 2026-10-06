@@ -1,0 +1,53 @@
+name: RainyAgent 1.0.2 NSIS smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [codex/nsis-smoke-v1.0.2]
+    paths:
+      - .github/installer-smoke/**
+      - .github/workflows/rainy-installer-smoke.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rainy-1-0-2-installer-smoke
+  cancel-in-progress: false
+
+jobs:
+  core-install:
+    if: github.repository == 'RainyMarks/RainyAgent'
+    # GitHub makes draft releases visible only to identities with repository push access.
+    permissions:
+      contents: write
+    runs-on: windows-2022
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: .github/installer-smoke
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+
+      - name: Prepare the CDP client without installing a browser
+        shell: pwsh
+        run: npm ci --prefix .github/installer-smoke --ignore-scripts --no-audit --no-fund
+
+      - name: Install, start, and uninstall the fixed draft artifact
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: ./.github/installer-smoke/run.ps1
+
+      - name: Preserve the measured result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rainy-1.0.2-nsis-smoke-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/rainy-1.0.2-installer-smoke/evidence
+          if-no-files-found: error
+          retention-days: 14

@@ -1,0 +1,13 @@
+{
+  "repository": "RainyMarks/RainyAgent",
+  "tag": "v1.0.2",
+  "version": "1.0.2",
+  "sourceCommit": "5d23c59f5bea16af31e94ecabcffcac2ed5df044",
+  "installer": {
+    "file": "RainyAgent-1.0.2-windows-x64-setup.exe",
+    "bytes": 1191989445,
+    "sha256": "e27ae54778d771493097be55edf26e20a6c8a88fe6d4edd0598c97e048ab5089"
+  },
+  "appAsarSha256": "955bfe30de937b9c854d5ded7a30fad493f879d3f048f39086c6b025eff3b142",
+  "resourceManifestSha256": "1ebd97b3b978737228d322263371cab547dd1af3f92ce275b03cdc995302c7a9"
+}
