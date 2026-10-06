@@ -116,6 +116,8 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`papaparse`](https://github.com/mholt/PapaParse) | MIT |
 | [`pdfjs-dist`](https://github.com/mozilla/pdf.js) | Apache-2.0 |
 | [`picomatch`](https://github.com/micromatch/picomatch) | MIT |
+| [`prettier`](https://github.com/prettier/prettier) | MIT |
+| [`pyright`](https://github.com/Microsoft/pyright) | MIT |
 | [`react`](https://github.com/facebook/react) | MIT |
 | [`react-dom`](https://github.com/facebook/react) | MIT |
 | [`readable-stream`](https://github.com/nodejs/readable-stream) | MIT |
@@ -129,6 +131,7 @@ External packages installed for runtime use or distributed inside the prebuilt b
 | [`tsx`](https://github.com/privatenumber/tsx) | MIT |
 | [`turndown`](https://github.com/mixmark-io/turndown) | MIT |
 | [`typescript`](https://github.com/microsoft/TypeScript) | Apache-2.0 |
+| [`typescript-language-server`](https://github.com/typescript-language-server/typescript-language-server) | Apache-2.0 |
 | [`undici`](https://github.com/nodejs/undici) | MIT |
 | [`use-sync-external-store`](https://github.com/facebook/react) | MIT |
 | [`ws`](https://github.com/websockets/ws) | MIT |
@@ -139,7 +142,8 @@ External packages installed for runtime use or distributed inside the prebuilt b
 
 pnpm applies local patches to the following packages at install time, so shipped artifacts carry modified copies; each patch file is the complete record of the modification:
 
-- `@earendil-works/pi-ai@0.85.1` — [`patches/@earendil-works__pi-ai@0.85.1.patch`](patches/@earendil-works__pi-ai@0.85.1.patch)
+- `@codingame/monaco-vscode-files-service-override@37.1.0` — [`patches/@codingame__monaco-vscode-files-service-override@37.1.0.patch`](patches/@codingame__monaco-vscode-files-service-override@37.1.0.patch)
+- `@earendil-works/pi-ai@1.0.0` — [`patches/@earendil-works__pi-ai@1.0.0.patch`](patches/@earendil-works__pi-ai@1.0.0.patch)
 - `@electron/osx-sign@1.3.3` — [`patches/@electron__osx-sign@1.3.3.patch`](patches/@electron__osx-sign@1.3.3.patch)
 - `@fortune-sheet/core@1.0.4` — [`patches/@fortune-sheet__core@1.0.4.patch`](patches/@fortune-sheet__core@1.0.4.patch)
 - `@fortune-sheet/react@1.0.4` — [`patches/@fortune-sheet__react@1.0.4.patch`](patches/@fortune-sheet__react@1.0.4.patch)
@@ -179,6 +183,17 @@ External packages **directly declared** for development, tests, types, or toolin
 | Package | License |
 | --- | --- |
 | [`@braintree/sanitize-url`](https://github.com/braintree/sanitize-url) | MIT |
+| [`@codingame/monaco-vscode-api`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-configuration-service-override`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-cpp-default-extension`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-files-service-override`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-json-default-extension`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-languages-service-override`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-python-default-extension`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-textmate-service-override`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-theme-defaults-default-extension`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-theme-service-override`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`@codingame/monaco-vscode-typescript-basics-default-extension`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
 | [`@electron/get`](https://github.com/electron/get) | MIT |
 | [`@electron/notarize`](https://github.com/electron/notarize) | MIT |
 | [`@lexical/headless`](https://github.com/facebook/lexical) | MIT |
@@ -212,6 +227,7 @@ External packages **directly declared** for development, tests, types, or toolin
 | [`@vitejs/plugin-react`](https://github.com/vitejs/vite-plugin-react) | MIT |
 | [`@vitest/coverage-v8`](https://github.com/vitest-dev/vitest) | MIT |
 | [`@vitest/spy`](https://github.com/vitest-dev/vitest) | MIT |
+| [`@vscode/debugprotocol`](https://github.com/microsoft/vscode-debugadapter-node) | MIT |
 | [`@yao-pkg/pkg`](https://github.com/yao-pkg/pkg) | MIT |
 | [`@yarnpkg/cli-dist`](https://github.com/yarnpkg/berry) | BSD-2-Clause |
 | [`app-builder-lib`](https://github.com/electron-userland/electron-builder) | MIT |
@@ -234,6 +250,8 @@ External packages **directly declared** for development, tests, types, or toolin
 | [`lightningcss`](https://github.com/parcel-bundler/lightningcss) | MPL-2.0 |
 | [`mermaid`](https://github.com/mermaid-js/mermaid) | MIT |
 | [`micromark-util-types`](https://github.com/micromark/micromark/tree/main/packages/micromark-util-types) | MIT |
+| [`monaco-editor`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`monaco-languageclient`](https://github.com/TypeFox/monaco-languageclient) | MIT |
 | [`oxlint`](https://github.com/oxc-project/oxc) | MIT |
 | [`oxlint-tsgolint`](https://github.com/oxc-project/tsgolint) | MIT |
 | [`playwright`](https://github.com/microsoft/playwright) | Apache-2.0 |
@@ -243,12 +261,14 @@ External packages **directly declared** for development, tests, types, or toolin
 | [`spdx-expression-parse`](https://github.com/jslicense/spdx-expression-parse.js) | MIT |
 | [`tar`](https://github.com/isaacs/node-tar) | BlueOak-1.0.0 |
 | [`tsdown`](https://github.com/rolldown/tsdown) | MIT |
-| [`typescript-language-server`](https://github.com/typescript-language-server/typescript-language-server) | Apache-2.0 |
 | [`vite`](https://github.com/vitejs/vite) | MIT |
 | [`vite-tsconfig-paths`](https://github.com/aleclarson/vite-tsconfig-paths) | MIT |
 | [`vitepress`](https://github.com/vuejs/vitepress) | MIT |
 | [`vitepress-plugin-mermaid`](https://github.com/emersonbottero/vitepress-plugin-mermaid) | MIT |
 | [`vitest`](https://github.com/vitest-dev/vitest) | MIT |
+| [`vscode`](https://github.com/CodinGame/monaco-vscode-api) | MIT |
+| [`vscode-languageclient`](https://github.com/Microsoft/vscode-languageserver-node) | MIT |
+| [`vscode-ws-jsonrpc`](https://github.com/TypeFox/monaco-languageclient) | MIT |
 | [`vue`](https://github.com/vuejs/core) | MIT |
 
 `eslint-plugin-sonarjs` (LGPL-3.0-only) and `lightningcss` (MPL-2.0) run only as development tooling; their code is not linked into or distributed with any DeepSeek Harness artifact.

@@ -1,0 +1,11 @@
+# RainyAgent 1.0.0 installer smoke
+
+This Windows 2022 hosted job installs the fixed RainyAgent 1.0.0 draft NSIS, starts the installed application, and uninstalls its core. [artifact.json](artifact.json) pins the release name, source commit, installer size and SHA256, and installed resource hashes. It does not rebuild application code or change the release tag.
+
+The [workflow](../workflows/rainy-installer-smoke.yml) runs when its files change on `codex/nsis-smoke-v1.0.0`; manual dispatch has no inputs. It downloads only the named NSIS through the repository token. Missing draft access or mismatched artifact bytes fail the job. No optional tool volumes or model weights are downloaded.
+
+[run.ps1](run.ps1) refuses an existing RainyAgent installation or user profile, installs silently in its own temporary directory, and checks both registration keys and the actual targets of the desktop and Start Menu shortcuts. It explicitly launches the installed EXE with isolated user data. [browser-smoke.mjs](browser-smoke.mjs) attaches to that application's Chromium using pinned Playwright Core and checks authenticated Host HTML, version 1.0.0, native Strata availability without loading a model, and the absence of activation controls.
+
+After the real window closes, the copied NSIS uninstaller removes core files, both registration keys, and both shortcuts. Sentinel files in default product user data, isolated user data, and the tools directory must remain unchanged. Retained runtime directories are recorded; an empty installation directory is not required. The browser driver has a 360-second process deadline so a stalled IPC request still reaches cleanup and result reporting.
+
+Each run uploads the available evidence, which may include `installer.json`, `browser.json`, and the captured version or failure screenshot, under `rainy-1.0.0-nsis-smoke-<run-id>-<attempt>`. A failed screenshot or close request is recorded separately from the original browser failure. The scripts operate only on the hosted runner's new fixture; the job does not exercise GPU inference, WSL setup, or optional third-party tools.
