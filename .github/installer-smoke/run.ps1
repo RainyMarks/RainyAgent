@@ -106,7 +106,7 @@ try {
     foreach ($sentinel in $sentinels) { New-Item -ItemType Directory -Path (Split-Path -Parent $sentinel) -Force | Out-Null; [IO.File]::WriteAllText($sentinel, $sentinelText) }
     $applicationProcess = Start-Process -FilePath $app -ArgumentList @("--user-data-dir=`"$data`"", '--remote-debugging-port=0', '--lang=zh-CN', '--disable-gpu') -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $testRoot 'app.stdout.log') -RedirectStandardError (Join-Path $testRoot 'app.stderr.log')
     Wait-Condition { $applicationProcess.Refresh(); if ($applicationProcess.HasExited) { throw 'Installed application exited before CDP readiness.' }; Test-Path -LiteralPath (Join-Path $data 'DevToolsActivePort') } 'Installed application did not expose its own CDP endpoint.' 180
-    $nodePath = (Get-Command node -CommandType Application).Source
+    $nodePath = @(Get-Command node -CommandType Application)[0].Source
     $driverArguments = @(('"' + (Join-Path $PSScriptRoot 'browser-smoke.mjs') + '"'), ('"' + $data + '"'), ('"' + $evidence + '"'))
     $driverProcess = Start-Process -FilePath $nodePath -ArgumentList $driverArguments -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $testRoot 'driver.stdout.log') -RedirectStandardError (Join-Path $testRoot 'driver.stderr.log')
     Wait-OwnProcess $driverProcess 'Installed browser driver' 360
