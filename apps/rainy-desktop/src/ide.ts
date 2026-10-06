@@ -24,6 +24,7 @@ import type { IdeFormatLimits } from './ide-format.ts'
 import { getIdeToolPaths, inspectIdeTools } from './ide-tools.ts'
 import type {} from './project-roots.ts'
 import type {} from './runtime.ts'
+import { readRequestBytes } from './request-body.ts'
 import { brandString } from '@deepseek-ai/dsh-brand'
 import type { IdeRootId } from '@deepseek-ai/dsh-client-ui-rainy/ide-files-protocol'
 
@@ -78,17 +79,9 @@ const languageQuery = z.object({ workspaceId: z.string().min(1).max(512).transfo
  * @returns untrusted JSON for the operation-specific parser.
  */
 export async function readIdeRequest(request: IncomingMessage, maxBytes: number): Promise<unknown> {
-  const advertised = request.headers['content-length']
-  if (advertised !== undefined && (!/^\d+$/.test(advertised) || Number(advertised) > maxBytes)) throw new IdeOperationError('too-large', 'The IDE request exceeds its configured byte limit')
-  const chunks: Buffer[] = []
-  let bytes = 0
-  for await (const chunk of request) {
-    if (!Buffer.isBuffer(chunk)) throw new IdeOperationError('invalid-request', 'The IDE request did not contain bytes')
-    bytes += chunk.length
-    if (bytes > maxBytes) throw new IdeOperationError('too-large', 'The IDE request exceeds its configured byte limit')
-    chunks.push(chunk)
-  }
-  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(chunks))) }
+  const body = await readRequestBytes(request, maxBytes,
+    () => new IdeOperationError('too-large', 'The IDE request exceeds its configured byte limit'))
+  try { return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(body)) }
   catch (_invalidJson) { throw new IdeOperationError('invalid-request', 'The IDE request must contain valid UTF-8 JSON') }
 }
 

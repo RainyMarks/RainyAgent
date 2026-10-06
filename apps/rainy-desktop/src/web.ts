@@ -17,6 +17,7 @@ import { fileDiff } from './file-diff.ts'
 import { installIceSkyProxy } from './icesky-proxy.ts'
 import * as IceSkyState from './icesky-state.ts'
 import { installIceSkyStatic } from './icesky-static.ts'
+import { readRequestBytes } from './request-body.ts'
 
 export const name = 'rainy-web'
 export const inject = ['webServer', 'connection', 'rainy', 'configEditor', 'agentDefaultModel', 'llm', 'credentials', 'rainyExtensions', 'rainyMemory', 'agents', 'sessionTitle', 'storageDomain', 'sessionPersistence']
@@ -59,12 +60,8 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
         return
       }
       if (req.method !== 'POST') { res.writeHead(405); res.end(); return }
-      let body = ''
-      for await (const chunk of req) {
-        body += String(chunk)
-        if (Buffer.byteLength(body) > 65536) throw new Error('设置请求过大。')
-      }
-      const command: unknown = JSON.parse(body)
+      const body = await readRequestBytes(req, 65536, () => new Error('设置请求过大。'))
+      const command: unknown = JSON.parse(body.toString('utf8'))
       if (command === null || typeof command !== 'object' || !('method' in command) || !('params' in command)) throw new Error('设置请求无效。')
       let result: unknown
       switch (command.method) {

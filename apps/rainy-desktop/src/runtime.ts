@@ -12,6 +12,7 @@ import { RuntimeEnvironments } from './runtime-environments.ts'
 import type { ResolvedWorkspaceEnvironment } from './runtime-environments.ts'
 import { createProjectRegistry } from './project-registry.ts'
 import type { ProjectRegistry } from './project-registry.ts'
+import { readRequestBytes } from './request-body.ts'
 import type {} from '@deepseek-ai/dsh-agent'
 
 /** Runtime plugin identity. */
@@ -182,13 +183,9 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
           return
         }
         try {
-          let body = ''
-          for await (const chunk of request) {
-            body += String(chunk)
-            if (Buffer.byteLength(body) > config.maxRequestBytes)
-              throw new Error('Runtime request exceeds its size limit.')
-          }
-          const command = requestSchema.parse(JSON.parse(body))
+          const body = await readRequestBytes(request, config.maxRequestBytes,
+            () => new Error('Runtime request exceeds its size limit.'))
+          const command = requestSchema.parse(JSON.parse(body.toString('utf8')))
           const release = command.op === 'status' ? undefined : ctx.rainyRuntime.beginOperation()
           try {
             const workspace = ctx.workspaceRegistry.get(command.workspaceId)
