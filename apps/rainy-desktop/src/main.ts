@@ -28,7 +28,7 @@ import type { ExecutionTarget, PendingProjectTarget } from './execution-targets.
 import { createProjectRegistry } from './project-registry.ts'
 import { environmentComponentSchema, installWindowsComponent, readEnvironmentComponentCatalog } from './environment-components.ts'
 import { readFile, stat } from 'node:fs/promises'
-import { embeddedReleaseKeys } from './release-trust.ts'
+import { embeddedReleaseKeys, parseReleaseKeyring } from './release-trust.ts'
 import { verifyReleaseResources } from './release-integrity.ts'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 
@@ -253,8 +253,17 @@ async function start(): Promise<void> {
   const ready = await transport.start()
   if (preferences.pendingProject !== undefined && preferences.pendingProject !== null) await saveExecutionTarget(settingsPath, target)
   const origin = new URL(ready.url).origin
+  const toolKeys = parseReleaseKeyring(JSON.parse(await readFile(app.isPackaged
+    ? join(resourceRoot, 'native-tools-public-keys.json') : join(installRoot, 'resources/native-tools-public-keys.json'), 'utf8')))
   const nativeTools = installNativeTools({ window, origin,
-    installRoot: app.isPackaged ? installRoot : join(installRoot, `toolpacks/stage-${app.getVersion()}`), userData: app.getPath('userData') })
+    installRoot: app.isPackaged ? installRoot : join(installRoot, `toolpacks/stage-${app.getVersion()}`), userData: app.getPath('userData'),
+    download: {
+      keys: toolKeys,
+      metadataPath: app.isPackaged ? join(resourceRoot, 'native-tools-metadata.json')
+        : join(installRoot, `release/offline-${app.getVersion()}/native-tools-metadata.json`),
+      sourcePath: app.isPackaged ? join(resourceRoot, 'native-tools-download.json') : join(installRoot, 'resources/native-tools-download.json'),
+      catalogPath: app.isPackaged ? join(resourceRoot, 'native-tools-catalog.json') : join(installRoot, 'resources/native-tools-catalog.json'),
+    } })
   closeNativeTools = () => nativeTools.close()
   const trustedSender = (event: Pick<Electron.IpcMainEvent, 'sender' | 'senderFrame'>) => event.sender === window.webContents
     && event.senderFrame === window.webContents.mainFrame && new URL(event.senderFrame.url).origin === origin

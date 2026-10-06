@@ -2,6 +2,8 @@
 
 - Profile: Rainy desktop, with a recorded conversation
 - Common tools is the initial tab; IceSky frames before visiting: 0
+- Online tool pack: download action and manual update check available
+- Signed channel check: tool pack is up to date; installed catalog retained
 - Unverified entry: CyberChef — launch enabled
 - Launch feedback: 已发送 CyberChef 的启动请求
 - Missing entry: 7-Zip — launch disabled (7zFM.exe)

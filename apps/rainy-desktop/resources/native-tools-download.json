@@ -1,0 +1,38 @@
+{
+  "volumes": [
+    {
+      "path": "native-tools-5d33412377a414ad.tar.gz.001",
+      "category": "offline",
+      "bytes": 2147483648,
+      "sha256": "c099074a75a75a1bc128c2e90266fd10931ccb0d64e3d4c87088061ebd89439d",
+      "pieces": [
+        {
+          "file": "rainy-e5730173f56b3921c367.001",
+          "bytes": 1073741824,
+          "sha256": "0fe2f2fa9e4956eb06bbdacf11fad8730501d148750f591498025f904d0d696d"
+        },
+        {
+          "file": "rainy-e5730173f56b3921c367.002",
+          "bytes": 1073741824,
+          "sha256": "a15b2ed0597ab563119817659f8ac6893138b6faac7da99196439660719e7458"
+        }
+      ]
+    },
+    {
+      "path": "native-tools-5d33412377a414ad.tar.gz.002",
+      "category": "offline",
+      "bytes": 171185390,
+      "sha256": "7f50a8759bf9e42e166d73e38d13106ae3a9a4495cd1272237127595050ac07d",
+      "pieces": [
+        {
+          "file": "rainy-e251f4e414eaa8e7bbba.001",
+          "bytes": 171185390,
+          "sha256": "7f50a8759bf9e42e166d73e38d13106ae3a9a4495cd1272237127595050ac07d"
+        }
+      ]
+    }
+  ],
+  "version": 1,
+  "packId": "5d33412377a414adac0839c66521eefed002c6c8356d8343d35de835dced8eb7",
+  "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.0-resources/"
+}

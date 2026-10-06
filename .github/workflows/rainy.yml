@@ -50,6 +50,8 @@ jobs:
           packages/client/ui-rainy/tests/ide-shell.client.spec.tsx
           packages/client/ui-rainy/tests/strata-settings.client.spec.tsx
           packages/client/ui-rainy/tests/strata-controller.client.spec.ts
+          packages/client/ui-rainy/tests/native-tools.client.spec.ts
+          packages/client/ui-rainy/tests/tool-catalog.client.spec.tsx
       - name: Rainy desktop regression tests
         working-directory: apps/rainy-desktop
         run: >-
@@ -58,7 +60,9 @@ jobs:
           tests/transport.test.ts tests/transport-lifecycle.test.ts
           tests/runtime-environments.test.ts tests/release-integrity.test.ts
           tests/strata.test.ts tests/strata-health.test.ts tests/models-strata.test.ts
+          tests/native-tools-download.test.ts tests/native-tools.test.ts
+          tests/native-tool-windows-lifecycle.test.ts
       - name: Release signing regression tests
-        run: node --test apps/rainy-desktop/tests/sign-release.test.mjs
+        run: node --test apps/rainy-desktop/tests/sign-release.test.mjs apps/rainy-desktop/tests/sign-tool-channel.test.mjs
       - name: Release transport regression tests
         run: node --test apps/rainy-desktop/tests/release-assets.test.mjs apps/rainy-desktop/tests/strata-runtime.test.mjs

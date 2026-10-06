@@ -86,6 +86,11 @@ async function installCatalogFixture(page: Page): Promise<void> {
       ?? JSON.stringify(catalog.preferences)) as NativeToolPreferences
     const save = (value: NativeToolPreferences): void => { localStorage.setItem(storageKey, JSON.stringify(value)) }
     const bridge: NativeToolsBridge = {
+      async checkToolUpdates() { return { phase: 'current', version: '1.0.0', error: '' } },
+      async getDownloadState() { return { phase: 'idle', completedBytes: 0, totalBytes: 2318669038, error: '' } },
+      async downloadTools() {},
+      async cancelDownload() {},
+      onDownloadProgress() { return () => {} },
       async listTools() { return { ...catalog, preferences: preferences() } },
       async setFavorites(favorites) { save({ ...preferences(), favorites }) },
       async launchTool(id: NativeToolId, variant?: 'x32') {
@@ -276,10 +281,15 @@ describe.skipIf(MODE === 'record')('web e2e: Rainy CTF recorded conversation dra
       const recent = await directory.getByRole('heading').allTextContents()
       expect(recent).toEqual(['CyberChef'])
       await mkdir(CATALOG_DIRECTORY, { recursive: true })
+      await directory.getByRole('button', { name: /^(Check tool updates|检查工具更新)$/ }).click()
+      await directory.getByText(/^(Tool pack is up to date|工具包已是最新版本)$/).waitFor({ state: 'visible' })
+      await directory.getByRole('button', { name: /^(Download all tools|下载全部工具)$/ }).waitFor({ state: 'visible' })
       await compareOrRefreshGolden(join(CATALOG_DIRECTORY, 'common-tools.expected.md'), [
         '# Rainy common tools (native preload fixture)', '',
         '- Profile: Rainy desktop, with a recorded conversation',
         '- Common tools is the initial tab; IceSky frames before visiting: 0',
+        '- Online tool pack: download action and manual update check available',
+        '- Signed channel check: tool pack is up to date; installed catalog retained',
         '- Unverified entry: CyberChef — launch enabled',
         `- Launch feedback: ${launchFeedback}`,
         '- Missing entry: 7-Zip — launch disabled (7zFM.exe)',

@@ -2,7 +2,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import { installWindowChrome } from './preload-chrome.ts'
 import type { EnvironmentAction, EnvironmentSnapshot } from './environment.ts'
-import type { NativeToolCatalog, NativeToolId, NativeToolLaunchResult } from '@deepseek-ai/dsh-client-ui-rainy/native-tools-protocol'
+import type { NativeToolCatalog, NativeToolId, NativeToolLaunchResult, NativeToolsDownloadState, NativeToolsUpdateState } from '@deepseek-ai/dsh-client-ui-rainy/native-tools-protocol'
 import type { ToolPackWindowProgress } from './toolpack-maintenance.ts'
 import type { IdeNativeDirectory } from './ide-native.ts'
 import type { IdeEnvironmentAction, IdeEnvironmentSnapshot } from './ide-environment.ts'
@@ -85,6 +85,15 @@ if (process.isMainFrame && location.protocol === 'http:' && location.hostname ==
     },
   })
   contextBridge.exposeInMainWorld('__RAINY_TOOLS__', {
+    checkToolUpdates: (): Promise<NativeToolsUpdateState> => ipcRenderer.invoke('rainy:tools-check-updates'),
+    getDownloadState: (): Promise<NativeToolsDownloadState> => ipcRenderer.invoke('rainy:tools-download-state'),
+    downloadTools: (): Promise<void> => ipcRenderer.invoke('rainy:tools-download'),
+    cancelDownload: (): Promise<void> => ipcRenderer.invoke('rainy:tools-download-cancel'),
+    onDownloadProgress: (receive: (state: NativeToolsDownloadState) => void): (() => void) => {
+      const listener = (_event: Electron.IpcRendererEvent, state: NativeToolsDownloadState): void => { receive(state) }
+      ipcRenderer.on('rainy:tools-download-progress', listener)
+      return () => { ipcRenderer.removeListener('rainy:tools-download-progress', listener) }
+    },
     listTools: (): Promise<NativeToolCatalog> => ipcRenderer.invoke('rainy:tools-list'),
     launchTool: (id: NativeToolId, variant?: 'x32'): Promise<NativeToolLaunchResult> => ipcRenderer.invoke('rainy:tools-launch', { id, ...variant === undefined ? {} : { variant } }),
     setFavorites: (ids: readonly NativeToolId[]): Promise<void> => ipcRenderer.invoke('rainy:tools-favorites', ids),

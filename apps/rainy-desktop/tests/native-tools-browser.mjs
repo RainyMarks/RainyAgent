@@ -49,6 +49,9 @@ try {
   })
   await harness.context.addInitScript(() => {
     window.__RAINY_TOOLS__ = {
+      checkToolUpdates: async () => ({ phase: 'current', version: '1.0.0', error: '' }),
+      getDownloadState: async () => ({ phase: 'idle', completedBytes: 0, totalBytes: 2318669038, error: '' }),
+      downloadTools: async () => {}, cancelDownload: async () => {}, onDownloadProgress: () => () => {},
       listTools: () => window.__nativeCatalogRequest('list'),
       setFavorites: ids => window.__nativeCatalogRequest('favorites', ids),
       launchTool: (id, variant) => window.__nativeCatalogRequest('launch', { id, ...variant === undefined ? {} : { variant } }),
