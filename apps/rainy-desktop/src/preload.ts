@@ -8,9 +8,19 @@ import type { IdeNativeDirectory } from './ide-native.ts'
 import type { IdeEnvironmentAction, IdeEnvironmentSnapshot } from './ide-environment.ts'
 import type { StrataNativeHost, StrataModelPicker, StrataSettings } from '@deepseek-ai/dsh-client-ui-rainy/strata-protocol'
 
+/** Payload sent by the main process on each progress channel. */
+interface ProgressChannels {
+  'rainy:toolpack-progress': ToolPackWindowProgress
+  'rainy:environment-progress': EnvironmentSnapshot
+  'rainy:ide-environment-progress': IdeEnvironmentSnapshot
+  'rainy:tools-download-progress': NativeToolsDownloadState
+  /** Validated by the receiving bridge, which forwards only the message text. */
+  'rainy:component-progress': unknown
+}
+
 /** Forward one main-process event channel to a page listener. @returns the unsubscribe callback. */
-function subscribe<T>(channel: string, listener: (value: T) => void): () => void {
-  const receive = (_event: Electron.IpcRendererEvent, value: T): void => { listener(value) }
+function subscribe<C extends keyof ProgressChannels>(channel: C, listener: (value: ProgressChannels[C]) => void): () => void {
+  const receive = (_event: Electron.IpcRendererEvent, value: ProgressChannels[C]): void => { listener(value) }
   ipcRenderer.on(channel, receive)
   return () => { ipcRenderer.removeListener(channel, receive) }
 }
@@ -71,7 +81,7 @@ if (process.isMainFrame && location.protocol === 'http:' && location.hostname ==
     targets: () => ipcRenderer.invoke('rainy:runtime-targets'),
     switchTarget: (request: { targetId: string; workspaceId?: string }) => ipcRenderer.invoke('rainy:runtime-switch', request),
     prepare: (): Promise<void> => ipcRenderer.invoke('rainy:ide-prepare-development'),
-    onProgress: (listener: (message: string) => void) => subscribe<unknown>('rainy:component-progress', (value) => {
+    onProgress: (listener: (message: string) => void) => subscribe('rainy:component-progress', (value) => {
       if (value !== null && typeof value === 'object' && 'message' in value && typeof value.message === 'string') listener(value.message)
     }),
   })

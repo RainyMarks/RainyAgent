@@ -1,5 +1,5 @@
 /** RainyAgent desktop carrier for one explicitly selected native Windows or WSL Host. */
-import { app, BrowserWindow, dialog, Menu, shell, ipcMain, nativeTheme } from 'electron'
+import { app, BrowserWindow, dialog, Menu, screen, shell, ipcMain, nativeTheme } from 'electron'
 import { mkdirSync, appendFileSync, existsSync, writeFileSync } from 'node:fs'
 import { dirname, join, posix, resolve, win32 } from 'node:path'
 import { execFile, execFileSync } from 'node:child_process'
@@ -32,6 +32,8 @@ import { embeddedReleaseKeys, parseReleaseKeyring } from './release-trust.ts'
 import { ensureReleaseIntegrity, ReleaseIntegrityError } from './release-integrity.ts'
 import type { ReleaseIntegrity } from './release-integrity.ts'
 import { startupPage, startupProgress, WINDOW_BACKGROUND } from './startup-splash.ts'
+import { initialPlacement, readWindowState, writeWindowState } from './window-state.ts'
+import type { WindowState } from './window-state.ts'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import { allowsClipboardWrite } from './clipboard-policy.ts'
 
@@ -156,13 +158,32 @@ async function start(): Promise<void> {
   const preloadPath = join(__dirname, 'preload.cjs')
   const icon = app.isPackaged ? join(resourceRoot, 'icon.ico') : resolve(__dirname, '../build/icon.ico')
   const dark = nativeTheme.shouldUseDarkColors
-  const window = new BrowserWindow({ title: 'RainyAgent', width: 1380, height: 920, minWidth: 950, minHeight: 650, icon,
-    titleBarStyle: 'hidden', titleBarOverlay: { height: CAPTION_HEIGHT, color: '#00000000', symbolColor: dark ? '#eeeeee' : '#171717' },
+  const windowStatePath = join(userData, 'window-state.json')
+  const placement = initialPlacement(await readWindowState(windowStatePath),
+    { workAreas: screen.getAllDisplays().map(display => display.workArea), primary: screen.getPrimaryDisplay().workArea },
+    { width: 1380, height: 920 }, { width: 950, height: 650 })
+  const window = new BrowserWindow({ title: 'RainyAgent', ...placement.bounds, minWidth: 950, minHeight: 650, icon, show: false,
+    titleBarStyle: 'hidden',
+    titleBarOverlay: { height: CAPTION_HEIGHT, color: '#00000000', symbolColor: dark ? '#eeeeee' : '#171717' },
     backgroundColor: dark ? WINDOW_BACKGROUND.dark : WINDOW_BACKGROUND.light,
     webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true, preload: preloadPath } })
   mainWindowCreated = true
   window.setMenuBarVisibility(false)
+  // Geometry is tracked as it changes because a page-initiated close destroys the window without a 'close' event.
+  let geometry: WindowState | undefined
+  const trackGeometry = () => {
+    if (!window.isMinimized()) geometry = { version: 1, bounds: window.getNormalBounds(), maximized: window.isMaximized() }
+  }
+  window.on('resize', trackGeometry).on('move', trackGeometry).on('maximize', trackGeometry).on('unmaximize', trackGeometry)
+  window.on('closed', () => {
+    if (geometry === undefined) return
+    try { writeWindowState(windowStatePath, geometry) }
+    catch (error) { appendFileSync(logPath, `Window state was not saved: ${errorText(error)}\n`) }
+  })
   await window.loadURL(startupPage(dark))
+  // The first visible frame is the startup page rather than an empty window.
+  if (placement.maximized) window.maximize()
+  window.show()
   const progress = startupProgress(window)
   timeline.mark('window')
   let integrity: ReleaseIntegrity | undefined
@@ -198,7 +219,8 @@ async function start(): Promise<void> {
       [runtimeFiles.archive, runtimeFiles.metadata, runtimeFiles.installer, carrierState, ...uvx === undefined ? [] : [uvx]])
     const output = (await run('wsl.exe', ['-d', distribution, '--exec', 'python3', installer, archive, metadata],
       { windowsHide: true, timeout: 180000 })).stdout
-    return { installed: JSON.parse(output) as unknown, carrierState: state, uvx: mappedUvx }
+    const installed: unknown = JSON.parse(output)
+    return { installed, carrierState: state, uvx: mappedUvx }
   }
   let prepared: Awaited<ReturnType<typeof prepareWsl>> | undefined
   if (target.kind === 'wsl' && knownTarget) {
