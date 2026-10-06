@@ -349,7 +349,7 @@ async function readBounded(
     if (overflow === 'error') throw new InstructionBudgetError([file.absolutePath], maxSourceBytes)
     return undefined
   }
-  if (file.size !== undefined && file.size > maxSourceBytes) {  oversized(); return }
+  if (file.size !== undefined && file.size > maxSourceBytes) return oversized()
   try {
     const chunks = fileSystem === undefined || file.target === undefined
       ? nodeTextChunks(file.absolutePath, signal)
@@ -359,7 +359,7 @@ async function readBounded(
     for await (const chunk of chunks) {
       signal?.throwIfAborted()
       bytes += Buffer.byteLength(chunk, 'utf8')
-      if (bytes > maxSourceBytes) {  oversized(); return }
+      if (bytes > maxSourceBytes) return oversized()
       parts.push(chunk)
     }
     signal?.throwIfAborted()
