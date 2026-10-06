@@ -8,6 +8,8 @@ import { loadEditorAssets } from './editor-loader.ts'
 import css from './IdeShell.module.css'
 import { fileKey, fileLabel } from './ide-paths.ts'
 import { Choice } from './Choice.tsx'
+import { IconAction } from './IconAction.tsx'
+import { Button, IconCloseOutlineRegular, IconPlusOutlineRegular, IconStopFillRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 
 type ExecutionState = ReturnType<IdeExecutionModel['state']['getSnapshot']>
 interface Props {
@@ -161,12 +163,12 @@ export function IdeBottom({ state, executionState, execution, model, t, reveal }
   }
   return (
     <>
-      <div className={css.paneHeader} role="tablist" aria-label={t('ideToggleBottom')}>
+      <div className={`${css.paneHeader} ${css.panelHeader}`} role="tablist" aria-label={t('ideToggleBottom')}>
         {(['terminal', 'problems', 'output', 'debug'] as const).map(tab => (
           <button
             key={tab}
             type="button"
-            className={css.button}
+            className={`${css.button} ${css.panelTab}`}
             role="tab"
             aria-selected={selectedTab === tab}
             onClick={() => {
@@ -195,39 +197,16 @@ export function IdeBottom({ state, executionState, execution, model, t, reveal }
             if (operation !== undefined) execution.select(operation.id)
           }}
         />
-        <button
-          type="button"
-          className={css.button}
-          title={t('ideNewTerminal')}
-          aria-label={t('ideNewTerminal')}
-          disabled={state.workspace === null}
-          onClick={() => {
-            run(execution.terminal())
-            model.layout({ bottomTab: 'terminal' })
-          }}
-        >
-          ＋
-        </button>
-        <button
-          type="button"
-          className={css.button}
-          disabled={executionState.selected === null}
-          onClick={() => {
-            run(execution.stop())
-          }}
-        >
-          {t('ideStop')}
-        </button>
-        <button
-          type="button"
-          className={css.button}
-          aria-label={t('ideClose')}
-          onClick={() => {
-            model.layout({ bottomVisible: false })
-          }}
-        >
-          ×
-        </button>
+        <IconAction label={t('ideNewTerminal')} disabled={state.workspace === null} onClick={() => {
+          run(execution.terminal())
+          model.layout({ bottomTab: 'terminal' })
+        }}><IconPlusOutlineRegular size={16} /></IconAction>
+        <IconAction label={t('ideStop')} disabled={executionState.selected === null} onClick={() => { run(execution.stop()) }}>
+          <IconStopFillRegular size={14} />
+        </IconAction>
+        <IconAction label={t('ideClose')} onClick={() => { model.layout({ bottomVisible: false }) }}>
+          <IconCloseOutlineRegular size={14} />
+        </IconAction>
       </div>
       {executionState.truncated && (
         <div className={css.notice} role="status">
@@ -470,9 +449,5 @@ export function IdeBottom({ state, executionState, execution, model, t, reveal }
 }
 
 function ButtonLike({ label, action, disabled }: { label: string; action: () => void; disabled?: boolean }) {
-  return (
-    <button type="button" className={css.button} disabled={disabled} onClick={action}>
-      {label}
-    </button>
-  )
+  return <Button variant="outline" size="sm" disabled={disabled} onClick={action}>{label}</Button>
 }
