@@ -1,10 +1,12 @@
 /** Versioned project notes shared by the Windows and WSL hosts of one desktop. */
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { estimateText } from './budget.ts'
 
+/** Persisted note length limit, shared by the record schema and the human edit message. */
+const MAX_NOTE_LENGTH = 2048
 const identifier = z.string().regex(/^[a-zA-Z0-9_.:-]{1,160}$/)
 const sourceSchema = z.object({
   formatVersion: z.number().int().nonnegative().default(4),
@@ -15,7 +17,7 @@ const sourceSchema = z.object({
 })
 const itemSchema = z.object({
   id: z.uuid(),
-  text: z.string().min(1).max(2048),
+  text: z.string().min(1).max(MAX_NOTE_LENGTH),
   sources: z.array(sourceSchema).min(1).max(8),
   updatedAt: z.iso.datetime(),
   editedByUser: z.literal(true).optional(),
@@ -224,8 +226,13 @@ export class ProjectMemoryStore {
       const path = this.path(projectId)
       await mkdir(join(this.root, projectId), { recursive: true, mode: 0o700 })
       const temporary = path + '.' + randomUUID() + '.tmp'
-      await writeFile(temporary, JSON.stringify(next) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 })
-      await rename(temporary, path)
+      try {
+        await writeFile(temporary, JSON.stringify(next) + '\n', { encoding: 'utf8', flag: 'wx', mode: 0o600 })
+        await rename(temporary, path)
+      } catch (error) {
+        await rm(temporary, { force: true }).catch((_cleanupError: unknown) => { /* Preserve the original write failure. */ })
+        throw error
+      }
       return next
     })
     this.tail = task.catch(() => undefined)
@@ -272,6 +279,7 @@ export class ProjectMemoryStore {
       const updatedAt = new Date().toISOString()
       const text = redactMemoryText(edit.text.trim())
       if (!text) throw new Error('项目记忆不能为空。')
+      if (text.length > MAX_NOTE_LENGTH) throw new Error(`单条项目记忆不能超过 ${MAX_NOTE_LENGTH} 个字符。`)
       const items = current.items.map(item =>
         item.id === edit.id ? { ...item, text, updatedAt, editedByUser: true as const } : item,
       )

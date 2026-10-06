@@ -66,6 +66,9 @@ describe('project memory records', () => {
     expect(() =>
       applyMemoryDelta(edited, { notes: [], remove: [note.id] }, evidence, 1024, '2026-10-02T00:02:00.000Z'),
     ).toThrow('manually edited')
+    await expect(
+      store.edit('project-a', { id: note.id, text: 'x'.repeat(2049), expectedRevision: edited.revision }, 100000),
+    ).rejects.toThrow('不能超过 2048 个字符')
   })
 
   it('preserves deletion exclusions and source watermarks across reload', async () => {

@@ -1,7 +1,7 @@
 /** Existing interpreter discovery, functional probes and workspace-owned environment selection. */
 import { execFile } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
-import { access, mkdir, open, readFile, readdir, rename, stat } from 'node:fs/promises'
+import { access, mkdir, open, readFile, readdir, rename, rm, stat } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { homedir } from 'node:os'
@@ -210,9 +210,14 @@ export class RuntimeEnvironments {
     await mkdir(this.options.root, { recursive: true, mode: 0o700 })
     const temporary = join(this.options.root, `runtime-environments.${randomUUID()}.pending`)
     const file = await open(temporary, 'wx', 0o600)
-    try { await file.writeFile(JSON.stringify(this.state, null, 2) + '\n'); await file.sync() }
-    finally { await file.close() }
-    await rename(temporary, join(this.options.root, 'runtime-environments.json'))
+    try {
+      try { await file.writeFile(JSON.stringify(this.state, null, 2) + '\n'); await file.sync() }
+      finally { await file.close() }
+      await rename(temporary, join(this.options.root, 'runtime-environments.json'))
+    } catch (error) {
+      await rm(temporary, { force: true }).catch((_cleanupError: unknown) => { /* Preserve the original write failure. */ })
+      throw error
+    }
   }
 
   private async candidates(workspaceId: WorkspaceId): Promise<{ language: RuntimeLanguage; path: string; source: RuntimeCandidate['source'] }[]> {
@@ -284,19 +289,17 @@ export class RuntimeEnvironments {
   }
 
   /** @param workspaceId - current Host workspace. @returns saved choices and cached functional observations. */
-  status(workspaceId: WorkspaceId): Promise<RuntimeSnapshot> {
-    return new Promise((accept) => {
-      this.workspace(workspaceId)
-      const candidates = this.observations.get(workspaceId) ?? []
-      const selected: RuntimeSnapshot['selected'] = {}
-      for (const [language, path] of Object.entries(this.savedWorkspace(workspaceId)?.selected ?? {})) {
-        const family = languageSchema.parse(language)
-        selected[family] = candidates.find(candidate => candidate.language === family && candidate.path === path)
-          ?? { id: identity(this.target, family, path), language: family, path, source: 'manual', platform: this.platform,
-            version: null, ready: false, capabilities: [], error: 'Recheck this environment to confirm its current capabilities.' }
-      }
-      accept({ targetId: this.target, platform: this.platform, workspaceId, selected, candidates })
-    })
+  async status(workspaceId: WorkspaceId): Promise<RuntimeSnapshot> {
+    this.workspace(workspaceId)
+    const candidates = this.observations.get(workspaceId) ?? []
+    const selected: RuntimeSnapshot['selected'] = {}
+    for (const [language, path] of Object.entries(this.savedWorkspace(workspaceId)?.selected ?? {})) {
+      const family = languageSchema.parse(language)
+      selected[family] = candidates.find(candidate => candidate.language === family && candidate.path === path)
+        ?? { id: identity(this.target, family, path), language: family, path, source: 'manual', platform: this.platform,
+          version: null, ready: false, capabilities: [], error: 'Recheck this environment to confirm its current capabilities.' }
+    }
+    return { targetId: this.target, platform: this.platform, workspaceId, selected, candidates }
   }
 
   /**
