@@ -84,8 +84,7 @@ export class IceSkyStaticAssets {
       let raw = decodeURIComponent(url.pathname.slice('/rainy/icesky'.length)).replace(/^\/+/, '') || 'index.html'
       let versioned = false
       if (raw.startsWith('v/')) {
-        const [marker, version, ...parts] = raw.split('/')
-        void marker
+        const [, version, ...parts] = raw.split('/')
         if (version !== this.version) { response.writeHead(410, { 'Cache-Control': 'no-store' }); response.end(); return }
         raw = parts.join('/')
         versioned = true
@@ -103,15 +102,9 @@ export class IceSkyStaticAssets {
       response.setHeader('Content-Length', index?.bytes.length ?? asset.size)
       if (request.method === 'HEAD') { response.writeHead(200); response.end(); return }
       if (index) { response.writeHead(200); response.end(index.bytes); return }
-      const file = await open(resolve(this.root, raw), 'r')
+      // Registered before the file opens, so close() also stops a request that is still opening its file.
       const controller = new AbortController()
-      const disconnected = (): void => { if (!response.writableFinished) controller.abort() }
-      response.once('close', disconnected)
-      const stream = file.createReadStream()
-      const job = (async () => {
-        try { await pipeline(stream, response, { signal: controller.signal }) }
-        finally { response.removeListener('close', disconnected); await file.close() }
-      })()
+      const job = this.stream(resolve(this.root, raw), response, controller)
       this.streams.set(controller, job)
       try { await job }
       finally { this.streams.delete(controller) }
@@ -123,6 +116,14 @@ export class IceSkyStaticAssets {
       response.setHeader('Cache-Control', 'no-store')
       response.writeHead(404); response.end()
     }
+  }
+
+  private async stream(path: string, response: ServerResponse, controller: AbortController): Promise<void> {
+    const file = await open(path, 'r')
+    const disconnected = (): void => { if (!response.writableFinished) controller.abort() }
+    response.once('close', disconnected)
+    try { await pipeline(file.createReadStream(), response, { signal: controller.signal }) }
+    finally { response.removeListener('close', disconnected); await file.close() }
   }
 
   /** @returns resolution after owned streams stop; new requests reject immediately. */

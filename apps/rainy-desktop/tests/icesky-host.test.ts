@@ -1,6 +1,6 @@
 /** Real JSON storage and HTTP resource behavior behind the human workbench. */
 import { createHash } from 'node:crypto'
-import { createServer } from 'node:http'
+import { createServer, request as httpRequest } from 'node:http'
 import type { IncomingMessage, ServerResponse } from 'node:http'
 import { mkdir, mkdtemp, readFile, rename, rm, rmdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
@@ -15,6 +15,7 @@ import { SessionId } from '@deepseek-ai/dsh-session'
 import { createIceSkyDraftHandler, iceSkyDraftSpec, IceSkyDraftStore } from '../src/icesky-state.ts'
 import type { IceSkyDraftEnvelope, IceSkyDraftScope } from '../src/icesky-state.ts'
 import { IceSkyStaticAssets } from '../src/icesky-static.ts'
+import { createIceSkyProxyHandler } from '../src/icesky-proxy.ts'
 
 const cleanups: Array<() => Promise<void>> = []
 afterEach(async () => {
@@ -249,5 +250,32 @@ describe('IceSky content-versioned resources', () => {
     const { root } = await assetFixture()
     await writeFile(join(root, 'index.html'), '<html><head></head><body>changed</body></html>')
     await expect(IceSkyStaticAssets.open(root)).rejects.toThrow('differs')
+  })
+})
+
+describe('IceSky model relay', () => {
+  it('relays a request body whose multi-byte characters span network chunks', async () => {
+    let received = ''
+    const upstream = await httpFixture(async (request, response) => {
+      const chunks: Buffer[] = []
+      for await (const chunk of request) chunks.push(chunk as Buffer)
+      received = Buffer.concat(chunks).toString('utf8')
+      response.writeHead(200, { 'Content-Type': 'application/json' })
+      response.end('{}')
+    })
+    const origin = await httpFixture(createIceSkyProxyHandler('openai', 'chat', request => request.headers.cookie === 'fixture=yes' ? undefined : 403))
+    const body = Buffer.from(JSON.stringify({ messages: [{ role: 'user', content: '雨天测试' }] }))
+    const split = body.indexOf(Buffer.from('雨')) + 1
+    const status = await new Promise<number | undefined>((resolve, reject) => {
+      const request = httpRequest(`${origin}/api/openai/chat`, { method: 'POST', headers: { cookie: 'fixture=yes', 'x-openai-base-url': upstream } }, (response) => {
+        response.resume()
+        response.once('end', () => { resolve(response.statusCode) })
+      })
+      request.once('error', reject)
+      request.write(body.subarray(0, split))
+      setTimeout(() => { request.end(body.subarray(split)) }, 50)
+    })
+    expect(status).toBe(200)
+    expect(received).toBe(body.toString('utf8'))
   })
 })

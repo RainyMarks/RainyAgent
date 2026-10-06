@@ -1,5 +1,6 @@
 /** Durable, revision-checked human workbench drafts; credentials stay outside this domain. */
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import { readRequestBytes } from './request-body.ts'
 import type { Context } from '@deepseek-ai/cordis'
 import s from '@deepseek-ai/schemastery'
 import { brandString } from '@deepseek-ai/dsh-brand'
@@ -142,18 +143,9 @@ async function scopeOf(request: IncomingMessage, options: IceSkyDraftRouteOption
 }
 
 async function readRequest(request: IncomingMessage, maxBytes: number): Promise<unknown> {
-  const declared = request.headers['content-length']
-  if (typeof declared === 'string' && Number(declared) > maxBytes) throw new RequestFailure(413, 'draft-too-large', '草稿超过保存大小限制。')
-  const chunks: Buffer[] = []
-  let bytes = 0
-  for await (const chunk of request) {
-    const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk))
-    bytes += buffer.length
-    if (bytes > maxBytes) throw new RequestFailure(413, 'draft-too-large', '草稿超过保存大小限制。')
-    chunks.push(buffer)
-  }
-  try { return JSON.parse(Buffer.concat(chunks).toString('utf8')) }
-  catch { throw new RequestFailure(400, 'invalid-draft', '草稿 JSON 无效。') }
+  const body = await readRequestBytes(request, maxBytes, () => new RequestFailure(413, 'draft-too-large', '草稿超过保存大小限制。'))
+  try { return JSON.parse(body.toString('utf8')) }
+  catch (_invalidDraft) { throw new RequestFailure(400, 'invalid-draft', '草稿 JSON 无效。') }
 }
 
 function json(response: ServerResponse, status: number, value: object): void {
