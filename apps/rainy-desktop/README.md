@@ -52,6 +52,7 @@ Runtime discovery inspects project virtual environments, Conda registrations, co
 
 Offline components provide isolated Python 3.12, Node 24, Windows PHP, native C/C++ tools, and separate CPU or CUDA scientific environments. Scientific components include NumPy, SciPy, pandas, scikit-learn, image processing, Jupyter and common deep-learning libraries, with matched PyTorch 2.11, torchvision 0.26 and torchaudio 2.11. Import verifies the release catalog, archive and file inventory before selecting a content-addressed generation. Existing user environments and global PATH are unchanged. CUDA needs a compatible NVIDIA driver. The Ubuntu 26.04 amd64 development wizard installs its verified C/C++, GDB, CMake, clangd and PHP packages with downloads disabled.
 
+<a id="ctf-workbench"></a>
 ## CTF workbench
 
 Tool publishers upload verified archive pieces to a versioned resources release, then run `scripts/sign-tool-channel.mjs` with the prepared source, metadata and catalog, the release version, and a higher `--revision`. Commit its public output as `toolpacks/native-tools-channel.signed.json`. Use the tool publisher identity matching `resources/native-tools-public-keys.json`; application rebuilds can retain those public keys without owning the tool signing key. Clients do not accept new trust keys from the channel. Revisions with no tool-pack identity change do not prompt another download.

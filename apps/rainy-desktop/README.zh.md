@@ -52,6 +52,7 @@ Monaco 提供多文件标签、语法高亮、查找替换、撤销、显式保�
 
 离线组件提供隔离的 Python 3.12、Node 24、Windows PHP、原生 C/C++ 工具，以及独立 CPU 或 CUDA 科学计算环境。科学组件包含 NumPy、SciPy、pandas、scikit-learn、图像处理、Jupyter 和常用深度学习库，并配套 PyTorch 2.11、torchvision 0.26 与 torchaudio 2.11。导入先核对发行目录、归档及逐文件清单，再选择按摘要存放的代际。已有用户环境和全局 PATH 保持不变。CUDA 需要兼容的 NVIDIA 驱动。Ubuntu 26.04 amd64 开发工具向导使用经过校验的 C/C++、GDB、CMake、clangd 和 PHP 软件包，安装时禁用下载。
 
+<a id="ctf-workbench"></a>
 ## CTF 工作台
 
 工具发布者先将校验后的分片上传到固定版本的资源 Release，再使用 `scripts/sign-tool-channel.mjs` 指定来源清单、安装元数据、工具目录、发行版本及更大的 `--revision`。将公开输出提交到 `toolpacks/native-tools-channel.signed.json`。签名身份须匹配 `resources/native-tools-public-keys.json`；重新构建应用只需保留这些公钥，无需持有工具签名私钥。客户端不会从通道接受新的信任公钥。工具包身份未变化的通道修订不会再次提示下载。
