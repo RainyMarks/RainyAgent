@@ -633,11 +633,14 @@ export class IdeModel {
       return true
     } catch (error) {
       if (error instanceof IdeRequestError && error.code === 'version-conflict') {
-        const disk = await this.api.request({ op: 'files.read', workspaceId: before.workspace.workspaceId, path })
+        let disk: IdeFileDocument | undefined
+        // A file deleted on disk cannot be compared; the conflict itself is still reported.
+        try { disk = await this.api.request({ op: 'files.read', workspaceId: before.workspace.workspaceId, path }) }
+        catch (_unreadableDisk) { disk = undefined }
         const current = this.state.getSnapshot()
         if (current.workspace?.workspaceId !== before.workspace.workspaceId) return false
         const latest = current.buffers[path]
-        if (latest !== undefined) {
+        if (latest !== undefined && disk !== undefined) {
           this.patch({
             buffers: {
               ...current.buffers,

@@ -347,6 +347,17 @@ describe('complete source and conflicts', () => {
     )
   })
 
+  it('reports a save conflict and keeps the buffer when the disk copy was deleted', async () => {
+    const { model, request } = await fixture()
+    model.change('main.py', 'local edit')
+    request
+      .mockRejectedValueOnce(new IdeRequestError('version-conflict', 'disk changed'))
+      .mockRejectedValueOnce(new IdeRequestError('not-found', 'gone'))
+    expect(await model.save()).toBe(false)
+    expect(model.state.getSnapshot().error).toBe('disk changed')
+    expect(model.state.getSnapshot().buffers['main.py']).toMatchObject({ text: 'local edit', dirty: true })
+  })
+
   it('retains edits made while a disk save is pending', async () => {
     const { model, request } = await fixture()
     model.change('main.py', 'first')

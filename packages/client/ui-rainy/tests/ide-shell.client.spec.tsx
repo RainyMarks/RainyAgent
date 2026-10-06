@@ -308,6 +308,19 @@ describe('IDE shell', () => {
     expect(h.dispose).not.toHaveBeenCalled()
   })
 
+  it('bounds keyboard and stored bottom panel sizes like pointer resizing', async () => {
+    const h = await fixture()
+    const limit = window.innerHeight - 230
+    act(() => { h.model.layout({ bottomVisible: true, bottomHeight: limit + 500 }) })
+    const separator = screen.getByRole('separator', { name: zh.ideResizeBottom })
+    const panel = separator.parentElement as HTMLElement
+    expect(panel.style.height).toBe(`${limit}px`)
+    for (let press = 0; press < 40; press++) fireEvent.keyDown(separator, { key: 'ArrowUp' })
+    expect(h.model.state.getSnapshot().data.layout.bottomHeight).toBe(limit)
+    fireEvent.keyDown(separator, { key: 'ArrowDown' })
+    expect(h.model.state.getSnapshot().data.layout.bottomHeight).toBe(limit - 16)
+  })
+
   it('collapses files at 950 px and can explicitly reveal history without replacing chat', async () => {
     const h = await fixture(950)
     fireEvent.click(screen.getByRole('button', { name: '显示或隐藏 AI 助手' }))

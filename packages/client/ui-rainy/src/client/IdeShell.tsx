@@ -258,11 +258,14 @@ export function IdeShell({
     if (!narrow) setNarrowNavigation(false)
   }, [narrow])
   const leftVisible = layout.sidebarVisible && (!narrow || narrowNavigation)
-  const leftPanelWidth = Math.min(360, Math.max(180, layout.sidebarWidth))
+  // Drag, keyboard and rendering share these bounds so a stored size never hides the editor.
+  const sidebarSize = (value: number): number => Math.min(360, Math.max(180, value))
+  const leftPanelWidth = sidebarSize(layout.sidebarWidth)
   const leftWidth = leftVisible && !narrow ? leftPanelWidth : 0
-  const rightWidth = layout.agentVisible
-    ? Math.min(Math.max(300, layout.agentWidth), Math.max(300, width - leftWidth - 300))
-    : 0
+  const agentSize = (value: number): number => Math.max(300, Math.min(width - leftWidth - 300, value))
+  const bottomSize = (value: number): number => Math.max(120, Math.min(window.innerHeight - 230, value))
+  const rightWidth = layout.agentVisible ? agentSize(layout.agentWidth) : 0
+  const bottomHeight = bottomSize(layout.bottomHeight)
   const centerWidth = Math.max(0, width - leftWidth - rightWidth)
   const activePath = state.data.activePath
   const roots = state.workspace === null ? [] : workspaceRoots(state.workspace)
@@ -479,17 +482,16 @@ export function IdeShell({
     drag.current = {
       side,
       origin: side === 'bottom' ? event.clientY : event.clientX,
-      size: side === 'left' ? leftWidth : side === 'right' ? rightWidth : layout.bottomHeight,
+      size: side === 'left' ? leftWidth : side === 'right' ? rightWidth : bottomHeight,
     }
   }
   const moveDrag = (event: PointerEvent<HTMLDivElement>): void => {
     const current = drag.current
     if (current === undefined) return
     const delta = (current.side === 'bottom' ? event.clientY : event.clientX) - current.origin
-    if (current.side === 'left') model.layout({ sidebarWidth: Math.max(180, Math.min(360, current.size + delta)) })
-    else if (current.side === 'right')
-      model.layout({ agentWidth: Math.max(300, Math.min(width - leftWidth - 300, current.size - delta)) })
-    else model.layout({ bottomHeight: Math.max(120, Math.min(window.innerHeight - 230, current.size - delta)) })
+    if (current.side === 'left') model.layout({ sidebarWidth: sidebarSize(current.size + delta) })
+    else if (current.side === 'right') model.layout({ agentWidth: agentSize(current.size - delta) })
+    else model.layout({ bottomHeight: bottomSize(current.size - delta) })
   }
   const resize = (side: 'left' | 'right' | 'bottom', position?: number) => (
     <div
@@ -518,9 +520,9 @@ export function IdeShell({
               : 0
         if (delta === 0) return
         event.preventDefault()
-        if (side === 'left') model.layout({ sidebarWidth: Math.min(360, Math.max(180, leftWidth + delta)) })
-        else if (side === 'right') model.layout({ agentWidth: Math.max(300, rightWidth - delta) })
-        else model.layout({ bottomHeight: Math.max(120, layout.bottomHeight - delta) })
+        if (side === 'left') model.layout({ sidebarWidth: sidebarSize(leftWidth + delta) })
+        else if (side === 'right') model.layout({ agentWidth: agentSize(rightWidth - delta) })
+        else model.layout({ bottomHeight: bottomSize(bottomHeight - delta) })
       }}
     />
   )
@@ -866,7 +868,7 @@ export function IdeShell({
         <div
           className={css.bottom}
           style={{
-            height: layout.bottomVisible ? layout.bottomHeight : 0,
+            height: layout.bottomVisible ? bottomHeight : 0,
             minHeight: layout.bottomVisible ? undefined : 0,
           }}
           hidden={!layout.bottomVisible}
