@@ -132,6 +132,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scrip
 
 [bootstrap-release-inputs.mjs](scripts/bootstrap-release-inputs.mjs)按仓库中的 [1.0.2 输入清单](toolpacks/build-inputs.v1.json)从两个固定版本的资源存档下载发行分片、重组并校验原始文件，恢复 Git 不保存的 IDE、Strata、工具、WSL 和运行环境输入；其中 `build-inputs/strata-runtime.tar.gz` 会自动展开到核心构建使用的资源目录。已有完整输入目录可通过 `--inputs-dir` 指定，仍需通过清单校验。打包入口 [package.ps1](scripts/package.ps1)校验环境媒体和组件归档，分别生成 Windows 与 Linux Host，再生成 NSIS 安装包。`-ReuseNativeToolsRelease` 复用刚恢复的 `release/offline-1.0.2` 工具分卷，`-ComponentSource` 指向其 `environment-components`。`-Distribution` 必须匹配准备好的 WSL 构建发行版名称；省略 `-SkipUpstreamBuild` 会重新构建上游库。最终产物与干净 checkout 的实测情况由[验收记录](VALIDATION.md)记录，以上命令不代表已经完成该项验收。
 
+Windows Host 构建先按官方 SHA-256 校验 Node ZIP，再使用 Windows 随附的 .NET ZIP 解压器展开；这一环节无需额外安装压缩工具。
+
 生产构建使用独立 Ed25519 发行密钥。默认在忽略提交的 `build/release-signing-key.pem` 创建并复用本机构建密钥；`RAINY_RELEASE_SIGNING_KEY` 可指定已有私钥文件，路径缺失、格式不符或与暂存公钥不匹配时构建失败。公开资源只包含发行公钥，载体将该公钥嵌入并校验签名资源清单。该流程不读取客户授权数据库。
 
 1.0.2 完整离线目录为 `release/offline-1.0.2/`，包含核心安装程序、原生工具分卷、`environment/` WSL 介质、`environment-components/` 独立运行环境及递归 SHA-256 清单。WSL 镜像和科学计算大依赖位于核心 EXE 之外。构建核对 IDE 固定来源、Linux APT 索引和组件逐文件摘要；Windows Host 使用实体依赖文件，Linux Host 使用包内相对链接。构建暂存位于 `runtime/` 与 Linux `/var/tmp`，最终容量和验收以本次产物报告为准。

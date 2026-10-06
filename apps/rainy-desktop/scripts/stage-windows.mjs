@@ -45,7 +45,8 @@ if (!checksum || !/^[a-f0-9]{64}$/u.test(checksum)) throw new Error('Official No
 const archive = join(cache, nodeName)
 await download(`https://nodejs.org/dist/v${graph.node}/${nodeName}`, checksum, archive)
 const powershell = 'powershell.exe'
-const extraction = `$ErrorActionPreference='Stop'; Expand-Archive -LiteralPath '${archive.replaceAll("'", "''")}' -DestinationPath '${staging.replaceAll("'", "''")}' -Force`
+const extraction = `$ErrorActionPreference='Stop'; Add-Type -AssemblyName System.IO.Compression.FileSystem; `
+  + `[IO.Compression.ZipFile]::ExtractToDirectory('${archive.replaceAll("'", "''")}', '${staging.replaceAll("'", "''")}')`
 await run(powershell, ['-NoProfile', '-NonInteractive', '-Command', extraction], { windowsHide: true, timeout: 120000 })
 await rename(join(staging, `node-v${graph.node}-win-x64`), join(staging, 'node'))
 async function stripSourceMaps(directory) {
