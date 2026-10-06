@@ -342,6 +342,7 @@ describe('dsh-doc skill consolidation', () => {
     }
   })
 
+  // This case parses every package README while doc-sync runs four filesystem-heavy gates.
   it('maps package README kinds to their documentation standards', () => {
     const files = packageReadmes()
     expect(files.length).toBeGreaterThan(0)
@@ -350,7 +351,7 @@ describe('dsh-doc skill consolidation', () => {
       const metadata = readFrontmatter(file)
       expect(packageReadmeMetadataErrors(file, metadata), file).toEqual([])
     }
-  })
+  }, 20_000)
 
   it('maps persistence transition records to their dedicated document kind', () => {
     const files = globSync('docs/persistence-changes/*.md', { cwd: root })
