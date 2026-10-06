@@ -161,6 +161,7 @@
     "tests/subagent-interrupt-ui.e2e.ts",
     "tests/rainy-branding.e2e.ts",
     "tests/rainy-ctf.e2e.ts",
+    "tests/rainy-tool-calls.e2e.ts",
     "tests/sidebar-subagent-activity.e2e.ts",
     "tests/background-job-list.e2e.ts",
     "tests/live-job-stream.e2e.ts",
