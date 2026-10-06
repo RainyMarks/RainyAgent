@@ -48,12 +48,13 @@ export function authenticateReleaseManifest(input: unknown, keys: ReleaseKeyring
 /** Parallel file work; the first failure stops the remaining items. */
 async function forEachConcurrently<T>(items: readonly T[], concurrency: number,
   work: (item: T, index: number) => Promise<void>): Promise<void> {
-  let next = 0
+  // Workers share one iterator, so each item is taken exactly once.
+  const pending = items.entries()
   let failed = false
   const worker = async (): Promise<void> => {
-    while (!failed && next < items.length) {
-      const index = next++
-      try { await work(items[index], index) }
+    for (const [index, item] of pending) {
+      if (failed) return
+      try { await work(item, index) }
       catch (error) { failed = true; throw error }
     }
   }

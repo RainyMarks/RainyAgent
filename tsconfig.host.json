@@ -11,6 +11,7 @@
     "apps/web/product-isolation.ts",
     "apps/rainy-desktop/src/release-trust.ts",
     "apps/rainy-desktop/src/release-integrity.ts",
+    "apps/rainy-desktop/src/protected-json.ts",
     "apps/web/tests/connection-recovery.e2e.ts",
     "apps/web/tests/server-restart.e2e.ts",
     "apps/web/tests/shortcuts.e2e.ts",
