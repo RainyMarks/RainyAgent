@@ -5,6 +5,7 @@ import { dirname } from 'node:path'
 import { promisify } from 'node:util'
 import { z } from 'zod'
 import { writeEnvironmentRecord } from './environment.ts'
+import { windowsPowerShellPath } from './powershell.ts'
 import { ExecutionTargetId } from './project-registry.ts'
 import type { ProjectId } from './project-registry.ts'
 import type { IdeRootId } from '@deepseek-ai/dsh-client-ui-rainy/ide-files-protocol'
@@ -43,7 +44,7 @@ export function savedExecutionTarget(preferences: Record<string, unknown>): Exec
 /** @returns Windows and registered WSL2 destinations; no distribution is started during discovery. */
 export async function listExecutionTargets(): Promise<ExecutionTarget[]> {
   const script = String.raw`$ErrorActionPreference='Stop'; [Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); $root='HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss'; $items=@(); if(Test-Path -LiteralPath $root){$items=@(Get-ChildItem -LiteralPath $root | ForEach-Object { $v=Get-ItemProperty -LiteralPath $_.PSPath; if($v.Version -eq 2){[pscustomobject]@{id=$_.PSChildName;name=$v.DistributionName}} })}; ConvertTo-Json -InputObject $items -Compress`
-  const output = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 15000, maxBuffer: 256 * 1024, encoding: 'utf8' })
+  const output = await run(windowsPowerShellPath(), ['-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 15000, maxBuffer: 256 * 1024, encoding: 'utf8' })
   const values = z.array(z.object({ id: z.string(), name: z.string().min(1) }).strict()).parse(JSON.parse(output.stdout.trim() || '[]'))
   return [WINDOWS_TARGET, ...values.filter(value => !/^docker-desktop(?:-data)?$/u.test(value.name)).map(value => ({
     id: ExecutionTargetId(`wsl:${value.id.toLowerCase()}`), kind: 'wsl' as const, label: `WSL · ${value.name}`, distro: value.name,

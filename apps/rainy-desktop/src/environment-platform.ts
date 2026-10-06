@@ -11,6 +11,7 @@ import { z } from 'zod'
 import { environmentMedia } from './environment-media.ts'
 import { EnvironmentSetupError, environmentStateDirectory, writeEnvironmentRecord } from './environment.ts'
 import type { EnvironmentPlatform, EnvironmentSystem } from './environment.ts'
+import { quotePowerShell, windowsPowerShellPath } from './powershell.ts'
 
 const execFileAsync = promisify(execFile)
 const distributionSchema = z.object({ name: z.string(), version: z.number(), basePath: z.string() })
@@ -19,8 +20,6 @@ const systemSchema = z.object({
 })
 const ownerSchema = z.object({ version: z.literal(1), installRoot: z.string(), distro: z.string(), imageSha256: z.string() }).strict()
 
-/** PowerShell also ends single-quoted strings at typographic quotes, which may appear in Windows profile paths. */
-export function quotePowerShell(value: string): string { return "'" + value.replace(/['‘’‚‛]/gu, '$&$&') + "'" }
 
 function sanitizedEnvironment(): NodeJS.ProcessEnv {
   return Object.fromEntries(Object.entries(process.env).filter(([name]) => !/KEY|SECRET|TOKEN|PASSWORD|^PSModulePath$/i.test(name)))
@@ -37,7 +36,7 @@ async function run(file: string, args: string[], timeout = 60_000): Promise<stri
 }
 
 async function powershell(script: string, timeout?: number): Promise<string> {
-  return run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from('$ErrorActionPreference = "Stop"\n[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)\n' + script, 'utf16le').toString('base64')], timeout)
+  return run(windowsPowerShellPath(), ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from('$ErrorActionPreference = "Stop"\n[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)\n' + script, 'utf16le').toString('base64')], timeout)
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -159,7 +158,7 @@ try {
 `
     progress('正在请求管理员权限并安装 Windows 组件；请留意系统确认窗口…')
     const encoded = Buffer.from(elevatedScript, 'utf16le').toString('base64')
-    await powershell(`$process = Start-Process -FilePath 'powershell.exe' -ArgumentList @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', '${encoded}') -Verb RunAs -PassThru -Wait -WindowStyle Hidden\nif ($process.ExitCode -ne 0) { throw ${quotePowerShell(`系统组件安装失败，请检查 ${reportPath} 后重试。`)} }`, 0)
+    await powershell(`$process = Start-Process -FilePath ${quotePowerShell(windowsPowerShellPath())} -ArgumentList @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', '${encoded}') -Verb RunAs -PassThru -Wait -WindowStyle Hidden\nif ($process.ExitCode -ne 0) { throw ${quotePowerShell(`系统组件安装失败，请检查 ${reportPath} 后重试。`)} }`, 0)
     const result = z.object({ ok: z.literal(true), rebootRequired: z.boolean() }).parse(JSON.parse((await readFile(reportPath, 'utf8')).replace(/^\uFEFF/, '')))
     return { rebootRequired: result.rebootRequired }
   }

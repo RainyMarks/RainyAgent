@@ -4,9 +4,10 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z } from 'zod'
 import { nativeToolIds } from '@deepseek-ai/dsh-client-ui-rainy/native-tools-protocol'
 import type { NativeToolCatalog, NativeToolId, NativeToolLaunchResult } from '@deepseek-ai/dsh-client-ui-rainy/native-tools-protocol'
+import { renameToolPackPath } from './toolpack-files.ts'
 import { toolPackFileSystem } from './toolpack-fs.ts'
 
-const { readFile, writeFile, rename, mkdir, realpath, stat, rm } = toolPackFileSystem.promises
+const { readFile, writeFile, mkdir, realpath, stat, rm } = toolPackFileSystem.promises
 
 const ids = nativeToolIds
 const toolIdSchema = z.string().regex(/^[a-z0-9][a-z0-9-]{0,63}$/)
@@ -247,7 +248,7 @@ export class NativeToolsLibrary {
       const temporary = `${this.preferencesPath}.${randomUUID()}.tmp`
       try {
         await writeFile(temporary, `${JSON.stringify(current, null, 2)}\n`, { flag: 'wx' })
-        await rename(temporary, this.preferencesPath)
+        await renameToolPackPath(temporary, this.preferencesPath)
       } finally { await rm(temporary, { force: true }) }
     })
     this.mutation = operation.catch(() => { /* Each caller receives its own write error; later edits remain possible. */ })

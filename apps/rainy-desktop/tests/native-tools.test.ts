@@ -8,6 +8,7 @@ import { promisify } from 'node:util'
 import { NativeToolsLibrary, parseNativeFavorites, parseNativeLaunch, resolveNativePath, type NativeInvocation } from '../src/native-tools.ts'
 import { nativeConsoleCommand, nativeConsoleLauncher, nativeToolEnvironment } from '../src/native-tool-process.ts'
 import { serveNativeTool, type NativeToolWebPage } from '../src/native-tool-web.ts'
+import { windowsPowerShellPath } from '../src/powershell.ts'
 
 let fixture: string
 let installRoot: string
@@ -223,6 +224,26 @@ describe('native process preparation', () => {
     expect(text).toContain("'literal''quote' '$(not-code)' '& unchanged'")
   })
 
+  it('doubles typographic single quotes, which PowerShell also accepts as string delimiters', () => {
+    const value = 'x‘; Write-Output injected; ’y'
+    const text = Buffer.from(nativeConsoleCommand({ ...invocation(), cwd: 'C:\\O’Brien', args: [value] }), 'base64').toString('utf16le')
+    expect(text).toContain("Set-Location -LiteralPath 'C:\\O’’Brien'")
+    expect(text).toContain("'x‘‘; Write-Output injected; ’’y'")
+  })
+
+  it.runIf(process.platform === 'win32')('parses typographic quotes in launch values as literal PowerShell strings', async () => {
+    const values = ['x‘; Write-Output injected; ’y', '‚‛\'\'', 'O’Brien']
+    const command = Buffer.from(nativeConsoleCommand({ ...invocation(), args: values }), 'base64').toString('utf16le')
+    const script = `[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
+    $ast = [Management.Automation.Language.Parser]::ParseInput([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('${Buffer.from(command, 'utf16le').toString('base64')}')), [ref]$null, [ref]$null)
+    $call = $ast.FindAll({ param($node) $node -is [Management.Automation.Language.CommandAst] -and $node.InvocationOperator -eq 'Ampersand' }, $true)
+    ConvertTo-Json -Compress -InputObject @($call | ForEach-Object { $_.CommandElements | ForEach-Object { $_.Value } })`
+    const powershell = windowsPowerShellPath()
+    const result = await promisify(execFile)(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand',
+      Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 25000, encoding: 'utf8' })
+    expect(JSON.parse(result.stdout)).toEqual([invocation().executable, ...values])
+  })
+
   it('keeps the console command encoded and requests its own interactive window', () => {
     const powershell = "C:\\system O'Brien\\powershell.exe"
     const text = Buffer.from(nativeConsoleLauncher(invocation(), powershell), 'base64').toString('utf16le')
@@ -233,7 +254,7 @@ describe('native process preparation', () => {
   })
 
   it.runIf(process.platform === 'win32')('passes literal launch values through Windows PowerShell without starting a tool', async () => {
-    const powershell = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe')
+    const powershell = windowsPowerShellPath()
     const launcher = nativeConsoleLauncher(invocation(), powershell)
     const script = `[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
     function Start-Process {

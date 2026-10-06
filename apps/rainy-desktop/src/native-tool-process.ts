@@ -4,6 +4,7 @@ import { mkdir } from 'node:fs/promises'
 import { dirname, delimiter, join } from 'node:path'
 import { promisify } from 'node:util'
 import type { NativeInvocation } from './native-tools.ts'
+import { quotePowerShell, windowsPowerShellPath } from './powershell.ts'
 
 const exec = promisify(execFile)
 
@@ -46,7 +47,6 @@ export function nativeToolEnvironment(source: NodeJS.ProcessEnv, invocation: Nat
   return environment
 }
 
-function quotePowerShell(value: string): string { return `'${value.replaceAll("'", "''")}'` }
 
 /**
  * Keep the tool's console open after its initial help or command has completed.
@@ -80,7 +80,7 @@ export async function startNativeProcess(invocation: NativeInvocation, environme
   const env = nativeToolEnvironment(environment, invocation)
   if (invocation.id === 'ida') await mkdir(invocation.userData, { recursive: true })
   if (invocation.kind === 'console') {
-    const powershell = join(environment.SystemRoot ?? environment.SYSTEMROOT ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe')
+    const powershell = windowsPowerShellPath(environment)
     await exec(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', nativeConsoleLauncher(invocation, powershell)],
       { cwd: invocation.cwd, windowsHide: true, timeout: 30_000, env })
     return

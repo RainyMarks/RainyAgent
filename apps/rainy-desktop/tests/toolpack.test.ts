@@ -1,6 +1,6 @@
 /** Offline installation failures, cancellation, user-data preservation, and rollback. */
 import { createHash, randomUUID } from 'node:crypto'
-import { link, mkdtemp, mkdir, readFile, readdir, rename, rm, symlink, unlink, writeFile } from 'node:fs/promises'
+import { link, mkdtemp, mkdir, open, readFile, readdir, rename, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { c } from 'tar'
@@ -9,6 +9,8 @@ import { createNativeToolPackInstaller, ToolPackInstallError } from '../src/tool
 import { toolPackMetadataSchema } from '../src/toolpack-format.ts'
 import type { ToolPackMetadata, ToolPackPlatform } from '../src/toolpack-format.ts'
 import { findBusyToolPackProcess } from '../src/toolpack-platform.ts'
+import { renameToolPackPath, writeToolPackRecord } from '../src/toolpack-files.ts'
+import { nativeConsoleCommand } from '../src/native-tool-process.ts'
 
 const roots: string[] = []
 afterEach(async () => { await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true }))) })
@@ -326,6 +328,19 @@ describe('native tool pack installation', () => {
     expect(JSON.parse(await readFile(join(test.installRoot, '.rainy-toolpack/installed.json'), 'utf8'))).toMatchObject({ packId: test.previous.metadata.id })
   })
 
+  it('leaves an original tool in place when recovery finds its replacement staging already removed', async () => {
+    const test = await upgradeFixture()
+    await put(test.installRoot, '.rainy-toolpack/journal.json', JSON.stringify({
+      version: 1, installRoot: test.installRoot, packId: test.metadata.id, transactionId: randomUUID(), previousPackId: test.previous.metadata.id, phase: 'switching',
+      units: [{ path: 'tools/alpha', kind: 'directory', preserve: [], state: 'moving-old', hadOriginal: true }],
+    }))
+    await unlink(test.metadataPath)
+    await expect(createNativeToolPackInstaller(test.platform)(test.options)).rejects.toMatchObject({ code: 'invalid-metadata' })
+    expect(await readFile(join(test.installRoot, 'tools/alpha/app.exe'), 'utf8')).toBe('old alpha')
+    await expect(readdir(join(test.installRoot, '.rainy-toolpack/stage', test.metadata.id, 'tools/alpha'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(JSON.parse(await readFile(join(test.installRoot, '.rainy-toolpack/journal.json'), 'utf8'))).toMatchObject({ phase: 'rolled-back' })
+  })
+
   it('rejects a retirement journal for a directory absent from its previous package manifest', async () => {
     const test = await upgradeFixture([], {}, {}, ['tools/alpha'])
     await put(test.installRoot, 'tools/unregistered/personal.txt', 'unregistered user tool')
@@ -468,6 +483,38 @@ describe('native tool pack installation', () => {
     const application = { pid: 300, executable: join(test.installRoot, 'RainyAgent.exe'), commandLine: 'RainyAgent.exe' }
     expect(findBusyToolPackProcess([application], test.installRoot, test.metadata.units, 200)?.pid).toBe(300)
     expect(findBusyToolPackProcess([application], test.installRoot, test.metadata.units, 300)).toBeUndefined()
+  })
+
+  it('detects a retained console whose tool path contains typographic single quotes', () => {
+    const installRoot = join(tmpdir(), 'O’Brien‘s RainyAgent')
+    const units: ToolPackMetadata['units'] = [{ path: 'tools/alpha', kind: 'directory', preserve: [] }]
+    const cwd = join(installRoot, 'tools/alpha')
+    const command = nativeConsoleCommand({ id: '7zip', name: '7-Zip', kind: 'console', target: join(cwd, 'app.exe'), executable: join(cwd, 'app.exe'),
+      cwd, args: [], roots: [cwd], userData: join(tmpdir(), 'user-data') })
+    const consoleProcess = { pid: 100, executable: 'powershell.exe', commandLine: `powershell.exe -NoExit -EncodedCommand ${command}` }
+    expect(findBusyToolPackProcess([consoleProcess], installRoot, units, 200)?.pid).toBe(100)
+  })
+
+  it.runIf(process.platform === 'win32')('waits for a concurrent reader to release a record before replacing it', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rainy-toolpack-rename-'))
+    roots.push(root)
+    const record = join(root, 'installed.json')
+    await writeFile(record, '{}')
+    const reader = await open(record, 'r')
+    const released = new Promise<void>((resolve, reject) => { setTimeout(() => { reader.close().then(resolve, reject) }, 150) })
+    await writeToolPackRecord(record, { version: 1 })
+    await released
+    expect(JSON.parse(await readFile(record, 'utf8'))).toEqual({ version: 1 })
+    expect(await readdir(root)).toEqual(['installed.json'])
+  })
+
+  it('removes its temporary file when a record cannot replace the destination', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'rainy-toolpack-record-'))
+    roots.push(root)
+    await mkdir(join(root, 'installed.json', 'occupied'), { recursive: true })
+    await expect(writeToolPackRecord(join(root, 'installed.json'), { version: 1 })).rejects.toThrow()
+    expect(await readdir(root)).toEqual(['installed.json'])
+    await expect(renameToolPackPath(join(root, 'absent'), join(root, 'target'))).rejects.toMatchObject({ code: 'ENOENT' })
   })
 
   it('rejects nonadjacent preservation ancestors and inconsistent directory spelling', async () => {

@@ -94,21 +94,49 @@ export async function toolPackHash(path: string, signal?: AbortSignal): Promise<
   return hash.digest('hex')
 }
 
+const sharingViolationCodes = new Set(['EPERM', 'EACCES', 'EBUSY'])
+
+/** Rename a file or directory, retrying for about two seconds while another Windows handle holds the source or replaced target open.
+ * @param source Existing path.
+ * @param destination Target path; an existing file is replaced.
+ * @returns Completion after the rename; other platforms and persistent failures reject with the operating-system error.
+ */
+export async function renameToolPackPath(source: string, destination: string): Promise<void> {
+  for (let attempt = 1; ; attempt++) {
+    try { await rename(source, destination); return } catch (error) {
+      if (process.platform !== 'win32' || attempt === 10
+        || !(error instanceof Error && 'code' in error && typeof error.code === 'string' && sharingViolationCodes.has(error.code))) throw error
+    }
+    await new Promise(resolve => setTimeout(resolve, attempt * 50))
+  }
+}
+
+/** Atomically replace a file only after its new bytes reach the filesystem; a failed write removes its temporary file.
+ * @param path Absolute file path.
+ * @param text Complete file content.
+ * @returns Completion after the atomic replacement.
+ */
+export async function writeToolPackFile(path: string, text: string): Promise<void> {
+  await assertToolPackPath(path)
+  await mkdir(dirname(path), { recursive: true })
+  const temporary = `${path}.${randomUUID()}.tmp`
+  try {
+    const file = await open(temporary, 'wx', 0o600)
+    try {
+      await file.writeFile(text)
+      await file.sync()
+    } finally { await file.close() }
+    await renameToolPackPath(temporary, path)
+  } finally { await rm(temporary, { force: true }) }
+}
+
 /** Atomically replace a JSON record only after its new bytes reach the filesystem.
  * @param path Absolute record path.
  * @param value JSON-serializable object.
  * @returns Completion after the atomic replacement.
  */
 export async function writeToolPackRecord(path: string, value: object): Promise<void> {
-  await assertToolPackPath(path)
-  await mkdir(dirname(path), { recursive: true })
-  const temporary = `${path}.${randomUUID()}.tmp`
-  const file = await open(temporary, 'wx', 0o600)
-  try {
-    await file.writeFile(JSON.stringify(value, null, 2) + '\n')
-    await file.sync()
-  } finally { await file.close() }
-  await rename(temporary, path)
+  await writeToolPackFile(path, JSON.stringify(value, null, 2) + '\n')
 }
 
 /** Read optional local JSON without hiding malformed or inaccessible records.

@@ -9,6 +9,7 @@ import { installNativeTools } from '../src/native-tool-windows.ts'
 const control = vi.hoisted(() => ({
   windows: [] as Array<{ destroy(): void }>, release: Promise.withResolvers<undefined>(),
   pageClose: vi.fn<() => Promise<void>>(),
+  serving: Promise.withResolvers<undefined>(), serveGate: Promise.resolve<undefined>(undefined),
   handle: vi.fn<Electron.IpcMain['handle']>(),
 }))
 
@@ -31,7 +32,11 @@ vi.mock('electron', async () => {
 })
 
 vi.mock('../src/native-tool-web.ts', () => ({
-  serveNativeTool: async () => ({ origin: 'http://127.0.0.1:43211', url: 'http://127.0.0.1:43211/index.html', close: control.pageClose }),
+  serveNativeTool: async () => {
+    control.serving.resolve(undefined)
+    await control.serveGate
+    return { origin: 'http://127.0.0.1:43211', url: 'http://127.0.0.1:43211/index.html', close: control.pageClose }
+  },
 }))
 
 let fixture: string
@@ -41,6 +46,8 @@ beforeEach(async () => {
   vi.clearAllMocks()
   control.windows.length = 0
   control.release = Promise.withResolvers<undefined>()
+  control.serving = Promise.withResolvers<undefined>()
+  control.serveGate = Promise.resolve(undefined)
   control.pageClose.mockImplementation(() => control.release.promise)
   fixture = await mkdtemp(join(tmpdir(), 'rainy-window-close-'))
   await mkdir(join(fixture, 'tools/cyberchef'), { recursive: true })
@@ -87,6 +94,27 @@ it('keeps cleanup owned after a tool window has emitted closed', async () => {
   control.release.resolve(undefined)
   await closing
   expect(completed).toBe(true)
+})
+
+it('refuses to replace tools when a webpage launch accepted before installation opens its window', async () => {
+  const main = new BrowserWindow({})
+  owner = installNativeTools({ window: main, origin: 'http://127.0.0.1:43210', installRoot: fixture, userData: join(fixture, 'user'), download: {
+    metadataPath: join(fixture, 'absent-metadata.json'), sourcePath: join(fixture, 'absent-source.json'), catalogPath: join(fixture, 'absent-catalog.json'), keys: { version: 1, keys: {} },
+  } })
+  const handler = (name: string) => {
+    const found = control.handle.mock.calls.find(([channel]) => channel === name)?.[1]
+    if (!found) throw new Error(`Missing ${name} handler`)
+    return found
+  }
+  const event = { sender: main.webContents, senderFrame: main.webContents.mainFrame } as Electron.IpcMainInvokeEvent
+  const gate = Promise.withResolvers<undefined>()
+  control.serveGate = gate.promise
+  const launched: unknown = handler('rainy:tools-launch')(event, { id: 'cyberchef' })
+  await control.serving.promise
+  const installation: unknown = handler('rainy:tools-download')(event)
+  gate.resolve(undefined)
+  expect(await launched).toEqual({ ok: true })
+  await expect(installation).rejects.toThrow('请先关闭已打开的工具窗口')
 })
 
 it('refuses native-tool requests from an untrusted frame', async () => {

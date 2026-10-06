@@ -5,11 +5,12 @@ import { promisify } from 'node:util'
 import { z } from 'zod'
 import { ToolPackInstallError } from './toolpack-format.ts'
 import type { ToolPackPlatform, ToolPackUnit } from './toolpack-format.ts'
-import { toolPackChild } from './toolpack-files.ts'
+import { renameToolPackPath, toolPackChild } from './toolpack-files.ts'
 import { toolPackFileSystem } from './toolpack-fs.ts'
+import { windowsPowerShellPath } from './powershell.ts'
 
 const exec = promisify(execFile)
-const { rename, statfs } = toolPackFileSystem.promises
+const { statfs } = toolPackFileSystem.promises
 const processSchema = z.array(z.object({ pid: z.number(), executable: z.string(), commandLine: z.string() }))
 
 /** A process observation returned by the Windows management API. */
@@ -33,7 +34,7 @@ export function findBusyToolPackProcess(
     const executable = normalize(item.executable)
     if (executable === application && !/--type=/.test(item.commandLine)) return true
     const encoded = /-(?:encodedcommand|enc|ec)\s+["']?([a-z0-9+/=]+)/i.exec(item.commandLine)?.[1]
-    const decoded = encoded ? Buffer.from(encoded, 'base64').toString('utf16le').replaceAll("''", "'") : ''
+    const decoded = encoded ? Buffer.from(encoded, 'base64').toString('utf16le').replace(/(['\u2018-\u201b])\1/g, '$1') : ''
     const command = normalize(item.commandLine + '\n' + decoded)
     return roots.some(root => executable.startsWith(root + '\\') || command.includes(root + '\\'))
   })
@@ -42,7 +43,8 @@ export function findBusyToolPackProcess(
 async function assertNotBusy(installRoot: string, units: ToolPackUnit[]): Promise<void> {
   if (process.platform !== 'win32') return
   const command = '[Console]::OutputEncoding = [Text.UTF8Encoding]::new($false); @(Get-CimInstance Win32_Process | ForEach-Object { @{ pid = [int]$_.ProcessId; executable = [string]$_.ExecutablePath; commandLine = [string]$_.CommandLine } }) | ConvertTo-Json -Compress'
-  const result = await exec('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(command, 'utf16le').toString('base64')], {
+  const powershell = windowsPowerShellPath()
+  const result = await exec(powershell, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', Buffer.from(command, 'utf16le').toString('base64')], {
     windowsHide: true, timeout: 30_000, maxBuffer: 4 * 1024 * 1024,
     env: Object.fromEntries(Object.entries(process.env).filter(([name]) => !/KEY|SECRET|TOKEN|PASSWORD|^PSModulePath$/i.test(name))),
   })
@@ -55,5 +57,5 @@ async function assertNotBusy(installRoot: string, units: ToolPackUnit[]): Promis
 export const nativeToolPackPlatform: ToolPackPlatform = {
   async availableBytes(path) { const space = await statfs(path); return space.bavail * space.bsize },
   assertNotBusy,
-  move: rename,
+  move: renameToolPackPath,
 }

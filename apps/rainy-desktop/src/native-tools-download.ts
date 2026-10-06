@@ -1,7 +1,6 @@
 /** Download the carrier's fixed tool pack into per-user storage, with verified resumable media. */
 import { createReadStream } from 'node:fs'
-import { mkdir, open, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { randomUUID } from 'node:crypto'
+import { mkdir, open, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
 import type { NativeToolsDownloadState, NativeToolsUpdateState } from '@deepseek-ai/dsh-client-ui-rainy/native-tools-protocol'
@@ -9,12 +8,14 @@ import type { ReleaseKeyring } from './release-trust.ts'
 import { installNativeToolPack } from './toolpack.ts'
 import type { InstallNativeToolPackOptions, NativeToolPackInstallResult } from './toolpack.ts'
 import { toolPackMetadataSchema, ToolPackInstallError } from './toolpack-format.ts'
-import { assertToolPackPath, checkToolPackCancellation, toolPackHash, toolPackStat } from './toolpack-files.ts'
+import { assertToolPackPath, checkToolPackCancellation, renameToolPackPath, toolPackHash, toolPackStat, writeToolPackFile } from './toolpack-files.ts'
 import { authenticateToolChannel, toolDownloadSourceSchema, validateToolDownloadInputs } from './native-tools-update.ts'
 import type { NativeToolsChannel, NativeToolsDownloadSource } from './native-tools-update.ts'
 
 const hash = z.string().regex(/^[a-f0-9]{64}$/)
 type Source = NativeToolsDownloadSource
+
+function packBytes(source: Source): number { return source.volumes.reduce((sum, volume) => sum + volume.bytes, 0) }
 
 /** Main-process paths and optional transport dependencies; renderer content cannot choose a URL or destination. */
 export interface NativeToolsDownloadOptions {
@@ -56,21 +57,37 @@ export class NativeToolsDownloader {
     this.catalogPath = options.catalogPath
   }
 
-  private async inputs(): Promise<Source> {
-    this.source ??= (async () => {
-      const source = toolDownloadSourceSchema.parse(JSON.parse(await readFile(this.options.sourcePath, 'utf8')))
-      const metadata = toolPackMetadataSchema.parse(JSON.parse(await readFile(this.options.metadataPath, 'utf8')))
-      validateToolDownloadInputs(source, metadata)
-      const path = join(this.options.cacheRoot, 'channel.signed.json')
-      await assertToolPackPath(path)
-      if (this.options.updateKeys && await toolPackStat(path)) {
-        const channel = authenticateToolChannel(JSON.parse(await readFile(path, 'utf8')), this.options.updateKeys)
-        await this.accept(channel)
-        return channel.source
-      }
-      return source
-    })()
-    return this.source
+  /** Selected download inputs; a failed read is not retained, so the next request reads the files again. */
+  private inputs(): Promise<Source> {
+    if (this.source) return this.source
+    const reading = this.readInputs()
+    this.source = reading
+    reading.catch(() => { if (this.source === reading) this.source = undefined })
+    return reading
+  }
+
+  private async readInputs(): Promise<Source> {
+    const source = toolDownloadSourceSchema.parse(JSON.parse(await readFile(this.options.sourcePath, 'utf8')))
+    const metadata = toolPackMetadataSchema.parse(JSON.parse(await readFile(this.options.metadataPath, 'utf8')))
+    validateToolDownloadInputs(source, metadata)
+    const channel = await this.cachedChannel()
+    if (channel === undefined) return source
+    await this.accept(channel)
+    return channel.source
+  }
+
+  /** Read the last accepted revision; one that no longer parses or verifies, for example after a key rotation,
+   * yields to the carrier's source.
+   */
+  private async cachedChannel(): Promise<NativeToolsChannel | undefined> {
+    const keys = this.options.updateKeys
+    const path = join(this.options.cacheRoot, 'channel.signed.json')
+    await assertToolPackPath(path)
+    if (!keys || !await toolPackStat(path)) return undefined
+    try { return authenticateToolChannel(JSON.parse(await readFile(path, 'utf8')), keys) } catch (error) {
+      console.error('The cached tool channel was ignored', error)
+      return undefined
+    }
   }
 
   /** Read the committed local pack identity without accessing the network. @returns whether online tools were installed. */
@@ -83,7 +100,8 @@ export class NativeToolsDownloader {
     await assertToolPackPath(journal)
     if (await toolPackStat(journal)) {
       const value: unknown = JSON.parse(await readFile(journal, 'utf8'))
-      if (!z.object({ phase: z.enum(['committed', 'rolled-back']) }).safeParse(value).success) return undefined
+      // Installed directories move only while switching or rolling back; a stopped staging transaction leaves the recorded pack intact.
+      if (!z.object({ phase: z.enum(['staging', 'prepared', 'committed', 'rolled-back']) }).safeParse(value).success) return undefined
     }
     return parsed.packId
   }
@@ -105,19 +123,11 @@ export class NativeToolsDownloader {
     return this.catalogPath
   }
 
-  private async save(path: string, text: string): Promise<void> {
-    await assertToolPackPath(path)
-    await mkdir(this.options.cacheRoot, { recursive: true })
-    const temporary = path + `.${randomUUID()}.pending`
-    try { await writeFile(temporary, text, { flag: 'wx' }); await rename(temporary, path) }
-    finally { await rm(temporary, { force: true }) }
-  }
-
   private async accept(channel: NativeToolsChannel): Promise<void> {
     const metadataPath = join(this.options.cacheRoot, `metadata-${channel.source.packId}.json`)
     const catalogPath = join(this.options.cacheRoot, `catalog-${channel.source.packId}.json`)
-    await this.save(metadataPath, JSON.stringify(channel.metadata))
-    await this.save(catalogPath, channel.catalog)
+    await writeToolPackFile(metadataPath, JSON.stringify(channel.metadata))
+    await writeToolPackFile(catalogPath, channel.catalog)
     this.metadataPath = metadataPath
     this.catalogPath = catalogPath
     this.channel = channel
@@ -149,7 +159,7 @@ export class NativeToolsDownloader {
         const channel = authenticateToolChannel(envelope, keys)
         if (this.channel && (channel.revision < this.channel.revision
           || channel.revision === this.channel.revision && channel.source.packId !== this.channel.source.packId)) throw new Error('工具更新版本倒退或清单冲突')
-        await this.save(join(this.options.cacheRoot, 'channel.signed.json'), JSON.stringify(envelope))
+        await writeToolPackFile(join(this.options.cacheRoot, 'channel.signed.json'), JSON.stringify(envelope))
         await this.accept(channel)
         this.source = Promise.resolve(channel.source)
         return { phase: await this.installed() ? 'current' : 'available', version: channel.releaseVersion, error: '' }
@@ -166,8 +176,7 @@ export class NativeToolsDownloader {
     const source = await this.inputs()
     if (this.running) return this.state
     const complete = this.state.phase === 'idle' && await this.installed()
-    return { ...this.state, totalBytes: source.volumes.reduce((sum, volume) => sum + volume.bytes, 0),
-      ...complete ? { phase: 'complete' as const } : {} }
+    return { ...this.state, totalBytes: packBytes(source), ...complete ? { phase: 'complete' as const } : {} }
   }
 
   private publish(state: NativeToolsDownloadState): void {
@@ -212,7 +221,7 @@ export class NativeToolsDownloader {
     if (info && (!info.isFile() || info.size > piece.bytes)) throw new Error('工具下载缓存无效，请清理下载缓存后重试')
     let offset = info?.size ?? 0
     if (offset === piece.bytes) {
-      if (await matches(partial, piece, signal)) { await rename(partial, target); progress(piece.bytes); return target }
+      if (await matches(partial, piece, signal)) { await renameToolPackPath(partial, target); progress(piece.bytes); return target }
       await rm(partial)
       offset = 0
     }
@@ -245,8 +254,38 @@ export class NativeToolsDownloader {
       await rm(partial)
       throw new Error('工具下载校验失败，请重试')
     }
-    await rename(partial, target)
+    await renameToolPackPath(partial, target)
     return target
+  }
+
+  /** Download a volume's pieces, then join and verify them before the pieces are removed. */
+  private async assemble(volume: Source['volumes'][number], source: Source, signal: AbortSignal,
+    progress: (bytes: number) => void): Promise<void> {
+    const target = join(this.options.cacheRoot, volume.path)
+    if (await matches(target, volume, signal)) return
+    const paths: string[] = []
+    let pieceOffset = 0
+    for (const piece of volume.pieces) {
+      const baseline = pieceOffset
+      paths.push(await this.download(piece, source, signal, (value) => { progress(baseline + value) }))
+      pieceOffset += piece.bytes
+    }
+    const partial = target + '.partial'
+    await assertToolPackPath(partial)
+    const output = await open(partial, 'w')
+    try {
+      for (const path of paths) for await (const chunk of createReadStream(path)) {
+        checkToolPackCancellation(signal)
+        if (!Buffer.isBuffer(chunk)) throw new Error('工具分卷读取格式无效')
+        await output.writeFile(chunk)
+      }
+    } finally { await output.close() }
+    if (!await matches(partial, volume, signal)) {
+      await rm(partial)
+      throw new Error('工具分卷校验失败，请重试')
+    }
+    await renameToolPackPath(partial, target)
+    for (const path of paths) await rm(path)
   }
 
   private async run(signal: AbortSignal, repair: boolean): Promise<void> {
@@ -254,8 +293,8 @@ export class NativeToolsDownloader {
       await this.checking
       checkToolPackCancellation(signal)
       const source = await this.inputs()
+      const totalBytes = packBytes(source)
       if (!repair && await this.installed()) {
-        const totalBytes = source.volumes.reduce((sum, volume) => sum + volume.bytes, 0)
         this.publish({ phase: 'complete', completedBytes: totalBytes, totalBytes, error: '' })
         return
       }
@@ -263,36 +302,14 @@ export class NativeToolsDownloader {
       await assertToolPackPath(this.options.installRoot)
       await mkdir(this.options.cacheRoot, { recursive: true })
       await mkdir(this.options.installRoot, { recursive: true })
-      const totalBytes = source.volumes.reduce((sum, volume) => sum + volume.bytes, 0)
       let completed = 0
       this.publish({ phase: 'downloading', completedBytes: 0, totalBytes, error: '' })
       for (const volume of source.volumes) {
         checkToolPackCancellation(signal)
-        const target = join(this.options.cacheRoot, volume.path)
-        if (!await matches(target, volume, signal)) {
-          let pieceOffset = completed
-          const paths: string[] = []
-          for (const piece of volume.pieces) {
-            const baseline = pieceOffset
-            paths.push(await this.download(piece, source, signal, (value) => {
-              this.publish({ phase: 'downloading', completedBytes: baseline + value, totalBytes, error: '' })
-            }))
-            pieceOffset += piece.bytes
-          }
-          const partial = target + '.partial'
-          await assertToolPackPath(partial)
-          const output = await open(partial, 'w')
-          try {
-            for (const path of paths) for await (const chunk of createReadStream(path)) {
-              checkToolPackCancellation(signal)
-              if (!Buffer.isBuffer(chunk)) throw new Error('工具分卷读取格式无效')
-              await output.writeFile(chunk)
-            }
-          } finally { await output.close() }
-          if (!await matches(partial, volume, signal)) throw new Error('工具分卷校验失败，请重试')
-          await rename(partial, target)
-          for (const path of paths) await rm(path)
-        }
+        const baseline = completed
+        await this.assemble(volume, source, signal, (bytes) => {
+          this.publish({ phase: 'downloading', completedBytes: baseline + bytes, totalBytes, error: '' })
+        })
         completed += volume.bytes
         this.publish({ phase: 'downloading', completedBytes: completed, totalBytes, error: '' })
       }

@@ -41,6 +41,7 @@ export function installNativeTools(options: {
     publish: (state) => { if (!closed && !options.window.isDestroyed()) options.window.webContents.send('rainy:tools-download-progress', state) },
   })
   const isClosed = (): boolean => closed
+  const assertNoWebpages = (): void => { if (webpages.size > 0) throw new Error('请先关闭已打开的工具窗口，再下载或更新工具包') }
   const closePage = (page: NativeToolWebPage): Promise<void> => {
     const closing = page.close()
     closingPages.add(closing)
@@ -91,11 +92,13 @@ export function installNativeTools(options: {
     trusted(event)
     if (!download) throw new Error('当前版本未提供在线工具包，请更新 RainyAgent')
     if (installOperation) return installOperation
-    if (webpages.size > 0) throw new Error('请先关闭已打开的工具窗口，再下载或更新工具包')
+    assertNoWebpages()
     installing = true
     cancelRequested = false
     installOperation = (async () => {
       await library.waitForIdle()
+      // A webpage launch accepted before installation began can open its window while the library drains.
+      assertNoWebpages()
       if (!isClosed() && !isCancelled()) await download.start(true)
     })().finally(() => { installing = false; installOperation = undefined })
     return installOperation

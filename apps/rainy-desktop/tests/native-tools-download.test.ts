@@ -1,6 +1,6 @@
 /** Online media checks, resumable requests and durable native-tool installation. */
 import { createHash, generateKeyPairSync, sign } from 'node:crypto'
-import { mkdtemp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join, relative } from 'node:path'
 import { c } from 'tar'
@@ -14,6 +14,7 @@ import { NativeToolsLibrary } from '../src/native-tools.ts'
 const roots: string[] = []
 const owners: NativeToolsDownloader[] = []
 afterEach(async () => {
+  vi.restoreAllMocks()
   await Promise.all(owners.splice(0).map(owner => owner.close()))
   for (const root of roots.splice(0)) {
     if (relative(tmpdir(), root).startsWith('..')) throw new Error('Test directory escaped temporary storage')
@@ -67,6 +68,20 @@ async function fixture(tool = 'alpha') {
   const owner = new NativeToolsDownloader(options)
   owners.push(owner)
   return { owner, options, source, pieces, data, transport, publish, catalog }
+}
+
+function channelSigner() {
+  const key = generateKeyPairSync('ed25519')
+  const pem = key.publicKey.export({ type: 'spki', format: 'pem' }).toString()
+  const keyId = releasePublicKeyId(pem)
+  const keys = { version: 1 as const, keys: { [keyId]: pem } }
+  const envelope = async (f: Awaited<ReturnType<typeof fixture>>, revision: number, releaseVersion: string) => {
+    const metadata: unknown = JSON.parse(await readFile(f.options.metadataPath, 'utf8'))
+    const payload = Buffer.from(JSON.stringify({ version: 1, revision, releaseVersion, keyId,
+      source: f.source, metadata, catalog: f.catalog }))
+    return { version: 1, payload: payload.toString('base64'), signature: sign(null, Buffer.concat([Buffer.from(TOOL_CHANNEL_SIGNATURE_DOMAIN), payload]), key.privateKey).toString('base64') }
+  }
+  return { keys, envelope }
 }
 
 it('installs verified media, coalesces clicks and survives a restart without downloading again', async () => {
@@ -152,6 +167,56 @@ it('cancels a blocked request, waits for cleanup and resumes using the same loca
   await expect(h.owner.start()).rejects.toThrow('关闭')
 })
 
+it('keeps installed tools available after a repair is cancelled before directories switch', async () => {
+  const h = await fixture('beta-tool')
+  await h.owner.start()
+  const cancelling: NativeToolsDownloader = new NativeToolsDownloader({ ...h.options, install: options => h.options.install({ ...options,
+    onProgress: (update) => { if (update.phase === 'extracting') void cancelling.cancel() } }) })
+  owners.push(cancelling)
+  await cancelling.start(true)
+  expect(await cancelling.status()).toMatchObject({ phase: 'cancelled' })
+  expect(JSON.parse(await readFile(join(h.options.installRoot, '.rainy-toolpack/journal.json'), 'utf8'))).toMatchObject({ phase: 'staging' })
+  expect(await cancelling.hasInstalledTools()).toBe(true)
+  expect(await cancelling.installed()).toBe(true)
+  const library = new NativeToolsLibrary({ installRoot: h.options.installRoot, userData: dirname(h.options.installRoot), start: vi.fn() })
+  expect((await library.listTools()).tools).toMatchObject([{ id: 'beta-tool', status: 'ready' }])
+})
+
+it('reads carrier inputs again after a failed read', async () => {
+  const h = await fixture()
+  const moved = h.options.sourcePath + '.moved'
+  await rename(h.options.sourcePath, moved)
+  await expect(h.owner.status()).rejects.toMatchObject({ code: 'ENOENT' })
+  await rename(moved, h.options.sourcePath)
+  expect(await h.owner.status()).toMatchObject({ phase: 'idle' })
+})
+
+it('replaces an unreadable cached channel instead of blocking status and update checks', async () => {
+  const h = await fixture()
+  const { keys, envelope } = channelSigner()
+  const channel = await envelope(h, 1, '1.0.0')
+  await mkdir(h.options.cacheRoot)
+  await writeFile(join(h.options.cacheRoot, 'channel.signed.json'), '')
+  const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+  const owner = new NativeToolsDownloader({ ...h.options, updateKeys: keys, fetch: async () => new Response(JSON.stringify(channel)) })
+  owners.push(owner)
+  expect(await owner.status()).toMatchObject({ phase: 'idle' })
+  expect(error).toHaveBeenCalledOnce()
+  expect(await owner.checkUpdates()).toMatchObject({ phase: 'available', version: '1.0.0' })
+  expect(JSON.parse(await readFile(join(h.options.cacheRoot, 'channel.signed.json'), 'utf8'))).toEqual(channel)
+})
+
+it('removes a joined volume that fails verification and keeps its verified pieces', async () => {
+  const h = await fixture()
+  const sha256 = 'f'.repeat(64)
+  const metadata = JSON.parse(await readFile(h.options.metadataPath, 'utf8')) as { volumes: Array<{ sha256: string }> }
+  metadata.volumes[0].sha256 = sha256
+  await writeFile(h.options.metadataPath, JSON.stringify(metadata))
+  await writeFile(h.options.sourcePath, JSON.stringify({ ...h.source, volumes: [{ ...h.source.volumes[0], sha256 }] }))
+  await expect(h.owner.start()).rejects.toThrow('工具分卷校验失败')
+  expect((await readdir(h.options.cacheRoot)).sort()).toEqual(h.pieces.map(piece => piece.file).sort())
+})
+
 it('rejects an invalid resumable response without installing or accepting its bytes', async () => {
   const h = await fixture()
   h.transport.mockImplementationOnce(async () => new Response(h.data[0], { status: 206, headers: { 'content-range': 'bytes 1-2/3' } }))
@@ -162,16 +227,7 @@ it('rejects an invalid resumable response without installing or accepting its by
 it('detects a signed added tool, keeps the installed pack during checks and rejects replay or tampering', async () => {
   const h = await fixture()
   const future = await fixture('future-tool')
-  const key = generateKeyPairSync('ed25519')
-  const pem = key.publicKey.export({ type: 'spki', format: 'pem' }).toString()
-  const keyId = releasePublicKeyId(pem)
-  const keys = { version: 1 as const, keys: { [keyId]: pem } }
-  const envelope = async (f: typeof h, revision: number, releaseVersion: string) => {
-    const metadata: unknown = JSON.parse(await readFile(f.options.metadataPath, 'utf8'))
-    const payload = Buffer.from(JSON.stringify({ version: 1, revision, releaseVersion, keyId,
-      source: f.source, metadata, catalog: f.catalog }))
-    return { version: 1, payload: payload.toString('base64'), signature: sign(null, Buffer.concat([Buffer.from(TOOL_CHANNEL_SIGNATURE_DOMAIN), payload]), key.privateKey).toString('base64') }
-  }
+  const { keys, envelope } = channelSigner()
   const current = await envelope(h, 1, '1.0.0')
   const next = await envelope(future, 2, '1.0.1')
   let channel = current

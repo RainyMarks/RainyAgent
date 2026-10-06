@@ -8,6 +8,7 @@ import { parseNativeToolCatalog } from './native-tools.ts'
 /** Tool-channel signatures cannot be reused as application resource signatures. */
 export const TOOL_CHANNEL_SIGNATURE_DOMAIN = 'RainyAgent/tool-channel/v1\0'
 const hash = z.string().regex(/^[a-f0-9]{64}$/)
+const keyId = z.string().regex(/^[a-f0-9]{32}$/)
 const bytes = z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER)
 /** Pinned archive URLs, transport hashes and tool-pack identity supplied by the publisher. */
 export const toolDownloadSourceSchema = z.object({ version: z.literal(1), packId: hash,
@@ -20,7 +21,7 @@ export const toolDownloadSourceSchema = z.object({ version: z.literal(1), packId
 /** Validated downloadable archive selection. */
 export type NativeToolsDownloadSource = z.infer<typeof toolDownloadSourceSchema>
 const channelSchema = z.object({ version: z.literal(1), revision: z.number().int().positive(),
-  releaseVersion: z.string().regex(/^\d+\.\d+\.\d+$/), keyId: z.string().regex(/^[a-f0-9]{32}$/),
+  releaseVersion: z.string().regex(/^\d+\.\d+\.\d+$/), keyId,
   source: toolDownloadSourceSchema, metadata: toolPackMetadataSchema, catalog: z.string().min(1),
 }).strict()
 /** Authenticated channel revision, including exact catalog bytes and installation metadata. */
@@ -54,7 +55,7 @@ export function authenticateToolChannel(input: unknown, keys: ReleaseKeyring): N
     signature: z.string().max(200) }).strict().parse(input)
   const payload = Buffer.from(envelope.payload, 'base64')
   const raw: unknown = JSON.parse(payload.toString('utf8'))
-  const identity = z.object({ keyId: z.string() }).parse(raw)
+  const identity = z.object({ keyId }).parse(raw)
   const key = keys.keys[identity.keyId]
   if (!key || !verify(null, Buffer.concat([Buffer.from(TOOL_CHANNEL_SIGNATURE_DOMAIN), payload]), key, Buffer.from(envelope.signature, 'base64'))) {
     throw new Error('工具更新签名无效，请重试或更新 RainyAgent')

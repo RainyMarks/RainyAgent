@@ -36,10 +36,9 @@ export async function serveNativeTool(invocation: NativeInvocation): Promise<Nat
   const entry = relative(root, await realpath(invocation.target))
   const prefix = `/${randomBytes(24).toString('hex')}/`
   let closed = false
-  const isClosed = (): boolean => closed
   const requests = new Set<Promise<void>>()
   const server = createServer((request, response) => {
-    const interrupted = (): boolean => isClosed() || response.destroyed
+    const interrupted = (): boolean => closed || response.destroyed
     const operation = (async () => {
       if (interrupted()) { response.destroy(); return }
       if (request.method !== 'GET' && request.method !== 'HEAD') { response.writeHead(405).end(); return }

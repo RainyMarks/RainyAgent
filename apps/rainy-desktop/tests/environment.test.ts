@@ -6,7 +6,8 @@ import { spawn } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createEnvironmentSetup, environmentStateDirectory, EnvironmentSetupError } from '../src/environment.ts'
 import type { EnvironmentPlatform, EnvironmentSetupOptions, EnvironmentSystem } from '../src/environment.ts'
-import { createWindowsEnvironmentPlatform, quotePowerShell } from '../src/environment-platform.ts'
+import { createWindowsEnvironmentPlatform } from '../src/environment-platform.ts'
+import { quotePowerShell } from '../src/powershell.ts'
 import { execFileSync } from 'node:child_process'
 
 const temporaryRoots: string[] = []

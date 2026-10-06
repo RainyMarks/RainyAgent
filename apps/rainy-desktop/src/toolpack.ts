@@ -17,7 +17,7 @@ const { createReadStream } = toolPackFileSystem
 const { mkdir, open, readFile, unlink } = toolPackFileSystem.promises
 
 export { ToolPackInstallError } from './toolpack-format.ts'
-export type { InstallNativeToolPackOptions, NativeToolPackInstallResult, ToolPackProgress } from './toolpack-format.ts'
+export type { InstallNativeToolPackOptions, NativeToolPackInstallResult } from './toolpack-format.ts'
 
 const installedSchema = z.object({ version: z.literal(1), packId: z.string().regex(/^[a-f0-9]{64}$/) }).strict()
 const journalSchema = z.object({
@@ -141,7 +141,7 @@ async function verifyInstalled(root: string, metadata: ToolPackMetadata, signal?
 }
 
 async function extractArchive(
-  metadata: ToolPackMetadata, mediaRoot: string, stageRoot: string, reusable: Set<string>,
+  metadata: ToolPackMetadata, mediaRoot: string, stageRoot: string, reusable: Set<string>, move: ToolPackPlatform['move'],
   progress: (update: ToolPackProgress) => void, signal?: AbortSignal,
 ): Promise<void> {
   const expected = new Map(metadata.files.map(file => [file.path, file]))
@@ -188,7 +188,7 @@ async function extractArchive(
         }
         await output.close()
         await assertToolPackPath(destination)
-        await nativeToolPackPlatform.move(temporary, destination)
+        await move(temporary, destination)
       }
       entries.delete(entry)
       completedBytes += file.bytes
@@ -281,9 +281,9 @@ export function createNativeToolPackInstaller(
         const [destinationExists, stagedExists, backupExists] = await Promise.all([
           toolPackStat(destination), toolPackStat(staged), toolPackStat(backup),
         ])
-        if (unit.retired) {
-          if (destinationExists && backupExists) throw new ToolPackInstallError('rollback-required', `恢复路径出现冲突，已保留两个版本：${unit.path}`)
-        } else if (!stagedExists && destinationExists) await move(destination, staged)
+        // Before 'moving-new', an existing destination is still the original unit, never the staged replacement.
+        const destinationIsNew = !unit.retired && (unit.state === 'moving-new' || unit.state === 'installed')
+        if (destinationIsNew && !stagedExists && destinationExists) await move(destination, staged)
         else if (destinationExists && backupExists) throw new ToolPackInstallError('rollback-required', `恢复路径出现冲突，已保留两个版本：${unit.path}`)
         if (backupExists) await move(backup, destination)
         else if (unit.hadOriginal && !await toolPackStat(destination)) throw new ToolPackInstallError('rollback-required', `原工具备份暂时不可用，已保留恢复记录：${unit.path}`)
@@ -372,7 +372,8 @@ export function createNativeToolPackInstaller(
       if (await platform.availableBytes(installRoot) < requiredBytes) throw new ToolPackInstallError('insufficient-space', `目标磁盘空间不足。至少还需要 ${Math.ceil(requiredBytes / 1024 ** 2)} MiB 可用空间。`)
       journal = { version: 1, installRoot, packId: metadata.id, transactionId: randomUUID(), previousPackId, phase: 'staging', units: [...retiredUnits, ...units].map(unit => ({ ...unit, state: 'pending' })) }
       await writeToolPackRecord(journalPath, journal)
-      await extractArchive(metadata, mediaRoot, stageRoot, reusable, progress, options.signal)
+      await extractArchive(metadata, mediaRoot, stageRoot, reusable,
+        (source, destination) => platform.move(source, destination), progress, options.signal)
       progress({ phase: 'verifying', message: '全部工具文件已通过逐项校验。', completedBytes: metadata.unpackedBytes, totalBytes: metadata.unpackedBytes })
       checkToolPackCancellation(options.signal)
       for (const unit of units) {
