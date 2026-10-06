@@ -19,9 +19,11 @@ Develop by NCUCyberBase.
 <a id="run"></a>
 ## Download and start
 
-Get [RainyAgent 1.0.0 for Windows x64](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.0/RainyAgent-1.0.0-windows-x64-setup.exe). The [v1.0.0 release page](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0) contains release notes, checksums, and optional offline inputs.
+Get [RainyAgent 1.0.1 for Windows x64](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.1/RainyAgent-1.0.1-windows-x64-setup.exe). The [release page](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.1) provides the installer and automatic-update files; optional offline inputs remain in the [resource archive](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources).
 
 Install the core application, open RainyAgent from the desktop shortcut, then choose **File → Open folder**. A new installation uses Windows directly; WSL2 and offline environment components are optional. No activation code is required. The core EXE already supplies the Windows Host, Strata engine, Python, and their runtime dependencies; main and MTP model weights remain outside the installer.
+
+Open **CTF tools → Common tools → Download all tools** while online. Installed tools remain available offline; the catalog checks for added or updated tools. See [tool installation and updates](apps/rainy-desktop/README.md#ctf-workbench).
 
 Automatic updates replace the core application. They do not download optional tool packs, WSL media, or scientific runtimes again. A downloaded update offers **Later** or **Restart and install**; ordinary exit does not install it.
 
@@ -56,7 +58,7 @@ cd RainyAgent
 pnpm install --frozen-lockfile
 node apps/rainy-desktop/scripts/bootstrap-release-inputs.mjs --manifest apps/rainy-desktop/toolpacks/build-inputs.v1.json
 pnpm run build
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.0 -ComponentSource apps/rainy-desktop/release/offline-1.0.0/environment-components
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.1 -ComponentSource apps/rainy-desktop/release/offline-1.0.1/environment-components
 ```
 
 Replace `Ubuntu` only when your prepared WSL build distribution has another name. [Validation](apps/rainy-desktop/VALIDATION.md) records the build, installation, and runtime checks completed for each artifact; source instructions alone are not a clean-machine acceptance result.

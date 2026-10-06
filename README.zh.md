@@ -19,9 +19,11 @@ Develop by NCUCyberBase.
 <a id="run"></a>
 ## 下载与开始使用
 
-下载 [RainyAgent 1.0.0 Windows x64 安装包](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.0/RainyAgent-1.0.0-windows-x64-setup.exe)。[v1.0.0 发行页](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0)提供更新说明、校验清单及可选离线输入。
+下载 [RainyAgent 1.0.1 Windows x64 安装包](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.1/RainyAgent-1.0.1-windows-x64-setup.exe)。[发行页](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.1)提供安装包和自动更新文件，可选离线输入保留在[资源归档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。
 
 安装核心应用，从桌面快捷方式打开 RainyAgent，然后选择**文件 → 打开文件夹**。新安装直接使用 Windows；WSL2 和离线环境组件均为可选项。无需激活码。核心 EXE 已包含 Windows Host、Strata 引擎、Python 及其运行依赖；主模型与 MTP 权重不放入安装包。
+
+联网后进入 **CTF 工具 → 常用工具 → 下载全部工具**。安装后的工具可离线使用，工具目录会检测新增工具和更新。详见[工具安装与更新](apps/rainy-desktop/README.zh.md#ctf-workbench)。
 
 自动更新替换核心应用，不会重新下载可选工具包、WSL 介质或科学计算环境。下载完成后可选择**稍后**或**重启安装**；普通退出不会安装更新。
 
@@ -56,7 +58,7 @@ cd RainyAgent
 pnpm install --frozen-lockfile
 node apps/rainy-desktop/scripts/bootstrap-release-inputs.mjs --manifest apps/rainy-desktop/toolpacks/build-inputs.v1.json
 pnpm run build
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.0 -ComponentSource apps/rainy-desktop/release/offline-1.0.0/environment-components
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.1 -ComponentSource apps/rainy-desktop/release/offline-1.0.1/environment-components
 ```
 
 只有已准备的 WSL 构建发行版名称不同时，才替换命令中的 `Ubuntu`。[验收记录](apps/rainy-desktop/VALIDATION.md)按具体产物记录已经完成的构建、安装和运行检查；源码构建说明本身不代表干净机器验收结果。

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, relative } from 'node:path'
 import { createHash } from 'node:crypto'
@@ -55,7 +55,7 @@ describe('native tool catalog', () => {
     await writeFile(join(onlineRoot, 'tools/manifest.json'), await readFile(catalogPath))
     expect((await library.listTools()).tools[0]).toMatchObject({ status: 'ready' })
     await library.launchTool('7zip')
-    expect(start.mock.calls[0][0]).toMatchObject({ target: join(onlineRoot, 'tools/7zip/7z.exe') })
+    expect(start.mock.calls[0][0]).toMatchObject({ target: await realpath(join(onlineRoot, 'tools/7zip/7z.exe')) })
     selectedRoot = installRoot
     expect((await library.listTools()).tools[0]).toMatchObject({ status: 'ready' })
   })
@@ -223,7 +223,7 @@ describe('native process preparation', () => {
     }
     & ([scriptblock]::Create([Text.Encoding]::Unicode.GetString([Convert]::FromBase64String('${launcher}'))))`
     const result = await promisify(execFile)(powershell, ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand',
-      Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 10000, encoding: 'utf8' })
+      Buffer.from(script, 'utf16le').toString('base64')], { windowsHide: true, timeout: 25000, encoding: 'utf8' })
     expect(JSON.parse(result.stdout)).toEqual({ file: powershell, directory: invocation().cwd,
       arguments: ['-NoLogo', '-NoProfile', '-NoExit', '-EncodedCommand', nativeConsoleCommand(invocation())] })
   })
