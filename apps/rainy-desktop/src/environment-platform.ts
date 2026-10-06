@@ -19,7 +19,8 @@ const systemSchema = z.object({
 })
 const ownerSchema = z.object({ version: z.literal(1), installRoot: z.string(), distro: z.string(), imageSha256: z.string() }).strict()
 
-function quotePowerShell(value: string): string { return "'" + value.replaceAll("'", "''") + "'" }
+/** PowerShell also ends single-quoted strings at typographic quotes, which may appear in Windows profile paths. */
+export function quotePowerShell(value: string): string { return "'" + value.replace(/['‘’‚‛]/gu, '$&$&') + "'" }
 
 function sanitizedEnvironment(): NodeJS.ProcessEnv {
   return Object.fromEntries(Object.entries(process.env).filter(([name]) => !/KEY|SECRET|TOKEN|PASSWORD|^PSModulePath$/i.test(name)))

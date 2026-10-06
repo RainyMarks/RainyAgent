@@ -6,7 +6,8 @@ import { spawn } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createEnvironmentSetup, environmentStateDirectory, EnvironmentSetupError } from '../src/environment.ts'
 import type { EnvironmentPlatform, EnvironmentSetupOptions, EnvironmentSystem } from '../src/environment.ts'
-import { createWindowsEnvironmentPlatform } from '../src/environment-platform.ts'
+import { createWindowsEnvironmentPlatform, quotePowerShell } from '../src/environment-platform.ts'
+import { execFileSync } from 'node:child_process'
 
 const temporaryRoots: string[] = []
 afterEach(async () => {
@@ -251,5 +252,19 @@ describe('environment setup', () => {
     expect(await readFile(legacyPath, 'utf8')).toBe(legacy)
     const path = join(environmentStateDirectory(test.options.installRoot, test.options.userData), 'setup.json')
     expect(JSON.parse(await readFile(path, 'utf8'))).toMatchObject({ phase: 'ready' })
+  })
+})
+
+describe('elevated PowerShell quoting', () => {
+  it('doubles every quote PowerShell treats as a single-quote delimiter', () => {
+    expect(quotePowerShell(String.raw`C:\Users\O’Brien's`)).toBe(String.raw`'C:\Users\O’’Brien''s'`)
+  })
+
+  it.runIf(process.platform === 'win32')('round-trips a profile path with a typographic apostrophe', () => {
+    const path = String.raw`C:\Users\O’Brien\AppData\report.json`
+    const script = `[Console]::OutputEncoding=[Text.UTF8Encoding]::new($false); Write-Output ${quotePowerShell(path)}`
+    const output = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-EncodedCommand',
+      Buffer.from(script, 'utf16le').toString('base64')], { encoding: 'utf8', windowsHide: true })
+    expect(output.trim()).toBe(path)
   })
 })
