@@ -44,6 +44,46 @@ function repository(test: TestContext) {
 }
 
 describe('maintained repository reference policy', () => {
+  it('accepts only the installer manifest root source pin and still inspects its other fields', () => {
+    const commit = 'a'.repeat(40)
+    const source = JSON.stringify({
+      sourceCommit: commit, notes: commit, homepage: organizationUrl, nested: { sourceCommit: commit },
+    }, null, 2)
+    expect(findRepositoryReferences('.github/installer-smoke/artifact.json', source, new Set([commit]))).toEqual([
+      { file: '.github/installer-smoke/artifact.json', line: 3, kind: 'commit-hash' },
+      { file: '.github/installer-smoke/artifact.json', line: 4, kind: 'organization-url' },
+      { file: '.github/installer-smoke/artifact.json', line: 6, kind: 'commit-hash' },
+    ])
+    const windowsPin = JSON.stringify({ sourceCommit: commit }, null, 2).replaceAll('\n', '\r\n')
+    expect(findRepositoryReferences('.github/installer-smoke/artifact.json', windowsPin, new Set([commit]))).toEqual([])
+  })
+
+  it('rejects pins in other files, malformed manifests, nested-only fields, and abbreviated identifiers', () => {
+    const commit = 'a'.repeat(40)
+    const pin = JSON.stringify({ sourceCommit: commit }, null, 2)
+    const cases = [
+      ['docs/artifact.json', pin],
+      ['.github/installer-smoke/artifact.json', pin.slice(0, -1)],
+      ['.github/installer-smoke/artifact.json', JSON.stringify({ nested: { sourceCommit: commit } }, null, 2)],
+      ['.github/installer-smoke/artifact.json', JSON.stringify({ sourceCommit: commit.slice(0, 12) }, null, 2)],
+    ] as const
+    for (const [file, source] of cases) {
+      expect(findRepositoryReferences(file, source, new Set([commit, commit.slice(0, 12)])))
+        .toEqual([{ file, line: source.includes('nested') ? 3 : 2, kind: 'commit-hash' }])
+    }
+  })
+
+  it('does not exempt source pins when noncanonical indentation hides a nested field', () => {
+    const commit = 'a'.repeat(40)
+    const source = JSON.stringify({ sourceCommit: commit, nested: { sourceCommit: commit } }, null, 2)
+      .replace('    "sourceCommit"', '  "sourceCommit"')
+    const file = '.github/installer-smoke/artifact.json'
+    expect(findRepositoryReferences(file, source, new Set([commit]))).toEqual([
+      { file, line: 2, kind: 'commit-hash' },
+      { file, line: 4, kind: 'commit-hash' },
+    ])
+  })
+
   it('permits only the independent kit repository and its source URLs', () => {
     for (const suffix of ['', '.git', '/tree/main/packages/entry']) {
       expect(findRepositoryReferences('package.json', `${organizationUrl}/libreoffice-kit${suffix}`, new Set())).toEqual([])

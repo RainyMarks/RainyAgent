@@ -73,4 +73,4 @@ Hunt these in any doc; [dsh-doc](../.agents/skills/dsh-doc/SKILL.md) runs this l
 
 ## Repository references
 
-Use relative Markdown links for current files and tags or PR numbers for historical references. `verify-md-links` checks local targets. [Reference validation](../scripts/verify-repository-references.ts) rejects actual commit identifiers and disallowed organization URLs in maintained files.
+In maintained files, use relative links and historical tags or PR numbers. `verify-md-links` checks targets; [reference validation](../scripts/verify-repository-references.ts) rejects commit identifiers and disallowed organization URLs, except the [installer manifest](../.github/installer-smoke/artifact.json)'s full top-level `sourceCommit` in canonical two-space JSON.

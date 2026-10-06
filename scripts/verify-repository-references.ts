@@ -29,12 +29,27 @@ function isMaintained(file: string): boolean {
   return !excludedPrefixes.some(prefix => file.startsWith(prefix))
 }
 
+function installerSourceCommit(file: string, source: string): string | undefined {
+  if (file !== '.github/installer-smoke/artifact.json') return undefined
+  let manifest: unknown
+  try { manifest = JSON.parse(source) } catch (error) {
+    // Invalid JSON has no machine-readable source pin; scan every reference.
+    if (error instanceof SyntaxError) return undefined
+    throw error
+  }
+  if (typeof manifest !== 'object' || manifest === null || !('sourceCommit' in manifest)) return undefined
+  if (JSON.stringify(manifest, null, 2) !== source.replaceAll('\r\n', '\n').trim()) return undefined
+  const commit = manifest.sourceCommit
+  return typeof commit === 'string' && /^[a-f0-9]{40}$/.test(commit) ? commit : undefined
+}
+
 /**
  * Inspect a maintained source file against known commit identifiers.
  * @param file - Repository-relative path used in diagnostics and exclusions.
  * @param source - File text or a symlink's stored target.
  * @param commits - Lowercase, unambiguous full or abbreviated commit identifiers.
- * @returns One finding per line and reference kind; digests and other Git object types are accepted.
+ * @returns One finding per line and reference kind; accepts digests, other Git object types,
+ * and the installer manifest's full source pin.
  */
 export function findRepositoryReferences(
   file: string,
@@ -43,11 +58,14 @@ export function findRepositoryReferences(
 ): RepositoryReference[] {
   if (!isMaintained(file)) return []
   const references: RepositoryReference[] = []
+  const sourceCommit = installerSourceCommit(file, source)
   for (const [index, line] of source.split('\n').entries()) {
     if (organizationUrl.test(canonicalReferenceText(line).replace(kitRepositoryUrl, ''))) {
       references.push({ file, line: index + 1, kind: 'organization-url' })
     }
-    if ([...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
+    const pinnedSourceLine = sourceCommit !== undefined
+      && /^  "sourceCommit": "([a-f0-9]{40})",?\r?$/.exec(line)?.[1] === sourceCommit
+    if (!pinnedSourceLine && [...line.matchAll(commitCandidate)].some(match => commits.has(match[0].toLowerCase()))) {
       references.push({ file, line: index + 1, kind: 'commit-hash' })
     }
   }

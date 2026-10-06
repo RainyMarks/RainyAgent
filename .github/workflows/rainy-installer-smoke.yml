@@ -18,6 +18,9 @@ concurrency:
 jobs:
   core-install:
     if: github.repository == 'RainyMarks/RainyAgent'
+    # GitHub makes draft releases visible only to identities with repository push access.
+    permissions:
+      contents: write
     runs-on: windows-2022
     timeout-minutes: 30
     steps:
