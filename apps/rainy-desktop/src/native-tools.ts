@@ -133,10 +133,10 @@ export async function resolveNativePath(root: string, child: string): Promise<st
   return actual
 }
 
-async function optionalJson(path: string): Promise<unknown> {
+async function optionalJson(path: string, unavailableParentIsMissing = false): Promise<unknown> {
   try { return JSON.parse(await readFile(path, 'utf8')) }
   catch (error) {
-    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return undefined
+    if (error instanceof Error && 'code' in error && (error.code === 'ENOENT' || unavailableParentIsMissing && error.code === 'ENOTDIR')) return undefined
     throw error
   }
 }
@@ -176,7 +176,7 @@ export class NativeToolsLibrary {
       const { id } = tool
       return id === 'burp-community' ? [] : [{ ...tool, id, installRoot: root }]
     })
-    const local = await optionalJson(resolve(this.options.userData, 'native-tools.local.json'))
+    const local = await optionalJson(resolve(this.options.userData, 'native-tools.local.json'), true)
     if (local !== undefined) {
       const selected = localCatalogSchema.parse(local)
       for (const tool of selected.catalog.tools) {
