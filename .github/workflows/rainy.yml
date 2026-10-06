@@ -56,7 +56,7 @@ jobs:
         working-directory: apps/rainy-desktop
         run: >-
           pnpm exec vitest run --config vitest.config.ts
-          tests/desktop-lifecycle.test.ts tests/updates.test.ts tests/models-discovery.test.ts
+          tests/desktop-lifecycle.test.ts tests/clipboard-policy.test.ts tests/updates.test.ts tests/models-discovery.test.ts
           tests/transport.test.ts tests/transport-lifecycle.test.ts
           tests/runtime-environments.test.ts tests/release-integrity.test.ts
           tests/strata.test.ts tests/strata-health.test.ts tests/models-strata.test.ts
