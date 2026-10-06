@@ -60,7 +60,7 @@ Strata 服务在 Windows loopback 上运行。WSL Host 只有在能访问该地�
 
 请求预算覆盖系统提示、工具定义、项目指令、扩展和历史。缺少服务端 tokenizer 时使用保守的多语言估计，并用实际 usage 向上校准；界面明确标为估计。其他工具结果超限后保存完整文本，只把有限首尾片段和原文位置送给模型。read 使用自己的行窗口，不对普通文件或 spill 文件读取结果再次生成 spill；默认上限为 2,000 行、每行 2,000 字符和 50 KiB 所选文本。完整请求连同包装仍受总输入预算限制，超限在供应商调用前拒绝。超长行有明确截断标记且原文件不变；offset/limit 不能分页读取单行后半。摘要使用当前模型，完整辅助请求包含保留的直接用户原文作为准确参考，并按同一完整输入计量。摘要指令只记录已验证的进度、错误、待办和下一步，不改写用户目标或约束；参考原文不进入替换范围。失败保留原记录。最近一个已接纳输入的轮次中，直接用户消息（包括该轮中途补充的输入）在当前表层原位保留全文；新轮次接纳首条用户消息后才切换保护范围。更早轮次仍可摘要，已经遮蔽的原文不会回填。自动、空闲手动和显式范围压缩均保留这些当前轮消息；受保护输入本身超限会明确报错。上下文溢出至多压缩重试一次，仍超限就停止发送。原始会话日志不会被摘要替换或删除。
 
-高级计数配置位于 `~/.rainy-agent/profiles/rainy/cordis.patch.yml` 的 `rainy-policy` 条目，可设置 `tokenizers: { local: "http://127.0.0.1:端口/count" }`。该自定义接口接收 `provider/model/system/messages/tools`，必须按实际部署的聊天模板计数，POST 返回 `{ "tokens": 1234, "model": "当前模型", "chatTemplate": "模板版本" }`；模型不匹配、模板标识缺失或计数失败时回落到估计。通用 `/tokenize` 接口不能未经适配直接替代。共享同一服务但地址不同的供应商可用 `endpointGroups` 指向同一个队列键。
+高级计数配置位于 `~/.rainy-agent/profiles/rainy/cordis.patch.yml` 的 `rainy-policy` 条目，可设置 `tokenizers: { local: "http://127.0.0.1:端口/count" }`。该自定义接口接收 `provider/model/system/messages/tools`，必须按实际部署的聊天模板计数，POST 返回 `{ "tokens": 1234, "model": "当前模型", "chatTemplate": "模板版本" }`；模型不匹配、模板标识缺失或计数失败时回落到估计。通用 `/tokenize` 接口不能未经适配直接替代。共享同一服务但地址不同的供应商可用 `endpointGroups` 指向同一个队列键。每个队列按到达顺序发送请求：本机回环地址（localhost、`*.localhost`、127.0.0.1、[::1]）默认一次一个，其他端点默认最多同时四个；`localEndpointConcurrency` 与 `remoteEndpointConcurrency` 修改这两个默认值，`endpointConcurrency` 按队列键（分组名、Base URL 的 origin 或供应商 ID）单独设置。分组中任一供应商使用回环地址时整组按本机处理；局域网或其他非回环地址上的单路服务需在 `endpointConcurrency` 中设为 1。
 
 ## 项目记忆
 

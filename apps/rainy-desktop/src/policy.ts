@@ -56,6 +56,15 @@ export interface Config {
   tokenizers?: Record<string, string>
   /** Provider aliases sharing one model server use the same queue key. */
   endpointGroups?: Record<string, string>
+  /**
+   * Concurrent requests admitted per loopback queue, whose base URL host is localhost, *.localhost, 127.0.0.1 or [::1].
+   * An `endpointGroups` queue is loopback when any member provider's base URL is.
+   */
+  localEndpointConcurrency: number
+  /** Concurrent requests admitted per other queue, including a provider without a parsable base URL. */
+  remoteEndpointConcurrency: number
+  /** Overrides both defaults per queue key: the provider's `endpointGroups` name, else its base-URL origin, else its id. */
+  endpointConcurrency?: Record<string, number>
   /** Maximum tokens describing explicitly attached project directories. */
   rootManifestTokens?: number
 }
@@ -77,6 +86,9 @@ export const inject = [
 export const Config: z<Config> = z.object({
   tokenizers: z.dict(z.string()),
   endpointGroups: z.dict(z.string()),
+  localEndpointConcurrency: z.number().min(1).step(1).default(1),
+  remoteEndpointConcurrency: z.number().min(1).step(1).default(4),
+  endpointConcurrency: z.dict(z.number().min(1).step(1)),
   rootManifestTokens: z.number().min(128).step(1).default(1024),
 })
 const CORE = new Set(['read', 'write', 'edit', process.platform === 'win32' ? 'pwsh' : 'bash'])
@@ -86,6 +98,15 @@ const descriptions: Record<string, string> = {
   edit: 'Apply an exact text replacement to a previously read file.',
   bash: 'Run a command in the project Bash shell. Use rg for search; inspect exit status.',
   pwsh: 'Run a command in the project PowerShell shell. Use rg for search; inspect exit status.',
+}
+
+function loopback(url: URL | null): boolean {
+  return url !== null && (['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.hostname.endsWith('.localhost'))
+}
+
+/** Provider ids such as `constructor` must not read inherited Object members from a config record. */
+function own<T>(record: Record<string, T> | undefined, key: string): T | undefined {
+  return record !== undefined && Object.hasOwn(record, key) ? record[key] : undefined
 }
 
 /** Mount scoped guards and count the immutable final request immediately before the provider runs. */
@@ -106,6 +127,38 @@ export function apply(ctx: Context, config: Config): void {
   const compaction = ctx.compaction as RainyCompaction
   const allowed = (name: string, agent?: Agent) =>
     CORE.has(name) || (agent !== undefined && state.tools.get(agent.session.header.id)?.has(name) === true)
+
+  /** Read the queue key and concurrency limit from the provider profiles current at admission. */
+  const admission = (provider: string): { key: string; limit: number } => {
+    const entry = ctx.configEditor.entries().find(item => item.options.id === 'llm-pi-ai')
+    const rawConfig: unknown = entry?.options.config
+    const profiles: unknown =
+      rawConfig !== null && typeof rawConfig === 'object' && 'providers' in rawConfig
+        ? rawConfig.providers
+        : undefined
+    const endpoint = (id: string): URL | null => {
+      const configured =
+        profiles !== null && typeof profiles === 'object'
+          ? (profiles as Record<string, unknown>)[id]
+          : undefined
+      return configured !== null &&
+        typeof configured === 'object' &&
+        'baseURL' in configured &&
+        typeof configured.baseURL === 'string'
+        ? URL.parse(configured.baseURL)
+        : null
+    }
+    const group = own(config.endpointGroups, provider)
+    const key = group ?? endpoint(provider)?.origin ?? provider
+    const members = group === undefined
+      ? [provider]
+      : Object.entries(config.endpointGroups ?? {}).filter(([, name]) => name === group).map(([id]) => id)
+    const local = members.some(id => loopback(endpoint(id)))
+    return {
+      key,
+      limit: own(config.endpointConcurrency, key) ?? (local ? config.localEndpointConcurrency : config.remoteEndpointConcurrency),
+    }
+  }
 
   const additionalRoots = (cwd: string | undefined): string[] => {
     if (!cwd) return []
@@ -222,7 +275,7 @@ export function apply(ctx: Context, config: Config): void {
         calibrated = new CalibratedCounter()
         counters.set(key, calibrated)
       }
-      const tokenizer = config.tokenizers?.[request.provider]
+      const tokenizer = own(config.tokenizers, request.provider)
       const counter: TokenCounter = tokenizer ? new EndpointCounter(tokenizer, calibrated) : calibrated
       const count = await counter.count(request, request.signal)
       const id = request.sessionId ?? 'diagnostic'
@@ -260,24 +313,8 @@ export function apply(ctx: Context, config: Config): void {
         yield { type: 'finish', reason: { kind: 'error', failure: { code: CONTEXT_WINDOW_EXCEEDED_CODE, message } } }
         return
       }
-      const entry = ctx.configEditor.entries().find(item => item.options.id === 'llm-pi-ai')
-      const rawConfig: unknown = entry?.options.config
-      const profiles: unknown =
-        rawConfig !== null && typeof rawConfig === 'object' && 'providers' in rawConfig
-          ? rawConfig.providers
-          : undefined
-      const configured =
-        profiles !== null && typeof profiles === 'object'
-          ? (profiles as Record<string, unknown>)[request.provider]
-          : undefined
-      const endpoint =
-        configured !== null &&
-        typeof configured === 'object' &&
-        'baseURL' in configured &&
-        typeof configured.baseURL === 'string'
-          ? new URL(configured.baseURL).origin
-          : request.provider
-      const release = await queue.acquire(config.endpointGroups?.[request.provider] ?? endpoint, request.signal)
+      const lane = admission(request.provider)
+      const release = await queue.acquire(lane.key, lane.limit, request.signal)
       state.modelActivity.activeRequests++
       try {
         for await (const chunk of next()) {

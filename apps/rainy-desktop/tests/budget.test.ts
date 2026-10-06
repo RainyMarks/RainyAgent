@@ -104,6 +104,31 @@ describe('request budget', () => {
       estimateRequest(request) + 300,
     )
   })
+  it('prices a surrogate pair as one four-byte character and a lone surrogate as three bytes', () => {
+    expect(estimateText('😀')).toBe(4)
+    expect(estimateText('\ud83d')).toBe(3)
+    expect(estimateText('\ude00\ud83d')).toBe(6)
+    expect(estimateText('é\u0800abc')).toBe(6)
+  })
+  it('prices the complete serialized request, including content changed after an earlier estimate', () => {
+    const serialized = (request: { system?: string; messages: { role: string; content: readonly unknown[] }[]; tools?: unknown[] }) =>
+      estimateText(JSON.stringify({
+        system: request.system,
+        messages: request.messages.map(message => ({ role: message.role, content: message.content })),
+        tools: request.tools,
+      })) + 16 * (request.messages.length + 1)
+    const block = Object.freeze({ type: 'text', text: '已完成 😀 \ud800 "done"' })
+    const frozen = Object.freeze({ role: 'assistant', content: Object.freeze([block]) })
+    const mutable = { role: 'user', content: [{ type: 'text', text: 'hello\nworld' }] }
+    const request = { system: 'System 中文', messages: [frozen, mutable], tools: [{ name: 'read', description: 'Read.' }] }
+    expect(estimateRequest(request)).toBe(serialized(request))
+    mutable.content.push({ type: 'text', text: '新的输入 '.repeat(50) })
+    expect(estimateRequest(request)).toBe(serialized(request))
+    expect(estimateRequest({ messages: [] })).toBe(serialized({ messages: [] }))
+    expect(promptBreakdown(request).history).toBe(
+      estimateText(JSON.stringify(frozen.content)) + estimateText(JSON.stringify(mutable.content)),
+    )
+  })
   it('increases estimates after observed undercount', async () => {
     const counter = new CalibratedCounter()
     const request = { messages: [] }
@@ -135,16 +160,23 @@ describe('request budget', () => {
   })
 })
 
-describe('local request admission', () => {
+describe('endpoint request admission', () => {
+  const settle = () => new Promise(resolve => setTimeout(resolve, 0))
+  const track = (queue: RequestQueue, admitted: string[], name: string, key: string, limit: number, signal?: AbortSignal) =>
+    queue.acquire(key, limit, signal).then((release) => {
+      admitted.push(name)
+      return release
+    })
+
   it('serializes one endpoint while other endpoints run independently', async () => {
     const queue = new RequestQueue()
-    const release = await queue.acquire('local')
+    const release = await queue.acquire('local', 1)
     let admitted = false
-    const next = queue.acquire('local').then((done) => {
+    const next = queue.acquire('local', 1).then((done) => {
       admitted = true
       done()
     })
-    ;(await queue.acquire('other'))()
+    ;(await queue.acquire('other', 1))()
     await Promise.resolve()
     expect(admitted).toBe(false)
     release()
@@ -153,13 +185,13 @@ describe('local request admission', () => {
   })
   it('cancelled waiters never release the active request', async () => {
     const queue = new RequestQueue()
-    const active = await queue.acquire('local')
+    const active = await queue.acquire('local', 1)
     const abort = new AbortController()
-    const cancelled = queue.acquire('local', abort.signal)
+    const cancelled = queue.acquire('local', 1, abort.signal)
     abort.abort(new Error('stop'))
     await expect(cancelled).rejects.toThrow('stop')
     let admitted = false
-    const next = queue.acquire('local').then((done) => {
+    const next = queue.acquire('local', 1).then((done) => {
       admitted = true
       done()
     })
@@ -168,5 +200,71 @@ describe('local request admission', () => {
     active()
     await next
     expect(admitted).toBe(true)
+  })
+  it('admits up to the key limit in arrival order', async () => {
+    const queue = new RequestQueue()
+    const admitted: string[] = []
+    const first = await track(queue, admitted, 'first', 'remote', 2)
+    const second = await track(queue, admitted, 'second', 'remote', 2)
+    const [a, b, c] = ['a', 'b', 'c'].map(name => track(queue, admitted, name, 'remote', 2))
+    ;(await queue.acquire('other', 2))()
+    await settle()
+    expect(admitted).toEqual(['first', 'second'])
+    second()
+    await settle()
+    expect(admitted).toEqual(['first', 'second', 'a'])
+    first()
+    await settle()
+    expect(admitted).toEqual(['first', 'second', 'a', 'b'])
+    ;(await a)()
+    await settle()
+    expect(admitted).toEqual(['first', 'second', 'a', 'b', 'c'])
+    ;(await b)()
+    ;(await c)()
+  })
+  it('ignores a repeated release', async () => {
+    const queue = new RequestQueue()
+    const admitted: string[] = []
+    const active = await queue.acquire('local', 1)
+    const [a, b] = ['a', 'b'].map(name => track(queue, admitted, name, 'local', 1))
+    active()
+    active()
+    await settle()
+    expect(admitted).toEqual(['a'])
+    ;(await a)()
+    ;(await b)()
+    expect(admitted).toEqual(['a', 'b'])
+  })
+  it('a cancelled waiter neither holds nor frees a slot and stops blocking later waiters', async () => {
+    const queue = new RequestQueue()
+    const admitted: string[] = []
+    const active = await queue.acquire('shared', 1)
+    const abort = new AbortController()
+    const head = track(queue, admitted, 'head', 'shared', 1, abort.signal)
+    const later = track(queue, admitted, 'later', 'shared', 2)
+    const last = track(queue, admitted, 'last', 'shared', 2)
+    await settle()
+    expect(admitted).toEqual([])
+    abort.abort(new Error('stop'))
+    await expect(head).rejects.toThrow('stop')
+    await settle()
+    expect(admitted).toEqual(['later'])
+    ;(await later)()
+    ;(await last)()
+    active()
+    expect(admitted).toEqual(['later', 'last'])
+  })
+  it('returns the slot of a waiter cancelled as it is admitted', async () => {
+    const queue = new RequestQueue()
+    const admitted: string[] = []
+    const active = await queue.acquire('local', 1)
+    const abort = new AbortController()
+    const cancelled = track(queue, admitted, 'cancelled', 'local', 1, abort.signal)
+    const next = track(queue, admitted, 'next', 'local', 1)
+    active()
+    abort.abort(new Error('stop'))
+    await expect(cancelled).rejects.toThrow('stop')
+    ;(await next)()
+    expect(admitted).toEqual(['next'])
   })
 })
