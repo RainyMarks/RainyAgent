@@ -8,7 +8,7 @@ RainyAgent 使用 Windows x64 Electron 外壳；核心安装包包含 Windows Ho
 
 ## 离线安装与恢复
 
-[1.0.2 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2)提供核心安装程序。更新的原生工具分卷位于 [1.0.2 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2-resources)；未变化的 `environment/` WSL 安装介质和 `environment-components/` 运行环境归档仍位于 [1.0.0 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。源码打包从两个固定版本的资源存档恢复输入至 `release/offline-1.0.2`。原生工具为可选项：可在目录中联网安装，也可把匹配分卷放在安装程序旁离线安装。每个原生工具分卷最大为 2 GiB。
+[1.0.3 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.3)提供核心安装程序。更新的原生工具分卷位于 [1.0.2 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2-resources)；未变化的 `environment/` WSL 安装介质和 `environment-components/` 运行环境归档仍位于 [1.0.0 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。源码打包从两个固定版本的资源存档恢复输入至 `release/offline-1.0.3`。原生工具为可选项：可在目录中联网安装，也可把匹配分卷放在安装程序旁离线安装。每个原生工具分卷最大为 2 GiB。
 
 工具安装窗口显示当前阶段、文件及阶段进度。点击取消后请求安全停止，并等待必要的回滚。重新运行同一套完整发行文件时，会重新校验分卷并复用已校验的暂存文件。缺卷、分卷损坏或空间不足会在工具目录替换前停止安装。更新前请保存工作并关闭 RainyAgent、原生工具及其命令行窗口；安装程序报告占用，不自动结束这些进程。
 
@@ -53,7 +53,11 @@ Monaco 提供多文件标签、语法高亮、查找替换、撤销、显式保�
 离线组件提供隔离的 Python 3.12、Node 24、Windows PHP、原生 C/C++ 工具，以及独立 CPU 或 CUDA 科学计算环境。科学组件包含 NumPy、SciPy、pandas、scikit-learn、图像处理、Jupyter 和常用深度学习库，并配套 PyTorch 2.11、torchvision 0.26 与 torchaudio 2.11。导入先核对发行目录、归档及逐文件清单，再选择按摘要存放的代际。已有用户环境和全局 PATH 保持不变。CUDA 需要兼容的 NVIDIA 驱动。Ubuntu 26.04 amd64 开发工具向导使用经过校验的 C/C++、GDB、CMake、clangd 和 PHP 软件包，安装时禁用下载。
 
 <a id="ctf-workbench"></a>
+桌面应用允许已认证 Host 同源的会话和工具页面复制文本。历史会话中的工具调用使用 profile 注册的工具渲染器显示。
+
 ## CTF 工作台
+
+应用用户数据目录中的私有 `native-tools.local.json` 可使用现有本机安装覆盖工具目录。其版本 1 对象包含绝对路径 `root` 和版本 1 的 `catalog`，工具条目字段与内置目录一致，入口使用 `tools/<id>/` 下的安装相对路径。相同 ID 替换下载条目，其他 ID 扩展目录。本机安装在工具包更新后仍保持选中，不显示发布者功能验收标记。IDA Pro 应指向正式安装的程序，并单独激活自己的许可证；安装程序和许可证均不属于公共工具下载渠道。
 
 工具发布者先将校验后的分片上传到固定版本的资源 Release，再使用 `scripts/sign-tool-channel.mjs` 指定来源清单、安装元数据、工具目录、发行版本及更大的 `--revision`。将公开输出提交到 `toolpacks/native-tools-channel.signed.json`。签名身份须匹配 `resources/native-tools-public-keys.json`；重新构建应用只需保留这些公钥，无需持有工具签名私钥。客户端不会从通道接受新的信任公钥。工具包身份未变化的通道修订不会再次提示下载。
 

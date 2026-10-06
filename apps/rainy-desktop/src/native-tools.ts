@@ -59,6 +59,8 @@ const preferencesSchema = z.object({ version: z.literal(1),
   favorites: z.array(storedToolIdSchema).max(256), recent: z.array(storedToolIdSchema).max(256) })
 const verificationSchema = z.object({ version: z.literal(1),
   catalogSha256: z.string().regex(/^[a-f0-9]{64}$/), tools: z.array(storedToolIdSchema) })
+const localCatalogSchema = z.object({ version: z.literal(1), root: z.string()
+  .refine(value => (isAbsolute(value) || win32.isAbsolute(value)) && !value.includes('\0')), catalog: catalogSchema }).strict()
 
 /** Catalog entry loaded from the installed tool pack. */
 export type InstalledNativeTool = Omit<z.infer<typeof toolSchema>, 'id'> & { id: NativeToolId }
@@ -151,8 +153,7 @@ export class NativeToolsLibrary {
   }
 
   private async catalog(): Promise<{
-    readonly root: string
-    readonly tools: InstalledNativeTool[]
+    readonly tools: (InstalledNativeTool & { readonly installRoot: string })[]
     readonly verified: ReadonlySet<string>
   }> {
     const root = this.options.selectRoot ? await this.options.selectRoot() : this.options.installRoot
@@ -173,9 +174,21 @@ export class NativeToolsLibrary {
     }
     const tools = catalog.tools.flatMap((tool) => {
       const { id } = tool
-      return id === 'burp-community' ? [] : [{ ...tool, id }]
+      return id === 'burp-community' ? [] : [{ ...tool, id, installRoot: root }]
     })
-    return { root, tools, verified }
+    const local = await optionalJson(resolve(this.options.userData, 'native-tools.local.json'))
+    if (local !== undefined) {
+      const selected = localCatalogSchema.parse(local)
+      for (const tool of selected.catalog.tools) {
+        if (tool.id === 'burp-community') continue
+        const index = tools.findIndex(value => value.id === tool.id)
+        const replacement = { ...tool, id: tool.id, installRoot: selected.root }
+        if (index < 0) tools.push(replacement)
+        else tools[index] = replacement
+        verified.delete(tool.id)
+      }
+    }
+    return { tools, verified }
   }
 
   private async preferences(): Promise<CurrentPreferences> {
@@ -211,16 +224,16 @@ export class NativeToolsLibrary {
    * @returns tool summaries; availability does not imply a completed functional acceptance run.
    */
   async listTools(): Promise<NativeToolCatalog> {
-    const [{ root, tools, verified }, preferences] = await Promise.all([this.catalog(), this.preferences()])
+    const [{ tools, verified }, preferences] = await Promise.all([this.catalog(), this.preferences()])
     return {
       tools: await Promise.all(tools.map(async (tool) => {
-        const missing = await this.missing(root, tool)
+        const missing = await this.missing(tool.installRoot, tool)
         return {
           id: tool.id, name: tool.name, category: tool.category, version: tool.version,
           launchKind: tool.entry.kind === 'console' ? 'terminal' as const : tool.entry.kind === 'web' ? 'web' as const : 'desktop' as const,
           status: missing.length ? 'missing' as const : 'ready' as const, missing, verified: verified.has(tool.id),
           ...tool.variants ? { variants: await Promise.all(tool.variants.map(async variant => ({ id: variant.id, name: variant.name,
-            status: (await this.missing(root, tool, variant.entry)).length ? 'missing' as const : 'ready' as const }))) } : {},
+            status: (await this.missing(tool.installRoot, tool, variant.entry)).length ? 'missing' as const : 'ready' as const }))) } : {},
         }
       })), preferences: { favorites: preferences.favorites, recent: preferences.recent },
     }
@@ -276,9 +289,10 @@ export class NativeToolsLibrary {
   }
 
   private async launch(id: NativeToolId, variant?: 'x32'): Promise<NativeToolLaunchResult> {
-    const { root, tools } = await this.catalog()
+    const { tools } = await this.catalog()
     const tool = tools.find(value => value.id === id)
     if (tool === undefined) throw new Error('工具不在已安装目录中')
+    const root = tool.installRoot
     const entry = variant === undefined ? tool.entry : tool.variants?.at(0)?.entry
     if (entry === undefined) throw new Error('工具启动选项不可用')
     const missing = await this.missing(root, tool, entry)

@@ -41,6 +41,25 @@ async function catalog(tools: unknown[] = [installedTool()]): Promise<string> {
 }
 
 describe('native tool catalog', () => {
+  it('keeps a personally installed IDA separate from the downloadable tool pack', async () => {
+    await catalog([{ ...installedTool(), id: 'ida', name: 'IDA', version: 'old', roots: ['tools/ida'],
+      entry: { kind: 'gui', path: 'tools/ida/ida64.exe', cwd: 'tools/ida', args: [] } }])
+    const root = join(fixture, 'personal')
+    await mkdir(join(root, 'tools/ida'), { recursive: true })
+    await writeFile(join(root, 'tools/ida/ida.exe'), 'personal licensed program')
+    await writeFile(join(userData, 'native-tools.local.json'), JSON.stringify({ version: 1, root,
+      catalog: { version: 1, tools: [{ id: 'ida', name: 'IDA Pro 9.5', version: '9.5', category: 'reverse',
+        roots: ['tools/ida'], entry: { kind: 'gui', path: 'tools/ida/ida.exe', cwd: 'tools/ida', args: [] } }] } }))
+    const start = vi.fn()
+    const library = new NativeToolsLibrary({ installRoot, userData, start })
+    expect((await library.listTools()).tools).toHaveLength(1)
+    expect((await library.listTools()).tools[0]).toMatchObject({ name: 'IDA Pro 9.5', version: '9.5', status: 'ready', verified: false })
+    await library.launchTool('ida')
+    expect(start.mock.calls[0][0]).toMatchObject({ target: await realpath(join(root, 'tools/ida/ida.exe')) })
+    await rm(join(root, 'tools/ida/ida.exe'))
+    expect((await library.listTools()).tools[0]).toMatchObject({ status: 'missing' })
+    expect(await library.launchTool('ida')).toMatchObject({ ok: false })
+  })
   it('uses the carrier catalog before downloading and switches to durable per-user tools', async () => {
     const catalogPath = join(fixture, 'bundled-catalog.json')
     await writeFile(catalogPath, JSON.stringify({ version: 1, tools: [installedTool()] }))

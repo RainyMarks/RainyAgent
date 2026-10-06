@@ -31,6 +31,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { embeddedReleaseKeys, parseReleaseKeyring } from './release-trust.ts'
 import { verifyReleaseResources } from './release-integrity.ts'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
+import { allowsClipboardWrite } from './clipboard-policy.ts'
 
 const run = promisify(execFile)
 app.setName('RainyAgent')
@@ -543,7 +544,7 @@ async function start(): Promise<void> {
   window.webContents.on('will-navigate', (event, url) => { if (new URL(url).origin !== origin) event.preventDefault() })
   window.webContents.session.setPermissionRequestHandler((_contents, permission, callback, details) => {
     const url = details.requestingUrl
-    callback(permission === 'clipboard-sanitized-write' && typeof url === 'string' && url.startsWith(`${origin}/rainy/icesky/`))
+    callback(allowsClipboardWrite(permission, url, origin))
   })
   window.webContents.on('page-title-updated', (event) => { event.preventDefault(); window.setTitle('RainyAgent') })
   await window.loadURL(ready.url)
