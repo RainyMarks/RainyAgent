@@ -274,12 +274,13 @@ export function createIdeExecutionService(options: IdeExecutionServiceOptions): 
         ...(value.stopped ? { exit: { exitCode: null, signal: null, stopped: true } } : { error: errorOf(error).message }),
       }
     } finally {
-      try {
-        await value.owner.close()
-        await cleanupBuild(value, resolved)
-      } catch (error) {
-        value.snapshot = { ...value.snapshot, phase: 'failed', error: errorOf(error).message }
-        options.reportError(error)
+      // Each release step runs even when an earlier one fails, so an owned build directory is never left behind.
+      for (const release of [() => value.owner.close(), () => cleanupBuild(value, resolved)]) {
+        try { await release() }
+        catch (error) {
+          value.snapshot = { ...value.snapshot, phase: 'failed', error: errorOf(error).message }
+          options.reportError(error)
+        }
       }
       value.finished = true
       publishRun(value)
@@ -425,11 +426,9 @@ export function createIdeExecutionService(options: IdeExecutionServiceOptions): 
       } catch (error) {
         session.failStart(errorOf(error))
       } finally {
-        try {
-          await session.stop()
-          await cleanupBuild(value, resolved)
-        } catch (error) {
-          options.reportError(error)
+        for (const release of [() => session.stop(), () => cleanupBuild(value, resolved)]) {
+          try { await release() }
+          catch (error) { options.reportError(error) }
         }
         value.finished = true
       }

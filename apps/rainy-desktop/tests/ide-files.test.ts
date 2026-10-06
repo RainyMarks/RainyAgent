@@ -448,6 +448,20 @@ describe('Rainy IDE Git comparison', () => {
     expect(records.get(workspaceId)?.sessionIds).toEqual([])
   })
 
+  it('treats a CRLF checkout of an LF blob as unchanged', async () => {
+    const { root, files, workspaceId, temporary } = await fixture()
+    const git = async (...args: string[]) => promisify(execFile)('git', ['-C', temporary, ...args], { windowsHide: true })
+    await git('init', '-q')
+    await writeFile(join(root, 'lines.txt'), 'one\ntwo\n')
+    await git('-c', 'core.autocrlf=false', 'add', '--all')
+    await git('-c', 'user.name=IDE fixture', '-c', 'user.email=ide@example.invalid', '-c', 'commit.gpgsign=false', 'commit', '-qm', 'fixture')
+    await writeFile(join(root, 'lines.txt'), 'one\r\ntwo\r\n')
+    expect(await files.handle({ op: 'files.diff', workspaceId, path: 'lines.txt' }))
+      .toMatchObject({ base: 'one\r\ntwo\r\n', current: 'one\r\ntwo\r\n', status: 'unchanged' })
+    await writeFile(join(root, 'lines.txt'), 'one\r\nthree\r\n')
+    expect(await files.handle({ op: 'files.diff', workspaceId, path: 'lines.txt' })).toMatchObject({ status: 'modified' })
+  })
+
   it('returns an explicit unavailable comparison outside Git', async () => {
     const { root, files, workspaceId } = await fixture()
     await writeFile(join(root, 'x'), 'text')

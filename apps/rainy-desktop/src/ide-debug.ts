@@ -169,11 +169,10 @@ export class IdeDebugSession {
       case 'debug.variables': {
         const start = request.start ?? 0
         const limit = Math.min(request.count ?? this.options.limits.maxVariables, this.options.limits.maxVariables)
-        const native = this.options.resolved.spec.language === 'c' || this.options.resolved.spec.language === 'cpp'
         const total = this.variableCounts.get(request.variablesReference)
-        const count = native && total !== undefined ? Math.min(limit, Math.max(0, total - start)) : limit
+        const count = this.native && total !== undefined ? Math.min(limit, Math.max(0, total - start)) : limit
         if (count === 0) return []
-        const unpaged = native && total === undefined
+        const unpaged = this.native && total === undefined
         const variables = values.dapVariables.parse(
           await peer.request('variables', { variablesReference: request.variablesReference, ...(unpaged ? {} : { start, count }) }),
         ).variables
@@ -182,7 +181,7 @@ export class IdeDebugSession {
         return page
       }
       case 'debug.evaluate': {
-        if ((this.options.resolved.spec.language === 'c' || this.options.resolved.spec.language === 'cpp') && request.context === 'repl')
+        if (this.native && request.context === 'repl')
           throw new Error('Native debugging accepts watch expressions; GDB command execution is unavailable.')
         return values.dapEvaluation.parse(
           await peer.request('evaluate', { expression: request.expression, frameId: request.frameId, context: request.context }),
@@ -191,8 +190,7 @@ export class IdeDebugSession {
       case 'debug.control': {
         const stoppedBefore = this.stopGeneration
         await peer.request(request.action, { threadId: request.threadId })
-        const native = this.options.resolved.spec.language === 'c' || this.options.resolved.spec.language === 'cpp'
-        if (native && request.action !== 'pause' && !this.isClosing() && stoppedBefore === this.stopGeneration) {
+        if (this.native && request.action !== 'pause' && !this.isClosing() && stoppedBefore === this.stopGeneration) {
           this.variableCounts.clear()
           this.update({ phase: 'running', threadId: undefined, reason: undefined })
         }
@@ -315,6 +313,11 @@ export class IdeDebugSession {
     return this.peer(socket, socket)
   }
 
+  private get native(): boolean {
+    return this.options.resolved.spec.language === 'c' || this.options.resolved.spec.language === 'cpp'
+  }
+
+  /** A method read is not narrowed by an earlier check, unlike the field after an await. */
   private isClosing(): boolean {
     return this.closing
   }
@@ -346,14 +349,17 @@ export class IdeDebugSession {
       let listening = false
       const output = process.stdout
       if (!output) throw new Error('The JavaScript adapter has no output stream.')
+      // A multi-byte character may span two chunks.
+      const decoder = new StringDecoder('utf8')
       const read = async (): Promise<void> => {
         try {
           for await (const chunk of output) {
+            const decoded = Buffer.isBuffer(chunk) ? decoder.write(chunk) : String(chunk)
             if (listening) {
-              this.options.output('adapter', String(chunk))
+              if (decoded) this.options.output('adapter', decoded)
               continue
             }
-            text += String(chunk)
+            text += decoded
             const match = /Debug server listening at 127\.0\.0\.1:(\d+)/.exec(text)
             if (match) {
               resolvePort(Number(match[1]))

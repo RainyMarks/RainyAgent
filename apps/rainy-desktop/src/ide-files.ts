@@ -531,7 +531,11 @@ export class RainyIdeFiles {
     const size = Number((await this.git(workspace.root, ['cat-file', '-s', objectId], signal)).toString('ascii').trim())
     if (!Number.isSafeInteger(size) || size > this.options.config.maxTextBytes) return { ...partial, base: null, status: 'unavailable', reason: 'too-large' }
     const decoded = decode(await this.git(workspace.root, ['cat-file', 'blob', objectId], signal))
-    if (decoded.readOnlyReason !== null) return { ...partial, base: null, status: 'unavailable', reason: decoded.readOnlyReason }
-    return { ...partial, base: decoded.content, status: current === undefined ? 'deleted' : decoded.content === current.content ? 'unchanged' : 'modified' }
+    if (decoded.readOnlyReason !== null || decoded.content === null) {
+      return { ...partial, base: null, status: 'unavailable', reason: decoded.readOnlyReason ?? 'unsupported-encoding' }
+    }
+    // Git stores LF; a CRLF checkout from core.autocrlf or eol attributes is not a content change.
+    const base = current?.eol === 'crlf' && decoded.eol === 'lf' ? decoded.content.replaceAll('\n', '\r\n') : decoded.content
+    return { ...partial, base, status: current === undefined ? 'deleted' : base === current.content ? 'unchanged' : 'modified' }
   }
 }
