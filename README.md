@@ -33,15 +33,15 @@ Automatic updates replace the core application. They do not download optional to
 
 The core includes [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) and Python 3.12.14. Its inference engine targets Windows x64 and NVIDIA CUDA 13, requires driver 580 or newer, and includes GPU targets `sm75`, `sm86`, `sm89`, and `sm120`. The package does not provide AMD or Linux inference. Supply a supported Qwen3.8 Flash Next main GGUF, all of its shards, and matching MTP weights as a GGUF or prepared runtime directory; weights and derived dense/expert packs are not bundled.
 
-1. Open **Settings → Models and context → Strata local model**. Choose the main model and matching MTP files, or import a compatible Strata profile. An empty MTP path requests automatic detection beside the model.
+1. Open **Settings → Models → Strata local model**. Choose the main model and matching MTP files, or import a compatible Strata profile. An empty MTP path requests automatic detection beside the model.
 2. Save the context window and local port, then select **Start local model**. The first explicit start prepares required model files locally without downloads; preparation and startup can be cancelled.
-3. When the model is ready, select **Connect and use by default**. The current Host verifies its actual model and context before selecting it. Reasoning and request output limits remain in the ordinary model settings below.
+3. When the model is ready, select **Connect and use by default**. The current Host verifies its actual model and context before selecting it. Reasoning and request output limits remain in the ordinary model settings above.
 
 RainyAgent stops only the processes it started. If a WSL Host under NAT cannot reach the Windows loopback server, select the Windows execution target for Strata. See the [desktop guide](apps/rainy-desktop/README.md#strata-local-inference) for resource controls and the current validation scope.
 
 ### Existing server or API
 
-1. Open **Settings → Models and context** and enter a provider ID, service Base URL, protocol, and a key when required.
+1. Open **Settings → Models** and enter a provider ID, service Base URL, protocol, and a key when required.
 2. Select **Discover models** or enter the model ID manually. Discovery does not require a model ID or context size.
 3. Set the service's actual context window and output limit, save the configuration, then run the streaming and tool-call diagnostic.
 

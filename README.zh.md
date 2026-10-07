@@ -33,15 +33,15 @@ Develop by NCUCyberBase.
 
 核心应用包含 [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) 和 Python 3.12.14。其推理引擎面向 Windows x64 与 NVIDIA CUDA 13，要求 580 或更新驱动，包含 `sm75`、`sm86`、`sm89`、`sm120` GPU 目标；本包不提供 AMD 或 Linux 推理引擎。请准备受支持的 Qwen3.8 Flash Next 主模型 GGUF 及全部分片，以及配套 MTP GGUF 或已准备运行目录；发行包不含模型权重或派生的 dense/expert 数据包。
 
-1. 打开**设置 → 模型与上下文 → Strata 本地模型**，选择主模型与配套 MTP 文件，或导入兼容的 Strata profile。MTP 路径留空时会尝试从模型附近自动检测。
+1. 打开**设置 → 模型 → Strata 本地模型**，选择主模型与配套 MTP 文件，或导入兼容的 Strata profile。MTP 路径留空时会尝试从模型附近自动检测。
 2. 保存上下文长度和本地端口，再点击**启动本地模型**。首次明确启动会在本机准备所需模型文件，不执行下载；准备和启动均可取消。
-3. 就绪后点击**连接并设为默认**。当前 Host 验证实际模型与上下文后才选用它；推理档位和每次请求的输出上限仍在下方普通模型设置中调整。
+3. 就绪后点击**连接并设为默认**。当前 Host 验证实际模型与上下文后才选用它；推理档位和每次请求的输出上限仍在上方普通模型设置中调整。
 
 RainyAgent 只停止自己启动的进程。若 NAT 下的 WSL Host 无法访问 Windows loopback 服务，请为 Strata 选择 Windows 执行环境。资源控制和当前验证范围见[桌面指南](apps/rainy-desktop/README.zh.md#strata-local-inference)。
 
 ### 已有服务或 API
 
-1. 打开**设置 → 模型与上下文**，填写供应商 ID、服务 Base URL、协议及必要的密钥。
+1. 打开**设置 → 模型**，填写供应商 ID、服务 Base URL、协议及必要的密钥。
 2. 点击**发现模型**，或手动填写模型 ID。发现模型不要求预先填写模型 ID 或上下文长度。
 3. 设置服务实际的上下文窗口和输出上限，保存配置，再执行流式与工具调用诊断。
 

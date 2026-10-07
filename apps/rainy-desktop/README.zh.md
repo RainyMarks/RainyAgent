@@ -8,7 +8,7 @@ RainyAgent 使用 Windows x64 Electron 外壳；核心安装包包含 Windows Ho
 
 ## 离线安装与恢复
 
-[1.0.4 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.4)提供核心安装程序。更新的原生工具分卷位于 [1.0.2 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2-resources)；未变化的 `environment/` WSL 安装介质和 `environment-components/` 运行环境归档仍位于 [1.0.0 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。源码打包从两个固定版本的资源存档恢复输入至 `release/offline-1.0.4`。原生工具为可选项：可在目录中联网安装，也可把匹配分卷放在安装程序旁离线安装。每个原生工具分卷最大为 2 GiB。
+[1.0.5 发行包](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.5)提供核心安装程序。更新的原生工具分卷位于 [1.0.5 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.5-resources)；未变化的 `environment/` WSL 安装介质和 `environment-components/` 运行环境归档仍位于 [1.0.0 资源存档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。核心可直接在 Windows 原生启动，无需 WSL 或科学计算库。源码打包从两个固定版本的资源存档恢复输入至 `release/offline-1.0.5`。原生工具为可选项：可在目录中联网安装，也可把匹配分卷放在安装程序旁离线安装。每个原生工具分卷最大为 2 GiB。
 
 工具安装窗口显示当前阶段、文件及阶段进度。点击取消后请求安全停止，并等待必要的回滚。重新运行同一套完整发行文件时，会重新校验分卷并复用已校验的暂存文件。缺卷、分卷损坏或空间不足会在工具目录替换前停止安装。更新前请保存工作并关闭 RainyAgent、原生工具及其命令行窗口；安装程序报告占用，不自动结束这些进程。
 
@@ -48,9 +48,9 @@ Monaco 提供多文件标签、语法高亮、查找替换、撤销、显式保�
 
 持续的语言服务分析尚未保存的文档：Python 使用 Pyright，JavaScript/TypeScript 使用 TypeScript Language Server，C/C++ 使用 clangd。格式化使用随包 Ruff、Prettier 或已准备的 clang-format。Python 解释器选择与 CMake 编译数据库也用于配置编辑器语言服务。选中代码通过普通用户消息发送，路径、范围和文本一起进入会话记录。
 
-运行配置按工作区保留入口、参数、解释器或编译器、工作目录及 CMake 选项。Python 支持文件、模块和已有虚拟环境；JavaScript、TypeScript 使用 Node；PHP 支持直接运行脚本；C/C++ 支持单文件及 CMake 构建，失败时停止启动。debugpy、js-debug、Windows CodeLLDB 与 Linux GDB DAP 调试由工作区启动的程序；界面提供断点、单步、调用栈、变量、监视和停止。不提供外部进程附加或 PHP 调试。
+运行按钮按当前文件后缀对应的语言运行该文件。旁边的菜单可为该文件改选其他语言（工作区会记住），或固定运行另一个入口程序的已保存配置；保存当前文件的配置不会将其固定。运行配置按工作区保留入口、参数、解释器或编译器、工作目录及 CMake 选项。Python 支持文件、模块和已有虚拟环境；JavaScript、TypeScript 使用 Node；PHP 支持直接运行脚本；C/C++ 支持单文件及 CMake 构建，失败时停止启动。debugpy、js-debug、Windows CodeLLDB 与 Linux GDB DAP 调试由工作区启动的程序；界面提供断点、单步、调用栈、变量、监视和停止。不提供外部进程附加或 PHP 调试。
 
-运行环境检测检查项目虚拟环境、Conda 注册记录、常见 Python 目录、PATH 和已导入组件，不向这些已有环境安装软件包。所选解释器通过每个进程的环境配置项目工具、终端、运行及语言服务。可执行文件就绪和库能力分别显示：能运行 Python 不代表具备 PyTorch 或 CUDA。另一执行平台的解释器会被拒绝。
+运行环境检测检查项目虚拟环境、Conda 注册记录、常见 Python 目录、PATH 和已导入组件，不向这些已有环境安装软件包。所选解释器通过每个进程的环境配置项目工具、终端、运行及语言服务。可执行文件就绪和库能力分别显示：能运行 Python 不代表具备 PyTorch 或 CUDA。另一执行平台的解释器会被拒绝。Windows 载体内置 PHP 8.5 及 json、openssl、mbstring、pdo_sqlite、curl、zip 扩展，Windows 原生目标无需导入组件即可运行 PHP；已安装组件或项目选定的 PHP 优先。WSL 目标使用发行版自身的 PHP。
 
 离线组件提供隔离的 Python 3.12、Node 24、Windows PHP、原生 C/C++ 工具，以及独立 CPU 或 CUDA 科学计算环境。科学组件包含 NumPy、SciPy、pandas、scikit-learn、图像处理、Jupyter 和常用深度学习库，并配套 PyTorch 2.11、torchvision 0.26 与 torchaudio 2.11。导入先核对发行目录、归档及逐文件清单，再选择按摘要存放的代际。已有用户环境和全局 PATH 保持不变。CUDA 需要兼容的 NVIDIA 驱动。Ubuntu 26.04 amd64 开发工具向导使用经过校验的 C/C++、GDB、CMake、clangd 和 PHP 软件包，安装时禁用下载。
 
@@ -65,15 +65,19 @@ Monaco 提供多文件标签、语法高亮、查找替换、撤销、显式保�
 
 联网时在“常用工具”点击“下载全部工具”。应用逐片及逐卷校验后安装到用户应用数据目录。支持取消、断点续传和重试；安装后可离线使用，重启和应用更新仍保留。首次访问目录会检查签名工具通道，“检查工具更新”可再次检查。新增或更新工具由用户明确下载，当前已安装目录仍可使用。应用拒绝无效签名、目录摘要不匹配及低于已保存序号的通道版本。
 
-未选择会话时也能打开 CTF 入口。默认“常用工具”页可搜索名称和用途、筛选分类，并显示收藏、最近启动请求、版本及可用状态。收藏和最近记录属于 Windows 用户，在会话之间共享。已保存的 Burp 收藏迁移到 Yakit；旧 Burp 最近启动记录会移除，不会据此记录一次 Yakit 启动。工具包目录包含以下 38 项：
+未选择会话时也能打开 CTF 入口。默认“常用工具”页按任务分组列出工具，可搜索名称和用途、按分组筛选，并显示收藏、最近启动请求、版本及可用状态。收藏和最近记录属于 Windows 用户，在会话之间共享。已保存的 Burp 收藏迁移到 Yakit；旧 Burp 最近启动记录会移除，不会据此记录一次 Yakit 启动。工具包目录包含以下 38 项；后续目录新增的工具按其签名分类显示在“Web 与接口”“逆向调试”或“其他”下：
 
-| 分类 | 条目 |
+| 分组 | 条目 |
 |---|---|
-| Web · 6 | Yakit、CyberChef、curl、jq、yq、Bruno |
-| Misc · 25 | 7-Zip、ExifTool、Wireshark、Binwalk、FFmpeg、Audacity、StegSolve、PNGcheck、QRazyBox、ImageLSBViewer、ImageMagick、WinMerge、Qalculate!、Sonic Visualiser、Tesseract OCR、SoX、TweakPNG、multimon-ng、GNU strings、GIMP、SQLite、DB Browser for SQLite、qpdf、ripgrep、pcapfix |
-| Reverse · 7 | IDA、x64dbg/x32dbg、Detect It Easy、ImHex、JADX、dnSpy、PyInstaller Extractor |
+| Web 与接口 · 3 | Yakit、Bruno、curl |
+| 流量分析 · 2 | Wireshark、pcapfix |
+| 逆向调试 · 7 | IDA、x64dbg/x32dbg、Detect It Easy、ImHex、JADX、dnSpy、PyInstaller Extractor |
+| 取证与文件 · 7 | Binwalk、ExifTool、7-Zip、GNU strings、qpdf、WinMerge、ripgrep |
+| 隐写与图像 · 8 | StegSolve、ImageLSBViewer、PNGcheck、TweakPNG、ImageMagick、GIMP、Tesseract OCR、QRazyBox |
+| 音频与信号 · 5 | Audacity、Sonic Visualiser、SoX、multimon-ng、FFmpeg |
+| 编码与数据 · 6 | CyberChef、Qalculate!、jq、yq、SQLite、DB Browser for SQLite |
 
-x64dbg 与 x32dbg 共用一个条目，分别提供启动按钮。FFmpeg 包含 ffprobe 和 ffplay。桌面程序独立打开，命令行工具使用准备好环境的 Windows 终端，离线网页使用不带原生启动桥接的隔离窗口。成功提示为“已发送 {name} 的启动请求”，仅确认系统已接受请求。文件可用、界面就绪和功能验收属于不同观察。`status: ready` 表示所需文件及依赖存在；独立的 `verified` 标志对应匹配目录的已记录验收。未经验证的工具保留“待验证”标记，缺少依赖时禁止启动。目录不增加 Agent 工具或提示词。
+x64dbg 与 x32dbg 共用一个条目，分别提供启动按钮。FFmpeg 包含 ffprobe 和 ffplay。桌面程序以普通窗口独立打开，命令行工具使用准备好环境的 Windows 终端，离线网页使用不带原生启动桥接的隔离窗口。成功提示为“已发送 {name} 的启动请求”，仅确认系统已接受请求。文件可用、界面就绪和功能验收属于不同观察。`status: ready` 表示所需文件及依赖存在；独立的 `verified` 标志对应匹配目录的已记录验收。未经验证的工具保留“待验证”标记，缺少依赖时禁止启动。目录不增加 Agent 工具或提示词。
 
 Yakit 1.4.8-0919 的 `bins/yak.zip` 包含官方 Yak 引擎 1.4.8-beta19，供其内置引擎恢复机制使用，无需另行下载该引擎。Yakit 遵循已配置的 `YAKIT_HOME`；Windows 默认目录为 `Yakit.exe` 旁的 `yakit-projects`。工具包保留 Yakit 的 [AGPLv3 许可证](https://github.com/yaklang/yakit/blob/v1.4.8-0919/LICENSE.md)及上游声明。ImHex 继续位于 Reverse 分类，用于二进制编辑。
 
@@ -94,7 +98,7 @@ IceSky 标签打开固定版本的浏览器工作台。一个保留的 iframe �
 
 核心 EXE 包含 Niko1221/Strata 0.1.39、Python 3.12.14，以及所需服务、准备脚本和 CUDA 运行依赖；用户无需另装 Strata 或 Python。推理引擎面向 Windows x64、NVIDIA CUDA 13 和 580 或更新驱动，内含 `sm75`、`sm86`、`sm89`、`sm120` 目标。本包不提供 AMD 或 Linux 推理引擎。[运行时来源清单](toolpacks/strata-runtime.sources.json)固定输入与许可。
 
-用户提供受支持的 Qwen3.8 Flash Next 主模型 GGUF 及全部分片，以及配套 MTP GGUF 或已准备 MTP 目录。运行时不分发主模型/MTP 权重或派生的 dense/expert 文件。在“模型与上下文 → Strata 本地模型”中选择主模型、MTP 来源或兼容 profile，然后保存。MTP 路径留空时尝试从主模型附近检测匹配文件；API 服务仍然需要 MTP。只有明确点击启动后，才在本机准备所需模型文件并加载服务，不下载权重。准备和启动均可取消。
+用户提供受支持的 Qwen3.8 Flash Next 主模型 GGUF 及全部分片，以及配套 MTP GGUF 或已准备 MTP 目录。运行时不分发主模型/MTP 权重或派生的 dense/expert 文件。在“模型 → Strata 本地模型”中选择主模型、MTP 来源或兼容 profile，然后保存。MTP 路径留空时尝试从主模型附近检测匹配文件；API 服务仍然需要 MTP。只有明确点击启动后，才在本机准备所需模型文件并加载服务，不下载权重。准备和启动均可取消。
 
 卡片提供引擎上下文长度、loopback 端口、KV 缓存、保留显存和常驻 RAM 预算。设置私有保存在载体应用数据目录中的 `strata/settings.json`，选中的模型文件留在安装目录之外。只能停止该管理器启动的进程；已有外部服务单独标识，不会被卡片结束。每次请求的推理和输出上限继续由普通模型配置管理。
 
@@ -107,6 +111,8 @@ IceSky 标签打开固定版本的浏览器工作台。一个保留的 iframe �
 策略插件对最终请求计数，经按端点划分的队列判断能否发送，限制保留的工具输出，并发起保留完整工具配对的压缩。精确的全请求 tokenizer 可选；回落估计包含多语言内容和工具定义，并在界面明确标注为估计。显式输出上限优先于本地默认值，包括 DeepSeek 官方最高配置。所有压缩输入和输出都使用 DSH 的持久化辅助调用与 checkpoint 事务。自动压缩对包含准确用户原文参考的完整辅助请求计量并发送。与预算匹配的指令只总结已验证进度、错误、未完成工作和下一步，不改写用户目标或约束；参考原文始终位于替换范围之外。它保留最近一个完整工具配对；小窗口容纳不下目标近期历史时，会缩小该保留目标。最近一个已接纳输入的轮次中，直接用户消息（包括该轮中途补充的输入）在当前表层原位保留全文；新轮次接纳首条用户消息后才切换保护范围。更早轮次仍可摘要，已经遮蔽的原文不会回填。自动、空闲手动和显式范围压缩均保留这些当前轮消息；受保护输入本身超限会明确报错。候选前缀必须满足完整摘要输入预算，并大于预留的带框定文本的 checkpoint。摘要失败保留历史；溢出允许一次压缩重试。显式关闭思考会发送所选协议的关闭值；未指定思考设置时保留服务端默认行为。
 
 每个端点队列按到达顺序准入模型请求。本机回环服务（Base URL 主机为 localhost、`*.localhost`、127.0.0.1 或 [::1]）默认一次只处理一个请求；其他端点（包括 Base URL 无法解析的供应商）最多同时处理四个，因此并行会话与辅助请求不必等待彼此的完整流。`rainy-policy` 条目用 `localEndpointConcurrency` 和 `remoteEndpointConcurrency` 修改这两个默认值；`endpointConcurrency` 按队列键覆盖单个队列，键依次取供应商的 `endpointGroups` 分组名、Base URL 的 origin 或供应商 ID。分组中任一成员为回环地址时，整组按回环处理。局域网或其他非回环地址上的单路服务只有在 `endpointConcurrency` 中设为 1 才保持串行。
+
+“设置 → 模型 → 全局提示词”保存的指令会作为一段系统提示进入所有会话（包括已打开的会话）的模型请求。文本以 `globalPrompt` 保存在所选 Host 的 `rainy-policy` 条目中，长度受 `globalPromptMaxChars` 限制（默认 4,000 字），并与项目指令一起计入请求预算。压缩摘要、项目记忆、标题和连接探测使用各自的提示词；留空则不添加任何内容。
 
 模型设置保存在所选 Host 的 Rainy profile 中，凭据使用单独的私有存储。Host 就绪前会修正旧版 Rainy 模型配置中缺少协议映射的明确关闭思考设置，保留地址、预算、凭据引用和其他设置。模型请求使用内置 Strata 服务或用户配置的端点。新建 API 模型默认采用 OpenAI Responses，本地模型默认采用 Chat Completions；[设置默认值](../../packages/client/ui-rainy/README.zh.md#use-this-package)可按实际服务修改。DeepSeek 预设使用 1,000,000 tokens 上下文。发现模型只需供应商、Base URL、协议及可选请求密钥，不要求模型 ID 或上下文长度，也不保存配置。保存配置及独立的流式与工具调用诊断仍要求完整模型配置。它不会静默替换成云端供应商。Skills 与明确列出的 MCP 工具按会话选择和保存，只有已选注册项及有限的 Skill 描述进入模型输入。已有文件读取工具按需加载 Skill 正文；扩展说明与工具定义同时受配置上限和模型输入预算 20% 的限制。
 

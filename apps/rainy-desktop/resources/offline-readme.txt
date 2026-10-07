@@ -9,7 +9,7 @@ RainyAgent 1.0.0 Windows x64 完整离线发行包
 
 内置 Strata 本地模型
 核心 EXE 已带齐 Strata 0.1.39、Python 3.12.14 和服务/准备/CUDA 运行依赖，无需另装 Strata 或 Python。引擎面向 Windows x64、NVIDIA CUDA 13 和 580 以上驱动，内含 sm75/sm86/sm89/sm120 目标，不提供 AMD 或 Linux 推理引擎；显卡驱动由用户准备。
-在“设置 → 模型与上下文 → Strata 本地模型”选择受支持的 Qwen3.8 Flash Next 主 GGUF（分片需完整并选择首片）及配套 MTP GGUF 或已准备目录。MTP 留空表示自动检测，API 服务仍需要它。发行包不含模型权重或派生 dense/expert 数据。
+在“设置 → 模型 → Strata 本地模型”选择受支持的 Qwen3.8 Flash Next 主 GGUF（分片需完整并选择首片）及配套 MTP GGUF 或已准备目录。MTP 留空表示自动检测，API 服务仍需要它。发行包不含模型权重或派生 dense/expert 数据。
 保存上下文、端口和必要的 KV/显存/RAM 设置，再点击启动。首次明确启动会在本机离线准备运行文件，可以取消，不会下载权重。就绪后连接并设为默认；当前 Host 核对实际模型与窗口，推理档位和输出上限仍在普通模型设置中控制。
 设置私有保存在应用数据目录，模型留在用户选择的位置；应用只停止自己启动的进程。WSL NAT 无法连接 Windows loopback 时选择 Windows 执行环境，不会自动修改网络或回退云端。
 内置运行时迁移、Python 导入与模拟健康/聊天接口已有检查，真实 GPU 推理与性能仍以本次验收报告为准。
