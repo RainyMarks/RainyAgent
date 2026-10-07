@@ -6,7 +6,7 @@
 
 使用 Windows x64，新安装默认原生执行，无需先安装 WSL。核心安装包包含 Windows 与 Linux Host、Strata 引擎、Python 及所需运行依赖；主模型与 MTP 权重由用户提供。完整离线目录另含 WSL 安装介质、Ubuntu 26.04.1 镜像，以及 Windows/Linux 基础、科学计算 CPU/CUDA 和 Windows C/C++ 组件。已有 Python、Conda、项目虚拟环境或 WSL 可直接检测并复用，不向它们安装软件包。也可连接自行管理的推理服务。
 
-1. 运行 `RainyAgent-1.0.3-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `native-tools-<id>.tar.gz.*` 分卷及校验清单。原生工具分卷为可选项；不带分卷更新时保留已安装工具。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
+1. 运行 `RainyAgent-1.0.4-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `native-tools-<id>.tar.gz.*` 分卷及校验清单。原生工具分卷为可选项；不带分卷更新时保留已安装工具。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
 2. 提供匹配原生工具分卷时，工具安装窗口会校验文件和目标空间再安装。点击取消后等待安全停止；重新运行同一完整发行文件可重试并复用已验证暂存。损坏或缺少部分分卷时应补齐匹配文件后重试。
 3. 从桌面 RainyAgent 快捷方式启动，无需设备码、激活码或授权管理器。已有保存的 WSL 目标继续保留；新安装先使用 Windows。运行环境页可以选择已有 WSL，或点击准备环境并选择外置 `environment/` 目录创建专用 Ubuntu。需要系统组件时明确请求管理员确认；若提示重启，保存其他工作、自行重启后再次打开应用。首次启动会校验全部发行资源，之后启动直接打开；已记录的 WSL 目标跳过环境检查窗口。
 4. 若原发行版丢失，恢复向导保留原名称供处理。执行目标切换前保存草稿，运行中或排队中的任务、程序、调试和终端会阻止切换。项目公开身份与项目记忆跨目标保留，旧聊天及其运行状态留在原 Host，重新选择原目标即可访问。
