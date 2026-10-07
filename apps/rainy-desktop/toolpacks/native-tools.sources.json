@@ -919,10 +919,10 @@
         "反编译",
         "安卓"
       ],
-      "version": "dev",
+      "version": "1.5.6",
       "entry": {
         "kind": "java",
-        "path": "tools/jadx/jadx-gui-dev-all.jar",
+        "path": "tools/jadx/lib/jadx-1.5.6-all.jar",
         "cwd": "tools/jadx",
         "runtime": "runtime/windows/java-21/bin/javaw.exe"
       },
@@ -931,13 +931,22 @@
         "runtime/windows/java-21"
       ],
       "source": {
-        "kind": "local",
-        "versionEvidence": "JAR manifest jadx-version field; development JAR identity recorded by SHA-256"
+        "kind": "upstream",
+        "url": "https://github.com/skylot/jadx/releases/tag/v1.5.6",
+        "versionEvidence": "Publisher GitHub release asset digest and JAR manifest jadx-version field"
       },
-      "copies": [
+      "archives": [
         {
-          "from": "libdll/newUP/jadx-gui-dev-all.jar",
-          "to": "tools/jadx/jadx-gui-dev-all.jar"
+          "format": "zip",
+          "url": "https://github.com/skylot/jadx/releases/download/v1.5.6/jadx-1.5.6.zip",
+          "sha256": "545ea2be9c242511bc145755cf4bda2485ade42966e096f8b4d3da2a230e8974",
+          "to": "tools/jadx",
+          "requiredFiles": [
+            {
+              "path": "lib/jadx-1.5.6-all.jar",
+              "sha256": "fe3e12c45acf75f92369685fd02d1d7a7323385dc725680a9b98a0dac0ea554b"
+            }
+          ]
         }
       ]
     },

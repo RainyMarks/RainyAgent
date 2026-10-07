@@ -85,8 +85,9 @@ export async function startNativeProcess(invocation: NativeInvocation, environme
       { cwd: invocation.cwd, windowsHide: true, timeout: 30_000, env })
     return
   }
+  // windowsHide requests SW_HIDE, which many GUI tools honor for their first window and then never show.
   const child = spawn(invocation.executable, [...invocation.args], { cwd: invocation.cwd, shell: false, detached: true,
-    windowsHide: true, stdio: 'ignore', env })
+    windowsHide: false, stdio: 'ignore', env })
   await new Promise<void>((resolve, reject) => { child.once('spawn', () => { resolve() }); child.once('error', reject) })
   if (child.pid === undefined) throw new Error('Windows 未返回工具进程编号')
   child.unref()

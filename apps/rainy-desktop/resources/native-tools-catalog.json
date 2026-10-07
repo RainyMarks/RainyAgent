@@ -650,10 +650,10 @@
         "反编译",
         "安卓"
       ],
-      "version": "dev",
+      "version": "1.5.6",
       "entry": {
         "kind": "java",
-        "path": "tools/jadx/jadx-gui-dev-all.jar",
+        "path": "tools/jadx/lib/jadx-1.5.6-all.jar",
         "cwd": "tools/jadx",
         "runtime": "runtime/windows/java-21/bin/javaw.exe"
       },
@@ -662,13 +662,14 @@
         "runtime/windows/java-21"
       ],
       "source": {
-        "kind": "local",
-        "versionEvidence": "JAR manifest jadx-version field; development JAR identity recorded by SHA-256"
+        "kind": "upstream",
+        "url": "https://github.com/skylot/jadx/releases/tag/v1.5.6",
+        "versionEvidence": "Publisher GitHub release asset digest and JAR manifest jadx-version field"
       },
       "available": true,
-      "entrySha256": "a7ab0c0052ffd438ca49440dc56a2c79588b510a72f3636eda4d52e7355472f9",
-      "fileCount": 316,
-      "bytes": 283749122
+      "entrySha256": "fe3e12c45acf75f92369685fd02d1d7a7323385dc725680a9b98a0dac0ea554b",
+      "fileCount": 322,
+      "bytes": 229797935
     },
     {
       "id": "dnspy",
