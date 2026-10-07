@@ -2,27 +2,30 @@
 # section, a hash of its English and Chinese blocks outside code blocks and generated regions.
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
+/:
+  en: f78e0a678ff0d3db
+  zh: f78e0a678ff0d3db
 /rainyagent:
-  en: 914a3af21e9f4771
-  zh: f7cc452aeaa4bf2c
-/rainyagent/what-it-includes:
-  en: 2379cb51bd47aba5
-  zh: a78cd094756e7302
+  en: 16865b97de489c06
+  zh: 81293410e4337231
+/rainyagent/highlights:
+  en: efbac1c626d27c00
+  zh: e0361767c4442154
 /rainyagent/download-and-start:
-  en: 2eb28f3bb461298e
-  zh: dd03aa11f0908a5e
+  en: 4f41b7982d7d355c
+  zh: 5ba2f7d46d3394f1
 /rainyagent/connect-a-model:
   en: fda515a8f3177479
   zh: a18a4f3dffa9f10d
-/rainyagent/connect-a-model/strata-local-model:
-  en: c36b155295f4b857
-  zh: 9bc49209459837c9
 /rainyagent/connect-a-model/existing-server-or-api:
-  en: 440c9fc49ab9101e
-  zh: deac5aae28afb5fa
+  en: 38df58d11b2b57d8
+  zh: 5551e82f0324f8cc
+/rainyagent/connect-a-model/strata-local-model:
+  en: 86478b7efbe2dc15
+  zh: a13e07d0354a9ab9
 /rainyagent/build-from-source:
-  en: 5f738efbf7edcca0
-  zh: aaac86c2c6432be8
+  en: b1a823519dc76b72
+  zh: 72f003c331b38379
 /rainyagent/license-and-attribution:
-  en: 9dcfc9fa476ac7de
-  zh: 22e5a1d1a40b1b19
+  en: 3ca4283a51703a19
+  zh: dbbca088fc3377eb
