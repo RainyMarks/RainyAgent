@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import type { IdeModel, IdeState } from './ide-model.ts'
 import type { IdeExecutionModel } from './ide-execution-model.ts'
-import type { EditorTerminal } from './editor-types.ts'
+import type { EditorAppearance, EditorTerminal } from './editor-types.ts'
 import { loadEditorAssets } from './editor-loader.ts'
 import css from './IdeShell.module.css'
 import { fileKey, fileLabel } from './ide-paths.ts'
@@ -19,6 +19,7 @@ interface Props {
   readonly model: IdeModel
   readonly t: TranslateNS<'rainy'>
   readonly reveal: (path: string, line: number, column: number) => void
+  readonly appearance: EditorAppearance
 }
 
 function TerminalPanel({
@@ -26,11 +27,13 @@ function TerminalPanel({
   snapshot,
   model,
   visible,
+  appearance,
 }: {
   execution: IdeExecutionModel
   snapshot: ExecutionState
   model: IdeModel
   visible: boolean
+  appearance: EditorAppearance
 }) {
   const container = useRef<HTMLDivElement>(null)
   const terminal = useRef<EditorTerminal | undefined>(undefined)
@@ -81,6 +84,9 @@ function TerminalPanel({
     }
     written.current = output
   }, [ready, output])
+  useEffect(() => {
+    terminal.current?.setAppearance(appearance)
+  }, [ready, appearance])
   useEffect(() => {
     if (visible) terminal.current?.fit()
   }, [visible, ready])
@@ -134,7 +140,7 @@ function Variables({
  * @param props Workspace source and execution snapshots plus explicit actions.
  * @returns Bottom tabs with terminal, output, problems, and debugger controls.
  */
-export function IdeBottom({ state, executionState, execution, model, t, reveal }: Props) {
+export function IdeBottom({ state, executionState, execution, model, t, reveal, appearance }: Props) {
   const [watch, setWatch] = useState('')
   const [expression, setExpression] = useState('')
   const [evaluated, setEvaluated] = useState('')
@@ -231,6 +237,7 @@ export function IdeBottom({ state, executionState, execution, model, t, reveal }
             snapshot={executionState}
             model={model}
             visible={selectedTab === 'terminal'}
+            appearance={appearance}
           />
         )}
       </div>

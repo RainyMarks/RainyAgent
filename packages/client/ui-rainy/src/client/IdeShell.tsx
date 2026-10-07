@@ -966,6 +966,7 @@ export function IdeShell({
             execution={execution}
             model={model}
             t={t}
+            appearance={appearance}
             reveal={(path, line, column) => {
               run(model.reveal(path, line, column))
             }}

@@ -15,7 +15,8 @@ import { IdeModel } from '../src/client/ide-model.ts'
 import { zh } from '../src/client/locales.ts'
 
 vi.mock('../src/client/editor-loader.ts', () => ({
-  loadEditorAssets: async () => ({ terminal: () => ({ write: () => {}, reset: () => {}, fit: () => {}, dispose: () => {} }) }),
+  loadEditorAssets: async () => ({ terminal: () => ({ write: () => {}, reset: () => {}, fit: () => {},
+    setAppearance: () => {}, dispose: () => {} }) }),
 }))
 const owners: { model: IdeModel; execution: IdeExecutionModel }[] = []
 afterEach(async () => {
@@ -57,7 +58,7 @@ describe('debug console adapter contexts', () => {
     const evaluate = vi.spyOn(execution, 'evaluate').mockResolvedValue({ result: '42', variablesReference: 0 })
     await act(async () => {
       render(<IdeBottom state={model.state.getSnapshot()} executionState={snapshot}
-        execution={execution} model={model} t={t} reveal={vi.fn()} />)
+        execution={execution} model={model} t={t} reveal={vi.fn()} appearance={{ dark: false, fontSize: 13 }} />)
     })
     fireEvent.change(screen.getByRole('textbox', { name: zh.ideConsole }), { target: { value: 'value + 1' } })
     fireEvent.click(screen.getByRole('button', { name: zh.ideEvaluate }))

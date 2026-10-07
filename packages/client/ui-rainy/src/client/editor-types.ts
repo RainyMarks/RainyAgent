@@ -124,6 +124,8 @@ export interface EditorTerminal {
   fit(): void
   /** Place keyboard focus in the terminal. */
   focus(): void
+  /** @param appearance Resolved host appearance; the terminal follows its light or dark scheme. */
+  setAppearance(appearance: EditorAppearance): void
   /** Release terminal subscriptions and DOM ownership. */
   dispose(): void
 }
