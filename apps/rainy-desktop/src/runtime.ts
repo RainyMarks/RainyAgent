@@ -34,6 +34,8 @@ export interface Config {
   executionTargetId?: string
   /** Optional component installation root in this execution world. */
   bundledRoot?: string
+  /** PHP shipped with the carrier for this execution world; installed components and project selections take precedence. */
+  builtinPhp?: string
 }
 /** Deployment limits; the request cannot override them. */
 export const Config: z<Config> = z.object({
@@ -49,6 +51,7 @@ export const Config: z<Config> = z.object({
   carrierStateRoot: z.string().required(false),
   executionTargetId: z.string().required(false),
   bundledRoot: z.string().required(false),
+  builtinPhp: z.string().required(false),
 })
 
 declare module '@deepseek-ai/cordis' {
@@ -134,10 +137,12 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     config.executionTargetId ??
     process.env.RAINY_EXECUTION_TARGET_ID ??
     (process.platform === 'win32' ? 'windows-local' : 'wsl:legacy')
+  const builtinPhp = config.builtinPhp ?? process.env.RAINY_BUILTIN_PHP
   const environments = new RuntimeEnvironments({
     root: home,
     targetId,
     bundledRoot: config.bundledRoot ?? process.env.RAINY_TOOLCHAIN_ROOT ?? join(home, 'components'),
+    builtinExecutables: { ...builtinPhp === undefined ? {} : { php: builtinPhp } },
     probeTimeoutMs: config.probeTimeoutMs,
     maxCandidates: config.maxCandidates,
     probeConcurrency: config.probeConcurrency,

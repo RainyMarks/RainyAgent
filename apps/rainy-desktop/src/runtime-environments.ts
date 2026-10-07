@@ -39,6 +39,8 @@ export interface RuntimeEnvironmentOptions {
   targetId: string
   platform?: RuntimePlatform
   bundledRoot?: string
+  /** Interpreters shipped with the carrier; installed components and workspace selections take precedence. */
+  builtinExecutables?: Partial<Record<RuntimeLanguage, string>>
   probeTimeoutMs: number
   maxCandidates: number
   /** Probes run at the same time; each candidate is an independent process. */
@@ -235,6 +237,7 @@ export class RuntimeEnvironments {
     for (const [language, path] of Object.entries(this.savedWorkspace(workspaceId)?.selected ?? {})) {
       await add(languageSchema.parse(language), path, 'manual')
     }
+    for (const [language, path] of Object.entries(this.options.builtinExecutables ?? {})) await add(languageSchema.parse(language), path, 'bundled')
     for (const name of ['.venv', 'venv']) await add('python', join(root, name, this.platform === 'windows' ? 'Scripts' : 'bin', this.platform === 'windows' ? 'python.exe' : 'python'), 'project')
     for (const component of this.componentRoots) {
       for (const language of languages) {
@@ -355,7 +358,7 @@ export class RuntimeEnvironments {
     if (!this.loaded) throw new Error('Runtime selections have not finished loading.')
     const match = Object.values(this.state.workspaces).filter(entry => inside(entry.root, cwd))
       .sort((left, right) => right.root.length - left.root.length).at(0)
-    const executables = { ...this.bundledExecutables, ...(match?.selected ?? {}) }
+    const executables = { ...this.options.builtinExecutables, ...this.bundledExecutables, ...(match?.selected ?? {}) }
     const directories = [...new Set(Object.values(executables).map(path => dirname(path)))]
     if (match?.pythonPrefix && this.platform === 'windows') {
       directories.push(join(match.pythonPrefix, 'Scripts'), join(match.pythonPrefix, 'Library', 'bin'))

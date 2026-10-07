@@ -352,12 +352,15 @@ async function start(): Promise<void> {
     || !('host' in installed) || typeof installed.host !== 'string'
     || !(target.kind === 'windows' ? win32.isAbsolute(installed.host) : posix.isAbsolute(installed.host))) throw new Error('执行环境运行文件无效。')
   const idaMcpCommand = prepared === undefined ? uvx : prepared.uvx
+  const builtinPhp = app.isPackaged ? join(resourceRoot, 'php', 'php.exe')
+    : resolve(__dirname, '../runtime/component-stage/windows-basic/php/php.exe')
   const hostEnvironment: Record<string, string> = {
     RAINY_EXECUTION_TARGET_ID: target.id,
     RAINY_CARRIER_STATE_ROOT: prepared === undefined ? carrierState : prepared.carrierState,
     ...(target.kind === 'windows' ? { RAINY_HOME: join(userData, 'native-home'),
       RAINY_TOOLCHAIN_ROOT: join(userData, 'env'),
       RAINY_PWSH_PATH: join(resourceRoot, 'windows-host', 'pwsh', 'pwsh.exe'),
+      ...existsSync(builtinPhp) ? { RAINY_BUILTIN_PHP: builtinPhp } : {},
       // Module compilation is cached across launches; resolution still dominates the native Host's startup.
       NODE_COMPILE_CACHE: join(userData, 'node-compile-cache') } : {}),
   }

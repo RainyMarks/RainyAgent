@@ -18,6 +18,8 @@ module.exports = {
     { from: 'runtime/linux-runtime.json', to: 'linux-runtime.json' },
     { from: 'scripts/install-runtime.py', to: 'install-runtime.py' },
     { from: 'runtime/release-public-keys.json', to: 'release-public-keys.json' },
+    // The Windows basic component's PHP, so PHP files run on a fresh Windows target without importing components.
+    { from: 'runtime/component-stage/windows-basic/php', to: 'php', filter: ['**/*', '!dev/**'] },
     { from: 'runtime/environment-component-catalog.json', to: 'environment-component-catalog.json' },
     { from: 'scripts/install-environment-component.py', to: 'install-environment-component.py' },
     { from: `release/offline-${version}/native-tools-metadata.json`, to: 'native-tools-metadata.json' },

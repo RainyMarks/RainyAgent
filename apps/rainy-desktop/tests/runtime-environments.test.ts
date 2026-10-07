@@ -110,6 +110,28 @@ describe('runtime selection', () => {
     expect(snapshot.candidates.map(candidate => candidate.path)).toEqual(started.filter((path, index) => started.indexOf(path) === index))
     expect(snapshot.candidates.slice(0, 2).map(candidate => candidate.source)).toEqual(['project', 'project'])
   })
+
+  it('offers the carrier PHP by default until a workspace selects another interpreter', async () => {
+    const root = await directory()
+    const workspace = WorkspaceId('php')
+    const project = join(root, 'project')
+    const builtin = join(root, 'resources', 'php', 'php.exe')
+    await mkdir(project, { recursive: true })
+    await mkdir(join(root, 'resources', 'php'), { recursive: true })
+    await writeFile(builtin, '')
+    const runtime = new RuntimeEnvironments({ root, targetId: 'windows-local', platform: 'windows', probeTimeoutMs: 1000, maxCandidates: 16,
+      builtinExecutables: { php: builtin }, resolveWorkspace: id => id === workspace ? { path: project } : undefined,
+      run: async command => JSON.stringify({ platform: 'windows', version: '8.4.14', executable: command.executable, capabilities: [] }) })
+    await runtime.initialize()
+    const snapshot = await runtime.discover(workspace)
+    expect(snapshot.candidates.find(candidate => candidate.path === builtin)).toMatchObject({ language: 'php', source: 'bundled', ready: true })
+    const resolved = runtime.resolve(project)
+    expect(resolved.executables.php).toBe(builtin)
+    expect(resolved.environment.RAINY_PHP_EXTENSION_DIR).toBe(join(root, 'resources', 'php', 'ext'))
+    const selected = join(root, 'php-8.5', 'php.exe')
+    await runtime.select(workspace, 'php', selected)
+    expect(runtime.resolve(project).executables.php).toBe(selected)
+  })
 })
 
 describe('carrier project continuity', () => {
