@@ -66,12 +66,14 @@ export interface PromptBreakdown {
  * @param request Final model-facing request.
  * @param extensionDescriptions Selected Skills and MCP instructions to attribute separately from ordinary system text.
  * @param memoryMessageIds Recall ids established by the durable project-memory projection.
+ * @param systemInstructions User-authored system-prompt texts, such as the global prompt, attributed to instructions.
  * @returns Estimated tokens by content source, with separate protocol framing.
  */
 export function promptBreakdown(
   request: CountableRequest,
   extensionDescriptions: readonly string[] = [],
   memoryMessageIds: readonly string[] = [],
+  systemInstructions: readonly string[] = [],
 ): PromptBreakdown {
   const counts: PromptBreakdown = {
     system: request.system ? estimateText(request.system) : 0,
@@ -97,12 +99,19 @@ export function promptBreakdown(
     else counts.history += count
   }
   let remaining = systemTexts.join('\n')
-  for (const text of extensionDescriptions) {
-    if (!text || !remaining.includes(text)) continue
-    counts.extensions += estimateText(text)
-    remaining = remaining.replace(text, '')
+  const attribute = (texts: readonly string[]): number => {
+    let moved = 0
+    for (const text of texts) {
+      if (!text || !remaining.includes(text)) continue
+      moved += estimateText(text)
+      remaining = remaining.replace(text, '')
+    }
+    return moved
   }
-  counts.system = Math.max(0, counts.system - counts.extensions)
+  counts.extensions = attribute(extensionDescriptions)
+  const instructions = attribute(systemInstructions)
+  counts.instructions += instructions
+  counts.system = Math.max(0, counts.system - counts.extensions - instructions)
   return counts
 }
 

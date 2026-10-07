@@ -56,7 +56,14 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
     res.setHeader('Cache-Control', 'no-store')
     try {
       if (req.method === 'GET') {
-        res.end(JSON.stringify({ budgets: [...ctx.rainy.budgets.values()], models: configuredModels(ctx), selected: ctx.agentDefaultModel.currentSelection(), sessions: ctx.agents.list().map(agent => ({ id: agent.id, title: ctx.sessionTitle.get(agent.session)?.title, status: agent.status })), preset: DEEPSEEK_FLASH, tools: ['read', 'write', 'edit', process.platform === 'win32' ? 'pwsh' : 'bash'] }))
+        res.end(JSON.stringify({
+          budgets: [...ctx.rainy.budgets.values()], models: configuredModels(ctx), selected: ctx.agentDefaultModel.currentSelection(),
+          sessions: ctx.agents.list().map(agent => ({
+            id: agent.id, title: ctx.sessionTitle.get(agent.session)?.title, status: agent.status,
+          })),
+          preset: DEEPSEEK_FLASH, tools: ['read', 'write', 'edit', process.platform === 'win32' ? 'pwsh' : 'bash'],
+          globalPrompt: ctx.rainy.globalPrompt(),
+        }))
         return
       }
       if (req.method !== 'POST') { res.writeHead(405); res.end(); return }
@@ -77,6 +84,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
         case 'discover-models': result = await discoverModels(ctx, command.params); break
         case 'probe-model': result = await probeModel(ctx, command.params); break
         case 'preview-budget': result = await ctx.rainy.previewBudget(command.params); break
+        case 'configure-global-prompt': result = await ctx.rainy.saveGlobalPrompt(command.params); break
         case 'project-memory-status': result = await ctx.rainyMemory.status(command.params); break
         case 'project-memory-set-enabled': result = await ctx.rainyMemory.setEnabled(command.params); break
         case 'project-memory-edit': result = await ctx.rainyMemory.edit(command.params); break

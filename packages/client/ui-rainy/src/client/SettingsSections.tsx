@@ -8,6 +8,7 @@ import type { SettingsSnapshot } from './settings-controller.ts'
 import type { BudgetPreview, RainyModelDiscovery, RainyModelSetup, SettingsOperations } from './settings-protocol.ts'
 import { Choice } from './Choice.tsx'
 import { StrataSettings } from './StrataSettings.tsx'
+import { GlobalPromptSettings } from './GlobalPromptSettings.tsx'
 import type { StrataActions, StrataSnapshot } from './strata-controller.ts'
 import css from './SettingsSections.module.css'
 
@@ -86,12 +87,12 @@ function formOf(model: RainyModelSetup): ModelForm {
     thinkingFormat: model.thinkingFormat ?? 'openai', maxTokensField: model.maxTokensField ?? 'max_tokens' }
 }
 
-/** Current model configuration and request accounting.
+/** Default model, global prompt, request accounting, and the optional local engine, in order of everyday use.
  * @param props Host settings operations and locale.
  * @returns Model settings inside the existing settings content column.
  */
 export function ModelsSection({
-  useSettings, useIde, refresh, configure, discover, probe, previewBudget, notify, pollMs,
+  useSettings, useIde, refresh, configure, saveGlobalPrompt, discover, probe, previewBudget, notify, pollMs,
   localModelContextWindow, apiModelContextWindow, t,
   useStrata, strataRefresh, strataSave, strataStart, strataStop, strataChoose, strataConnect,
 }: SettingsSectionProps) {
@@ -122,7 +123,8 @@ export function ModelsSection({
   const measured = snapshot.status?.budgets.find(value => value.sessionId === sessionId)
   const provider = snapshot.status?.selected?.provider
   const selectedModel = snapshot.status?.selected?.model
-  const previewKey = JSON.stringify([workspaceId, sessionId, provider, selectedModel])
+  const globalPrompt = snapshot.status?.globalPrompt.text
+  const previewKey = JSON.stringify([workspaceId, sessionId, provider, selectedModel, globalPrompt])
   const preview = previewResult?.key === previewKey ? previewResult.value : undefined
   useEffect(() => {
     let current = true
@@ -154,66 +156,73 @@ export function ModelsSection({
     <label className={css.field}><span>{label}</span><Choice label={label} value={value} disabled={busy}
       items={items.map((id, index) => ({ id, label: labels?.[index] ?? id }))} onChange={change} /></label>
   return <section className={css.section} data-rainy-settings="models">
-    <h2 className={css.heading}>{t('models')}</h2>
+    <h2 className={css.heading}>{t('settingsModels')}</h2>
+    {snapshot.error !== '' && <p className={`${css.notice} ${css.error}`} role="alert">{snapshot.error}</p>}
+    <article className={css.card} data-rainy-default-model>
+      <h3 className={css.subheading}>{t('settingsDefaultModel')}</h3>
+      <label className={css.field}><span>{t('settingsSavedModels')}</span><Choice label={t('settingsSavedModels')} value={selected} disabled={busy}
+        items={[{ id: '', label: t('settingsAddModel') }, ...snapshot.status?.models.map(model => ({ id: `${model.provider}/${model.model}`, label: `${model.provider}/${model.model}` })) ?? []]}
+        onChange={(value) => {
+          setSelected(value); setResult('')
+          const saved = snapshot.status?.models.find(model => `${model.provider}/${model.model}` === value)
+          setForm(saved === undefined ? emptyModelForm(localModelContextWindow) : formOf(saved))
+        }} /></label>
+      <div className={css.grid}>
+        {choice(t('settingsRuntimeKind'), form.local ? 'local' : 'api', ['local', 'api'], (value) => {
+          const local = value === 'local'
+          setForm({ ...form, local, api: local ? 'openai-completions' : 'openai-responses',
+            context: form.contextEdited ? form.context : String(local ? localModelContextWindow : apiModelContextWindow) })
+        }, [t('settingsLocalModel'), t('settingsApiModel')])}
+        {field('provider', t('settingsProvider'))}
+        <div className={css.wide}>{field('baseURL', t('settingsBaseUrl'))}</div>
+        <div className={css.wide}>{field('model', t('settingsModelId'))}</div>
+        {field('context', t('settingsContext'), 'number')}{field('output', t('settingsOutput'), 'number')}
+        <div className={css.wide}>{field('apiKey', t('settingsApiKey'), 'password')}</div>
+      </div>
+      <details><summary>{t('settingsCompatibility')}</summary><div className={`${css.grid} ${css.disclosed}`}>
+        {choice(t('settingsProtocol'), form.api, ['openai-completions', 'openai-responses', 'anthropic-messages'], (value) => { setForm({ ...form, api: value as ModelForm['api'] }) })}
+        {choice(t('settingsThinking'), form.thinking, ['off', 'low', 'high', 'max'], (value) => { setForm({ ...form, thinking: value as ModelForm['thinking'] }) }, [t('settingsThinkingOff'), 'low', 'high', 'max'])}
+        {form.api === 'openai-completions' && <>
+          {choice(t('settingsThinkingFormat'), form.thinkingFormat, ['openai', 'deepseek', 'qwen'], (value) => { setForm({ ...form, thinkingFormat: value as ModelForm['thinkingFormat'] }) })}
+          {choice(t('settingsOutputField'), form.maxTokensField, ['max_tokens', 'max_completion_tokens'], (value) => { setForm({ ...form, maxTokensField: value as ModelForm['maxTokensField'] }) })}
+        </>}
+      </div></details>
+      <div className={css.actions}>
+        <Button variant="primary" disabled={busy} onClick={() => { run(async () => {
+          const saved = await configure(setup()); setSelected(`${saved.provider}/${saved.model}`); setForm(current => ({ ...current, apiKey: '' }))
+        }, t('settingsSaved')) }}>{t('settingsSaveModel')}</Button>
+        <Button variant="outline" disabled={busy} onClick={() => { run(async () => {
+          const found = await discover(connection()); setResult(found.length === 0 ? t('settingsNoModels') : found.map(model => model.id).join('\n'))
+        }) }}>{t('settingsDiscoverModels')}</Button>
+        <Button variant="outline" disabled={busy} onClick={() => { run(async () => {
+          const tested = await probe(setup()); setResult(t('settingsProbeResult', { stream: t(tested.stream ? 'settingsPass' : 'settingsNotVerified'), tools: t(tested.toolCall ? 'settingsPass' : 'settingsNotVerified') }))
+        }) }}>{t('settingsProbeModel')}</Button>
+        {snapshot.status?.preset !== undefined && <Button disabled={busy} onClick={() => {
+          if (snapshot.status?.preset !== undefined) { setSelected(''); setForm(formOf(snapshot.status.preset)) }
+        }}>{t('settingsPreset')}</Button>}
+      </div>
+      {result !== '' && <p className={css.notice} role="status">{result}</p>}
+    </article>
+    <GlobalPromptSettings saved={snapshot.status?.globalPrompt} busy={busy} run={run} saveGlobalPrompt={saveGlobalPrompt} t={t} />
+    <article className={css.card} data-rainy-budget>
+      <h3 className={css.subheading}>{t('settingsContextBudget')}</h3>
+      <p className={css.notice}>{budget === undefined ? t('settingsEmptyBudget') : t('settingsBudget', {
+        tokens: budget.tokens.toLocaleString(), window: budget.contextWindow.toLocaleString(), kind: t(budget.kind === 'exact' ? 'settingsExact' : 'settingsEstimated'),
+        input: budget.inputLimit.toLocaleString(), output: budget.outputTokens.toLocaleString(),
+        margin: budget.marginTokens.toLocaleString(),
+      })}{budget?.compacting ? `\n${t('settingsCompacting')}` : ''}</p>
+      {budget?.breakdown !== undefined && <p className={css.muted}>{t('settingsBudgetParts', budget.breakdown)}</p>}
+      {budget?.error !== undefined && <p className={`${css.notice} ${css.error}`} role="alert">{budget.error}</p>}
+      {measured === undefined && preview !== undefined && <p className={css.muted}>{t('settingsPreviewBudget')}
+        {preview.limitations.map(code => <span key={code}> {t(code === 'before-dispatch-estimate' ? 'settingsPreviewDispatch' : 'settingsPreviewAttachments')}</span>)}</p>}
+      {previewError !== '' && <p className={`${css.notice} ${css.error}`} role="alert">{previewError}</p>}
+    </article>
     <StrataSettings snapshot={strata} t={t} strataRefresh={strataRefresh} strataSave={strataSave} strataStart={strataStart}
       strataStop={strataStop} strataChoose={strataChoose} strataConnect={async () => {
         const saved = await strataConnect()
         if (saved !== undefined) { setSelected(`${saved.provider}/${saved.model}`); setForm(formOf(saved)); setResult('') }
         return saved
       }} />
-    <p className={css.notice}>{budget === undefined ? t('settingsEmptyBudget') : t('settingsBudget', {
-      tokens: budget.tokens.toLocaleString(), window: budget.contextWindow.toLocaleString(), kind: t(budget.kind === 'exact' ? 'settingsExact' : 'settingsEstimated'),
-      input: budget.inputLimit.toLocaleString(), output: budget.outputTokens.toLocaleString(), margin: budget.marginTokens.toLocaleString(),
-    })}{budget?.compacting ? `\n${t('settingsCompacting')}` : ''}</p>
-    {budget?.breakdown !== undefined && <p className={css.muted}>{t('settingsBudgetParts', budget.breakdown)}</p>}
-    {budget?.error !== undefined && <p className={`${css.notice} ${css.error}`} role="alert">{budget.error}</p>}
-    {measured === undefined && preview !== undefined && <p className={css.muted}>{t('settingsPreviewBudget')}
-      {preview.limitations.map(code => <span key={code}> {t(code === 'before-dispatch-estimate' ? 'settingsPreviewDispatch' : 'settingsPreviewAttachments')}</span>)}</p>}
-    {previewError !== '' && <p className={`${css.notice} ${css.error}`} role="alert">{previewError}</p>}
-    {snapshot.error !== '' && <p className={`${css.notice} ${css.error}`} role="alert">{snapshot.error}</p>}
-    <label className={css.field}><span>{t('settingsSavedModels')}</span><Choice label={t('settingsSavedModels')} value={selected} disabled={busy}
-      items={[{ id: '', label: t('settingsAddModel') }, ...snapshot.status?.models.map(model => ({ id: `${model.provider}/${model.model}`, label: `${model.provider}/${model.model}` })) ?? []]}
-      onChange={(value) => {
-        setSelected(value); setResult('')
-        const saved = snapshot.status?.models.find(model => `${model.provider}/${model.model}` === value)
-        setForm(saved === undefined ? emptyModelForm(localModelContextWindow) : formOf(saved))
-      }} /></label>
-    <div className={css.grid}>
-      {choice(t('settingsRuntimeKind'), form.local ? 'local' : 'api', ['local', 'api'], (value) => {
-        const local = value === 'local'
-        setForm({ ...form, local, api: local ? 'openai-completions' : 'openai-responses',
-          context: form.contextEdited ? form.context : String(local ? localModelContextWindow : apiModelContextWindow) })
-      }, [t('settingsLocalModel'), t('settingsApiModel')])}
-      {field('provider', t('settingsProvider'))}
-      <div className={css.wide}>{field('baseURL', t('settingsBaseUrl'))}</div>
-      <div className={css.wide}>{field('model', t('settingsModelId'))}</div>
-      {field('context', t('settingsContext'), 'number')}{field('output', t('settingsOutput'), 'number')}
-      <div className={css.wide}>{field('apiKey', t('settingsApiKey'), 'password')}</div>
-    </div>
-    <details><summary>{t('settingsCompatibility')}</summary><div className={css.grid}>
-      {choice(t('settingsProtocol'), form.api, ['openai-completions', 'openai-responses', 'anthropic-messages'], (value) => { setForm({ ...form, api: value as ModelForm['api'] }) })}
-      {choice(t('settingsThinking'), form.thinking, ['off', 'low', 'high', 'max'], (value) => { setForm({ ...form, thinking: value as ModelForm['thinking'] }) }, [t('settingsThinkingOff'), 'low', 'high', 'max'])}
-      {form.api === 'openai-completions' && <>
-        {choice(t('settingsThinkingFormat'), form.thinkingFormat, ['openai', 'deepseek', 'qwen'], (value) => { setForm({ ...form, thinkingFormat: value as ModelForm['thinkingFormat'] }) })}
-        {choice(t('settingsOutputField'), form.maxTokensField, ['max_tokens', 'max_completion_tokens'], (value) => { setForm({ ...form, maxTokensField: value as ModelForm['maxTokensField'] }) })}
-      </>}
-    </div></details>
-    <div className={css.actions}>
-      <Button variant="primary" disabled={busy} onClick={() => { run(async () => {
-        const saved = await configure(setup()); setSelected(`${saved.provider}/${saved.model}`); setForm(current => ({ ...current, apiKey: '' }))
-      }, t('settingsSaved')) }}>{t('settingsSaveModel')}</Button>
-      <Button variant="outline" disabled={busy} onClick={() => { run(async () => {
-        const found = await discover(connection()); setResult(found.length === 0 ? t('settingsNoModels') : found.map(model => model.id).join('\n'))
-      }) }}>{t('settingsDiscoverModels')}</Button>
-      <Button variant="outline" disabled={busy} onClick={() => { run(async () => {
-        const tested = await probe(setup()); setResult(t('settingsProbeResult', { stream: t(tested.stream ? 'settingsPass' : 'settingsNotVerified'), tools: t(tested.toolCall ? 'settingsPass' : 'settingsNotVerified') }))
-      }) }}>{t('settingsProbeModel')}</Button>
-      {snapshot.status?.preset !== undefined && <Button disabled={busy} onClick={() => {
-        if (snapshot.status?.preset !== undefined) { setSelected(''); setForm(formOf(snapshot.status.preset)) }
-      }}>{t('settingsPreset')}</Button>}
-    </div>
-    <p className={css.muted}>{t('settingsModelNote', { local: localModelContextWindow.toLocaleString(), api: apiModelContextWindow.toLocaleString() })}</p>
-    {result !== '' && <p className={css.notice} role="status">{result}</p>}
   </section>
 }
 

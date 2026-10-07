@@ -30,6 +30,7 @@ function fixture() {
   const state = createSnapshotStore<SettingsSnapshot>({ loading: false, error: '', status: {
     models: [{ provider: 'official', model: 'large', baseURL: 'https://example.test', contextWindow: 1048576, maxTokens: 393216, local: false }],
     selected: { provider: 'official', model: 'large' }, budgets: [], sessions: [], tools: [],
+    globalPrompt: { text: '', maxChars: 40 },
   } })
   const strata = createSnapshotStore<StrataSnapshot>({ available: false, loading: false, error: '' })
   const props: SettingsSectionProps = { ...globalProps, t, close: vi.fn(), useSettings: bindSnapshotSelector(state),
@@ -42,6 +43,9 @@ function fixture() {
       sessionId: 'preview:a', model: 'large', tokens: 1700, contextWindow: 1048576, inputLimit: 600000,
       outputTokens: 393216, marginTokens: 16384, kind: 'estimated', compacting: false })),
     configure: vi.fn<SettingsSectionProps['configure']>(async setup => ({ provider: setup.provider, model: setup.model })),
+    saveGlobalPrompt: vi.fn<SettingsSectionProps['saveGlobalPrompt']>(async (text) => {
+      state.set({ ...state.getSnapshot(), status: { ...state.getSnapshot().status!, globalPrompt: { text: text.trim(), maxChars: 40 } } })
+    }),
     discover: vi.fn(async () => []), probe: vi.fn(async () => ({ stream: true, toolCall: true })),
     catalog: vi.fn(async () => ({ skills: [], selection: { skills: [], servers: [] }, idaAvailable: false })),
     extensions: vi.fn(async () => {}), memory: vi.fn(async () => emptyMemory()), memoryEnabled: vi.fn(async () => {}),
@@ -165,6 +169,49 @@ it('previews the current project before its first message without showing anothe
   await screen.findByText(zh.settingsPreviewBudget, { exact: false })
   expect(props.previewBudget).toHaveBeenCalledWith({ workspaceId: 'a', provider: 'official', model: 'large' })
   expect(screen.getByText(zh.settingsPreviewAttachments)).toBeTruthy()
+})
+
+it.each([{ locale: 'zh', copy: zh }, { locale: 'en', copy: en }])('puts the default model first and keeps the local engine collapsed in $locale', ({ copy }) => {
+  const { props } = fixture()
+  props.t = ((key: keyof typeof zh, values?: Record<string, string | number>) =>
+    copy[key].replace(/\{(\w+)\}/g, (match, name: string) => values?.[name] === undefined ? match : String(values[name]))) as TranslateNS<'rainy'>
+  const { container } = render(<ModelsSection {...props} />)
+  const page = container.querySelector('[data-rainy-settings="models"]')!
+  expect(page.querySelector('h2')?.textContent).toBe(copy.settingsModels)
+  const blocks = Array.from(page.children).slice(1)
+  expect(blocks.map(block => block.querySelector('h3, summary > span')?.textContent))
+    .toEqual([copy.settingsDefaultModel, copy.settingsGlobalPrompt, copy.settingsContextBudget, copy.strataTitle])
+  expect(page.querySelector<HTMLDetailsElement>('details[data-rainy-strata]')?.open).toBe(false)
+})
+
+it('saves the global prompt within the configured limit and refreshes the budget estimate', async () => {
+  const { props } = fixture()
+  render(<ModelsSection {...props} />)
+  await waitFor(() => { expect(props.previewBudget).toHaveBeenCalledOnce() })
+  const prompt = screen.getByLabelText<HTMLTextAreaElement>(zh.settingsGlobalPrompt)
+  const save = () => screen.getByRole<HTMLButtonElement>('button', { name: zh.settingsSave })
+  expect(prompt.maxLength).toBe(40)
+  expect(save().disabled).toBe(true)
+  fireEvent.change(prompt, { target: { value: '  Answer in Chinese.  ' } })
+  expect(screen.getByText('22 / 40 字')).toBeTruthy()
+  fireEvent.click(save())
+  await waitFor(() => { expect(props.saveGlobalPrompt).toHaveBeenCalledExactlyOnceWith('  Answer in Chinese.  ') })
+  await waitFor(() => { expect(prompt.value).toBe('Answer in Chinese.') })
+  expect(save().disabled).toBe(true)
+  expect(props.notify).toHaveBeenCalledWith(zh.settingsSaved, true)
+  await waitFor(() => { expect(props.previewBudget).toHaveBeenCalledTimes(2) })
+})
+
+it('keeps an unsaved global prompt draft when the Host rejects it', async () => {
+  const { props } = fixture()
+  vi.mocked(props.saveGlobalPrompt).mockRejectedValueOnce(new Error('全局提示词超过 40 字符上限'))
+  render(<ModelsSection {...props} />)
+  const prompt = screen.getByLabelText<HTMLTextAreaElement>(zh.settingsGlobalPrompt)
+  fireEvent.change(prompt, { target: { value: 'Draft instructions' } })
+  fireEvent.click(screen.getByRole('button', { name: zh.settingsSave }))
+  await waitFor(() => { expect(props.notify).toHaveBeenCalledWith('全局提示词超过 40 字符上限') })
+  expect(prompt.value).toBe('Draft instructions')
+  expect(screen.getByRole<HTMLButtonElement>('button', { name: zh.settingsSave }).disabled).toBe(false)
 })
 
 it('keeps memory use and automatic generation independent and submits the edited revision', async () => {

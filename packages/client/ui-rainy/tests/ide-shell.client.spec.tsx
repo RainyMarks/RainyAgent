@@ -379,7 +379,7 @@ describe('IDE shell', () => {
         content: 'other helper',
         version: 'v2' as IdeFileVersion,
       })
-    fireEvent.click(screen.getByRole('button', { name: '运行' }))
+    fireEvent.click(screen.getByRole('button', { name: '运行：Python' }))
     await waitFor(() => {
       expect(screen.getByRole('alert').textContent).toContain('helper changed on disk')
     })
@@ -390,6 +390,21 @@ describe('IDE shell', () => {
     ).toEqual(['main.py', 'helper.py'])
     expect(launch).not.toHaveBeenCalled()
     expect(h.model.state.getSnapshot().buffers['helper.py']?.text).toBe('helper changed')
+  })
+
+  it('runs the open file by its extension or with a language chosen from the run menu', async () => {
+    const h = await fixture()
+    const launch = vi.spyOn(h.execution, 'run').mockResolvedValue()
+    fireEvent.click(screen.getByRole('button', { name: '运行方式' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'C++' }))
+    fireEvent.click(screen.getByRole('button', { name: '运行：C++' }))
+    await waitFor(() => { expect(launch).toHaveBeenCalledOnce() })
+    expect(launch.mock.calls[0]?.[0]).toMatchObject({ program: 'main.py', language: 'cpp' })
+    expect(h.model.state.getSnapshot().data.execution?.activeProfile).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '运行方式' }))
+    fireEvent.click(await screen.findByRole('menuitem', { name: '按后缀自动识别（Python）' }))
+    expect(screen.getByRole('button', { name: '运行：Python' })).toBeTruthy()
+    expect(h.model.state.getSnapshot().data.execution?.profiles).toEqual([])
   })
 
   it('offers an explicit dirty close choice and keeps the buffer when cancelled', async () => {

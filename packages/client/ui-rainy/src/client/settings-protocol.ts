@@ -34,6 +34,7 @@ export const settingsStatusSchema = z.object({
   selected: z.object({ provider: z.string(), model: z.string() }).nullish(),
   sessions: z.array(z.object({ id: z.string(), title: z.string().optional(), status: z.string() })),
   preset: modelSchema.optional(), tools: z.array(z.string()),
+  globalPrompt: z.object({ text: z.string(), maxChars: z.number() }),
 })
 /** Settings read state supplied through the framework hook. */
 export type SettingsStatus = z.infer<typeof settingsStatusSchema>
@@ -84,6 +85,8 @@ export interface SettingsOperations {
   }): Promise<BudgetPreview>
   refresh(): Promise<void>
   configure(setup: RainyModelSetup): Promise<{ provider: string; model: string }>
+  /** Save instructions added to every later model request; resolves after the status refresh. */
+  saveGlobalPrompt(text: string): Promise<void>
   discover(connection: RainyModelDiscovery): Promise<readonly { id: string; contextWindow?: number | undefined }[]>
   probe(setup: RainyModelSetup): Promise<{ stream: boolean; toolCall: boolean; text?: string | undefined }>
   catalog(sessionId: string): Promise<{ skills: readonly { id: string }[]; selection: unknown; idaAvailable: boolean }>

@@ -50,11 +50,12 @@ export function installRainySettings(ctx: Context, editor: IdeModel, config: Con
     notify,
     hooks: { settings: controller.state, ide: editor.state, strata: strata.state },
   })
+  // The shared General section registers order 0; Rainy pages follow it in everyday-use order.
   const sections = [
-    { id: 'rainy-models', order: -20, labelKey: 'models', component: ModelsSection },
-    { id: 'rainy-extensions', order: -10, labelKey: 'extensions', component: ExtensionsSection },
-    { id: 'rainy-runtime', order: 10, labelKey: 'settingsRuntime', component: RuntimeSection },
-    { id: 'rainy-memory', order: 20, labelKey: 'settingsMemory', component: MemorySection },
+    { id: 'models', order: 10, labelKey: 'settingsModels', component: ModelsSection },
+    { id: 'skills', order: 20, labelKey: 'extensions', component: ExtensionsSection },
+    { id: 'runtime', order: 30, labelKey: 'settingsRuntime', component: RuntimeSection },
+    { id: 'memory', order: 40, labelKey: 'settingsMemory', component: MemorySection },
   ] as const
   for (const section of sections) ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: section.id, order: section.order, label: () => t(section.labelKey), locale: 'rainy', inject,

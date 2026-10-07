@@ -322,6 +322,8 @@ export class IdeModel {
       if (this.isDisposed()) return
       const data = {
         ...saved.data,
+        // A conversation opened from history stays visible whatever pane visibility the project saved.
+        ...sessionId === undefined ? {} : { layout: { ...saved.data.layout, agentVisible: true } },
         lastSessionId: sessionId ?? saved.data.lastSessionId,
         tabs,
         expandedPaths,
@@ -352,7 +354,7 @@ export class IdeModel {
       })
       if (saved.data.buffers.length !== Object.values(buffers).filter(buffer => buffer.dirty).length
         || saved.data.expandedPaths.length !== expandedPaths.length || saved.data.tabs.length !== tabs.length
-        || data.lastSessionId !== saved.data.lastSessionId) this.changed()
+        || data.lastSessionId !== saved.data.lastSessionId || data.layout.agentVisible !== saved.data.layout.agentVisible) this.changed()
     } catch (error) {
       if (restoredSession)
         await this.options.restoreSession(previous.workspace ?? workspace, previous.workspace === null ? null : previous.data.lastSessionId)

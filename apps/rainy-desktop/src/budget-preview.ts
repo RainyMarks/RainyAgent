@@ -8,6 +8,7 @@ import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import { z } from 'zod'
 import { estimateRequest, promptBreakdown, resolveBudget } from './budget.ts'
 import type { CountableRequest } from './budget.ts'
+import { GLOBAL_PROMPT_SECTION } from './global-prompt.ts'
 import type { BudgetSnapshot } from './policy.ts'
 import type {} from './project-memory.ts'
 import type {} from './project-roots.ts'
@@ -121,6 +122,7 @@ export async function previewBudget(ctx: Context, raw: unknown): Promise<BudgetP
   const descriptions = assembly.sections
     .filter(section => section.name.startsWith('rainy-skill:') || section.name.startsWith('mcp:'))
     .map(section => section.text)
+  const instructions = assembly.sections.filter(section => section.name === GLOBAL_PROMPT_SECTION).map(section => section.text)
   return {
     ...budget,
     sessionId: agent?.id ?? `preview:${workspace.id}`,
@@ -132,7 +134,7 @@ export async function previewBudget(ctx: Context, raw: unknown): Promise<BudgetP
     compacting: false,
     preview: true,
     limitations: ['before-dispatch-estimate', 'attachments-not-included'],
-    breakdown: promptBreakdown(request, descriptions, memoryIds),
+    breakdown: promptBreakdown(request, descriptions, memoryIds, instructions),
     ...(tokens > budget.inputLimit
       ? { error: `预计输入 ${tokens} tokens 超过 ${budget.inputLimit} 的输入预算。` }
       : {}),

@@ -8,6 +8,7 @@ import type { NativeToolId, NativeToolSummary } from '../native-tools-protocol.t
 import type { NativeToolsState } from './native-tools.ts'
 import type { zh } from './locales.ts'
 import css from './ToolCatalog.module.css'
+import { toolGroup, toolGroups, type ToolGroup } from './tool-groups.ts'
 
 const purpose: Record<typeof nativeToolIds[number], keyof typeof zh> = {
   yakit: 'toolYakit', cyberchef: 'toolCyberChef', '7zip': 'tool7zip', exiftool: 'toolExiftool',
@@ -21,13 +22,12 @@ const purpose: Record<typeof nativeToolIds[number], keyof typeof zh> = {
   sqlite: 'toolSqlite', 'sqlite-browser': 'toolSqliteBrowser', qpdf: 'toolQpdf', ripgrep: 'toolRipgrep',
   bruno: 'toolBruno', pcapfix: 'toolPcapfix',
 }
-const categoryCopy = { web: 'toolsWeb', misc: 'toolsMisc', reverse: 'toolsReverse' } as const
 const kindCopy = { desktop: 'toolsDesktop', terminal: 'toolsTerminal', web: 'toolsOfflineWeb' } as const
-type Filter = 'all' | 'favorites' | 'recent' | NativeToolSummary['category']
-const filters: readonly { readonly id: Filter; readonly copyKey: keyof typeof zh }[] = [
+type Filter = 'all' | 'favorites' | 'recent' | ToolGroup
+const views: readonly { readonly id: Filter; readonly copyKey: keyof typeof zh }[] = [
   { id: 'all', copyKey: 'toolsAll' }, { id: 'favorites', copyKey: 'toolsFavorites' }, { id: 'recent', copyKey: 'toolsRecent' },
-  { id: 'web', copyKey: 'toolsWeb' }, { id: 'misc', copyKey: 'toolsMisc' }, { id: 'reverse', copyKey: 'toolsReverse' },
 ]
+const groupCopy = Object.fromEntries(toolGroups.map(group => [group.id, group.copyKey])) as Record<ToolGroup, keyof typeof zh>
 
 function ToolPackRepair({ t }: PropsLocale<'rainy'>) {
   const [open, setOpen] = useState(false)
@@ -75,14 +75,50 @@ export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, d
   const tools = state.tools.filter((tool) => {
     if (filter === 'favorites' && !favoriteIds.includes(tool.id)) return false
     if (filter === 'recent' && !recentIds.includes(tool.id)) return false
-    if (filter !== 'all' && filter !== 'favorites' && filter !== 'recent' && tool.category !== filter) return false
+    if (filter !== 'all' && filter !== 'favorites' && filter !== 'recent' && toolGroup(tool) !== filter) return false
     return search === '' || `${tool.name} ${tool.id} ${description(tool.id)}`.toLocaleLowerCase().includes(search)
   })
   if (filter === 'recent') tools.sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id))
+  // The complete unfiltered list reads by task; filtered views stay flat and tag each tool with its group.
+  const grouped = filter === 'all' && search === ''
+  const filters = [...views, ...toolGroups.filter(group => state.tools.some(tool => toolGroup(tool) === group.id))]
   if (state.phase === 'desktop-only') return <div className={css.empty} data-rainy-tool-catalog>
     <p>{t('toolsDesktopOnly')}</p><p className={css.secondary}>{t('toolsDesktopHint')}</p>
   </div>
   const busy = state.phase === 'loading' || state.savingFavorites || state.pending.length > 0
+  const card = (tool: NativeToolSummary, showGroup: boolean) => {
+    const favorite = favoriteIds.includes(tool.id)
+    const pending = state.pending.includes(tool.id)
+    const favoriteLabel = t(favorite ? 'toolsRemoveFavorite' : 'toolsAddFavorite', { name: tool.name })
+    return <li key={tool.id} className={css.card} data-tool-id={tool.id}>
+      <div className={css.details}>
+        <div className={css.nameRow}><h3>{tool.name}</h3>{showGroup && <Tag>{t(groupCopy[toolGroup(tool)])}</Tag>}</div>
+        <p className={css.purpose}>{description(tool.id)}</p>
+        <div className={css.metadata}>
+          <span>{tool.version || t('toolsVersionUnknown')}</span><span>{t(kindCopy[tool.launchKind])}</span>
+          <Tag tone={tool.status === 'missing' ? 'warning' : tool.verified ? 'success' : 'neutral'}>
+            {t(tool.status === 'missing' ? 'toolsMissing' : tool.verified ? 'toolsReady' : 'toolsUnverified')}
+          </Tag>
+        </div>
+        {tool.missing.length > 0 && <p className={css.missing}>{tool.missing.join(' · ')}</p>}
+        {(tool.status === 'missing' || tool.variants?.some(variant => variant.status === 'missing')) && <ToolPackRepair t={t} />}
+      </div>
+      <div className={css.actions}>
+        <Tooltip label={favoriteLabel} portal>
+          <Button size="sm" aria-label={favoriteLabel} aria-pressed={favorite} disabled={state.savingFavorites || state.phase === 'loading' || downloading}
+            icon={favorite ? <IconPinFillRegular /> : <IconPinOutlineRegular />} onClick={() => { void toggleFavorite(tool.id) }} />
+        </Tooltip>
+        <Button size="sm" variant="outline" aria-label={t('toolsOpenName', { name: tool.name })}
+          disabled={tool.status === 'missing' || pending || state.phase === 'loading' || downloading} aria-busy={pending}
+          onClick={() => { void launchTool(tool.id) }}>
+          {t(pending ? 'toolsOpening' : tool.launchKind === 'terminal' ? 'toolsOpenTerminal' : 'toolsOpen')}
+        </Button>
+        {tool.variants?.map(variant => <Button key={variant.id} size="sm" variant="outline"
+          aria-label={t('toolsOpenName', { name: variant.name })} disabled={variant.status === 'missing' || pending || state.phase === 'loading' || downloading}
+          onClick={() => { void launchTool(tool.id, variant.id) }}>{variant.name}</Button>)}
+      </div>
+    </li>
+  }
   return <div className={css.catalog} data-rainy-tool-catalog>
     <div className={css.toolbar}>
       <div className={css.search}><Input icon={<IconSearchOutlineRegular />} aria-label={t('toolsSearch')}
@@ -131,41 +167,14 @@ export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, d
       <p className={css.count} role="status">{t('toolsCount', { count: String(tools.length) })}</p>
       {tools.length === 0 ? <div className={css.empty}><p>{t(search !== '' ? 'toolsEmpty'
         : filter === 'favorites' ? 'toolsEmptyFavorites' : filter === 'recent' ? 'toolsEmptyRecent' : 'toolsEmpty')}</p></div>
-        : <ul className={css.list} aria-label={t('toolsCatalog')}>
-          {tools.map((tool) => {
-            const favorite = favoriteIds.includes(tool.id)
-            const pending = state.pending.includes(tool.id)
-            const favoriteLabel = t(favorite ? 'toolsRemoveFavorite' : 'toolsAddFavorite', { name: tool.name })
-            return <li key={tool.id} className={css.card} data-tool-id={tool.id}>
-              <div className={css.details}>
-                <div className={css.nameRow}><h3>{tool.name}</h3><Tag>{t(categoryCopy[tool.category])}</Tag></div>
-                <p className={css.purpose}>{description(tool.id)}</p>
-                <div className={css.metadata}>
-                  <span>{tool.version || t('toolsVersionUnknown')}</span><span>{t(kindCopy[tool.launchKind])}</span>
-                  <Tag tone={tool.status === 'missing' ? 'warning' : tool.verified ? 'success' : 'neutral'}>
-                    {t(tool.status === 'missing' ? 'toolsMissing' : tool.verified ? 'toolsReady' : 'toolsUnverified')}
-                  </Tag>
-                </div>
-                {tool.missing.length > 0 && <p className={css.missing}>{tool.missing.join(' · ')}</p>}
-                {(tool.status === 'missing' || tool.variants?.some(variant => variant.status === 'missing')) && <ToolPackRepair t={t} />}
-              </div>
-              <div className={css.actions}>
-                <Tooltip label={favoriteLabel} portal>
-                  <Button size="sm" aria-label={favoriteLabel} aria-pressed={favorite} disabled={state.savingFavorites || state.phase === 'loading' || downloading}
-                    icon={favorite ? <IconPinFillRegular /> : <IconPinOutlineRegular />} onClick={() => { void toggleFavorite(tool.id) }} />
-                </Tooltip>
-                <Button size="sm" variant="outline" aria-label={t('toolsOpenName', { name: tool.name })}
-                  disabled={tool.status === 'missing' || pending || state.phase === 'loading' || downloading} aria-busy={pending}
-                  onClick={() => { void launchTool(tool.id) }}>
-                  {t(pending ? 'toolsOpening' : tool.launchKind === 'terminal' ? 'toolsOpenTerminal' : 'toolsOpen')}
-                </Button>
-                {tool.variants?.map(variant => <Button key={variant.id} size="sm" variant="outline"
-                  aria-label={t('toolsOpenName', { name: variant.name })} disabled={variant.status === 'missing' || pending || state.phase === 'loading' || downloading}
-                  onClick={() => { void launchTool(tool.id, variant.id) }}>{variant.name}</Button>)}
-              </div>
-            </li>
-          })}
-        </ul>}
+        : grouped ? toolGroups.map((group) => {
+          const members = tools.filter(tool => toolGroup(tool) === group.id)
+          return members.length === 0 ? null : <section key={group.id} className={css.group} aria-label={t(group.copyKey)}>
+            <h2 className={css.groupTitle}>{t(group.copyKey)}<span>{members.length}</span></h2>
+            <ul className={css.list}>{members.map(tool => card(tool, false))}</ul>
+          </section>
+        })
+          : <ul className={css.list} aria-label={t('toolsCatalog')}>{tools.map(tool => card(tool, true))}</ul>}
     </>}
   </div>
 }

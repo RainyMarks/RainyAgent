@@ -13,8 +13,8 @@ export function GeneralSettingsBridge({ openSettings }: PropsRuntime<'settings.l
     const open = (event: Event): void => {
       const detail: unknown = event instanceof CustomEvent ? event.detail : undefined
       const page = detail !== null && typeof detail === 'object' && 'page' in detail ? detail.page : undefined
-      const section = page === 'extensions' ? 'rainy-extensions' : page === 'runtime' ? 'rainy-runtime'
-        : page === 'memory' ? 'rainy-memory' : page === 'preferences' ? 'general' : 'rainy-models'
+      const section = page === 'extensions' ? 'skills' : page === 'runtime' ? 'runtime'
+        : page === 'memory' ? 'memory' : page === 'preferences' ? 'general' : 'models'
       openSettings(section)
     }
     window.addEventListener('rainy:open-general-settings', general)

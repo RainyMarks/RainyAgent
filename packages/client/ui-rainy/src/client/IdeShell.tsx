@@ -7,6 +7,8 @@ import {
   Modal,
   Tooltip,
   ShortcutKeys,
+  type MenuEntry,
+  IconCheckOutlineRegular,
   IconChevronDownOutlineRegular,
   IconChevronLeftOutlineRegular,
   IconChevronRightOutlineRegular,
@@ -44,6 +46,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-directory-picker-browse/client'
 import css from './IdeShell.module.css'
 import { IconBugOutline, IconPanelBottomOutline, IconPanelRightOutline } from './icons.tsx'
 import { IconAction } from './IconAction.tsx'
+import { chooseFileLanguage, inferredRunLanguage, pinRunProfile, runLanguageNames, runLanguages, runsFile, runTarget, type RunFile } from './run-target.ts'
 
 declare global {
   interface Window {
@@ -290,7 +293,7 @@ export function IdeShell({
   const directoryPending = useDirectoryPending(value => value)
   const [navigation, setNavigation] = useState<'files' | 'history'>('files')
   const [selected, setSelected] = useState<IdeFileEntry | undefined>()
-  const [menu, setMenu] = useState<'file' | 'edit' | 'view' | 'explorer' | 'editor' | 'app' | 'workspace' | undefined>()
+  const [menu, setMenu] = useState<'file' | 'edit' | 'view' | 'explorer' | 'editor' | 'app' | 'workspace' | 'run' | undefined>()
   const [prompt, setPrompt] = useState<Prompt | undefined>()
   const [runConfiguration, setRunConfiguration] = useState(false)
   const [directoryOpen, setDirectoryOpen] = useState(false)
@@ -425,25 +428,41 @@ export function IdeShell({
         })) !== null,
     )
   }
-  const configuration = (): IdeRunConfiguration | undefined => {
-    const saved = state.data.execution
-    const configured = saved?.profiles.find(profile => profile.name === saved.activeProfile)
-    if (configured !== undefined) return configured
-    if (activePath === null) return undefined
-    const language = sourceLanguage(activePath)
-    if (
-      language !== 'python' &&
-      language !== 'javascript' &&
-      language !== 'typescript' &&
-      language !== 'php' &&
-      language !== 'c' &&
-      language !== 'cpp'
-    )
-      return undefined
-    const reference = fileReference(activePath)
-    return { name: fileLabel(state.workspace, activePath), language, program: reference.path,
-      ...(reference.rootId === undefined ? {} : { rootId: reference.rootId }), terminal: true }
+  const activeReference = activePath === null ? undefined : fileReference(activePath)
+  const runFile: RunFile | undefined = activePath === null || activeReference === undefined ? undefined
+    : { path: activePath, label: fileLabel(state.workspace, activePath), program: activeReference.path,
+      ...activeReference.rootId === undefined ? {} : { rootId: activeReference.rootId } }
+  const target = runTarget(state.data.execution, runFile)
+  const configuration = (): IdeRunConfiguration | undefined => target?.configuration
+  const inferred = activePath === null ? undefined : inferredRunLanguage(activePath)
+  const fileLanguage = target !== undefined && target.mode !== 'pinned' ? target.configuration.language : undefined
+  const checked = (on: boolean) => on ? <IconCheckOutlineRegular size={14} /> : <span className={css.menuCheck} />
+  const otherProfiles = (state.data.execution?.profiles ?? [])
+    .filter(profile => runFile === undefined || !runsFile(profile, runFile)).slice(0, 8)
+  const runMenu: MenuEntry[] = [
+    { type: 'label', id: 'current-file', text: t('ideRunCurrentFile') },
+    { id: 'auto', label: inferred === undefined ? t('ideRunAutoUnknown') : t('ideRunAuto', { language: runLanguageNames[inferred] }),
+      disabled: inferred === undefined, icon: checked(fileLanguage !== undefined && fileLanguage === inferred) },
+    ...runLanguages.map(language => ({ id: `language:${language}`, label: runLanguageNames[language], disabled: runFile === undefined,
+      icon: checked(fileLanguage === language && language !== inferred) })),
+    ...otherProfiles.length === 0 ? [] : [{ type: 'separator' as const, id: 'pinned-separator' }, { type: 'label' as const, id: 'pinned', text: t('ideRunPinned') },
+      ...otherProfiles.map(profile => ({ id: `profile:${profile.name}`, label: profile.name,
+        icon: checked(target?.mode === 'pinned' && target.configuration.name === profile.name) }))],
+    { type: 'separator', id: 'edit-separator' },
+    { id: 'edit', label: t('ideRunEdit') },
+  ]
+  const chooseRun = (id: string): void => {
+    setMenu(undefined)
+    const execution = state.data.execution
+    if (id === 'edit') setRunConfiguration(true)
+    else if (id.startsWith('profile:')) model.execution(pinRunProfile(execution, id.slice('profile:'.length)))
+    else if (runFile !== undefined) {
+      const choice = id === 'auto' ? 'auto' : runLanguages.find(language => id === `language:${language}`)
+      if (choice !== undefined) model.execution(chooseFileLanguage(execution, runFile, choice))
+    }
   }
+  const runLabel = target === undefined ? t('ideRun') : t('ideRunWith', {
+    target: target.mode === 'pinned' ? target.configuration.name : runLanguageNames[target.configuration.language] })
   const launch = async (debug: boolean): Promise<void> => {
     const config = configuration()
     if (config === undefined) {
@@ -692,9 +711,13 @@ export function IdeShell({
         </div>
         <div className={css.topEnd}>
           {editing && <div className={css.toolGroup}>
-            <IconAction label={t('ideRun')} onClick={() => { run(launch(false)) }}><IconPlayOutlineRegular size={16} /></IconAction>
-            {sourceLanguage(activePath ?? '') !== 'php'
+            <IconAction label={runLabel} onClick={() => { run(launch(false)) }}><IconPlayOutlineRegular size={16} /></IconAction>
+            {target?.configuration.language !== 'php'
               && <IconAction label={t('ideDebug')} onClick={() => { run(launch(true)) }}><IconBugOutline size={16} /></IconAction>}
+            <Menu open={menu === 'run'} onClose={() => { setMenu(undefined) }} portal align="end" compact items={runMenu} onSelect={chooseRun}
+              anchor={<IconAction label={t('ideRunMode')} expanded={menu === 'run'} onClick={() => { setMenu(menu === 'run' ? undefined : 'run') }}>
+                <IconChevronDownOutlineRegular size={12} />
+              </IconAction>} />
           </div>}
           <div className={css.toolGroup}>
             <IconAction label={t('ideToggleFiles')} pressed={leftVisible} onClick={() => { action('files') }}>

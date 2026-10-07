@@ -1,7 +1,7 @@
 - navigation:
   - text: 设置
-  - button "模型与上下文"
-  - button "Skills 与 MCP"
   - button "通用设置"
+  - button "模型"
+  - button "Skills 与 MCP"
   - button "运行环境"
   - button "项目记忆"

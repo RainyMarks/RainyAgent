@@ -1,5 +1,5 @@
-/** Request admission, output retention and opt-in tool visibility for Rainy. */
-import type { Context } from '@deepseek-ai/cordis'
+/** Request admission, output retention, the profile global prompt and opt-in tool visibility for Rainy. */
+import type { Context, Volatile } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { CONTEXT_WINDOW_EXCEEDED_CODE } from '@deepseek-ai/dsh-llm'
 import type { GenerateOptions, StreamChunk } from '@deepseek-ai/dsh-llm'
@@ -10,6 +10,7 @@ import type {} from '@deepseek-ai/dsh-spill'
 import type {} from '@deepseek-ai/dsh-token-meter'
 import type {} from '@deepseek-ai/dsh-config-editor'
 import type {} from '@deepseek-ai/dsh-sandbox-policy'
+import type {} from '@deepseek-ai/dsh-settings'
 import type {} from './project-roots.ts'
 import { realpathSync } from 'node:fs'
 import {
@@ -26,6 +27,8 @@ import type RainyCompaction from './compaction.ts'
 import { compactionThreshold } from './compaction.ts'
 import { previewBudget } from './budget-preview.ts'
 import type { BudgetPreview } from './budget-preview.ts'
+import { checkedGlobalPrompt, GLOBAL_PROMPT_ORDER, GLOBAL_PROMPT_SECTION, parseGlobalPrompt, saveGlobalPrompt } from './global-prompt.ts'
+import type { GlobalPromptSettings } from './global-prompt.ts'
 
 /** Last admission result shown by the desktop; no prompt or credential text is retained here. */
 export interface BudgetSnapshot extends Budget, TokenCount {
@@ -45,6 +48,14 @@ export interface RainyState {
   modelActivity: { activeRequests: number; lastFinishedAt: number }
   /** @param query Selected project and optional draft/model. @returns A read-only estimate before request admission. */
   previewBudget(query: unknown): Promise<BudgetPreview>
+  /** @returns The saved global prompt and its configured length limit. */
+  globalPrompt(): GlobalPromptSettings
+  /**
+   * Validate and persist the global prompt in this plugin's profile entry; later prompt assemblies use it without a restart.
+   * @param raw Authenticated settings request `{ text }`; empty text removes the prompt.
+   * @returns The saved prompt after Loader reconciliation.
+   */
+  saveGlobalPrompt(raw: unknown): Promise<GlobalPromptSettings>
 }
 declare module '@deepseek-ai/cordis' {
   interface Context {
@@ -67,6 +78,14 @@ export interface Config {
   endpointConcurrency?: Record<string, number>
   /** Maximum tokens describing explicitly attached project directories. */
   rootManifestTokens?: number
+  /**
+   * User-authored instructions rendered as one system-prompt section for every Agent, so main turns of all sessions
+   * receive them through the logged system prompt. Auxiliary requests (compaction summaries, project memory,
+   * titles, connection probes) keep their own task prompts. Empty adds nothing. Saved by the settings page.
+   */
+  globalPrompt: Volatile<string>
+  /** Maximum `globalPrompt` length in UTF-16 code units; a longer configured prompt fails load and prompt assembly. */
+  globalPromptMaxChars: number
 }
 export const name = 'rainy-policy'
 export const inject = [
@@ -83,13 +102,17 @@ export const inject = [
   'workspaceRegistry',
   'agentDefaultModel',
 ]
-export const Config: z<Config> = z.object({
+/** Validated admission limits and the live global prompt. */
+export const Config = z.object({
   tokenizers: z.dict(z.string()),
   endpointGroups: z.dict(z.string()),
   localEndpointConcurrency: z.number().min(1).step(1).default(1),
   remoteEndpointConcurrency: z.number().min(1).step(1).default(4),
   endpointConcurrency: z.dict(z.number().min(1).step(1)),
   rootManifestTokens: z.number().min(128).step(1).default(1024),
+  globalPrompt: z.string().default('').volatile(),
+  // The settings request body is capped at 64 KiB; this bound keeps a full prompt within it.
+  globalPromptMaxChars: z.number().min(1).max(10000).step(1).default(4000),
 })
 const CORE = new Set(['read', 'write', 'edit', process.platform === 'win32' ? 'pwsh' : 'bash'])
 const descriptions: Record<string, string> = {
@@ -111,6 +134,8 @@ function own<T>(record: Record<string, T> | undefined, key: string): T | undefin
 
 /** Mount scoped guards and count the immutable final request immediately before the provider runs. */
 export function apply(ctx: Context, config: Config): void {
+  const globalPrompt = (): string => checkedGlobalPrompt(config.globalPrompt.get(), config.globalPromptMaxChars)
+  globalPrompt()
   const state: RainyState = {
     budgets: new Map(),
     auxiliaryBudgets: new Map(),
@@ -119,8 +144,25 @@ export function apply(ctx: Context, config: Config): void {
     extensionBudgets: new Map(),
     modelActivity: { activeRequests: 0, lastFinishedAt: 0 },
     previewBudget: query => previewBudget(ctx, query),
+    globalPrompt: () => ({ text: config.globalPrompt.get(), maxChars: config.globalPromptMaxChars }),
+    saveGlobalPrompt: async (raw) => {
+      const text = parseGlobalPrompt(raw, config.globalPromptMaxChars)
+      const entry = ctx.fiber.entry
+      if (entry === undefined) throw new Error('当前配置档案无法保存全局提示词。')
+      await saveGlobalPrompt(ctx.configEditor, entry, text)
+      return { text, maxChars: config.globalPromptMaxChars }
+    },
   }
   ctx.provide('rainy', state)
+  ctx.inject(['settings'], (child) => { child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)) })
+  ctx.effect(() =>
+    ctx.systemPrompt.section({
+      name: GLOBAL_PROMPT_SECTION,
+      order: GLOBAL_PROMPT_ORDER,
+      interpolate: false,
+      text: () => globalPrompt(),
+    }),
+  )
   const queue = new RequestQueue()
   const counters = new Map<string, CalibratedCounter>()
   const overflowAttempts = new WeakMap<Agent, number>()
@@ -290,6 +332,7 @@ export function apply(ctx: Context, config: Config): void {
           request,
           state.extensionDescriptions.get(id),
           ctx.get('rainyMemory')?.recallMessageIds(id),
+          [config.globalPrompt.get().trim()],
         ),
       }
       const snapshots = request.purpose === 'project-memory' ? state.auxiliaryBudgets : state.budgets

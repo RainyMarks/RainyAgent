@@ -37,11 +37,14 @@ async function openRecordedConversation(page: Page): Promise<void> {
   }
   const reply = page.getByText('LIGHTHOUSE', { exact: true })
   const agent = page.getByRole('complementary', { name: /^(AI assistant|AI 助手)$/ })
-  if (!await agent.isVisible()) await page.locator('[data-rainy-topbar]')
-    .getByRole('button', { name: /Show or hide AI assistant|显示或隐藏 AI 助手/ }).click()
+  // The toggle's pressed state is the restored layout; a visibility probe can run before restoration settles.
+  const toggle = page.locator('[data-rainy-topbar]').getByRole('button', { name: /Show or hide AI assistant|显示或隐藏 AI 助手/ })
+  await expect.poll(() => toggle.getAttribute('aria-pressed')).toMatch(/^(true|false)$/)
+  if (await toggle.getAttribute('aria-pressed') !== 'true') await toggle.click()
+  await expect.poll(() => toggle.getAttribute('aria-pressed')).toBe('true')
+  await agent.waitFor({ state: 'visible' })
   if (!await reply.isVisible()) {
-    await page.getByRole('complementary', { name: /^(AI assistant|AI 助手)$/ })
-      .getByRole('button', { name: /^(Chat history|对话历史)$/ }).click()
+    await agent.getByRole('button', { name: /^(Chat history|对话历史)$/ }).click()
     const shortcut = await page.getByRole('button', { name: /Search sessions|搜索会话/ }).getAttribute('aria-keyshortcuts')
     if (shortcut === null) throw new Error('Session search must expose its keyboard shortcut.')
     await page.keyboard.press(shortcut)
@@ -240,7 +243,7 @@ describe.skipIf(MODE === 'record')('web e2e: Rainy CTF recorded conversation dra
       await directory.getByRole('button', { name: /^(Open|打开) x64dbg$/ }).click()
       await catalogPage.getByText('Fixture: debugger could not open', { exact: true }).waitFor({ state: 'visible' })
       expect(await directory.getByRole('listitem').count()).toBe(4)
-      await directory.getByRole('button', { name: 'Reverse', exact: true }).click()
+      await directory.getByRole('button', { name: /^(Reverse engineering|逆向调试)$/ }).click()
       expect(await directory.getByRole('heading').allTextContents()).toEqual(['x64dbg'])
       await directory.getByRole('button', { name: /^(All|全部)$/ }).click()
       await directory.getByRole('textbox').fill('ffprobe')

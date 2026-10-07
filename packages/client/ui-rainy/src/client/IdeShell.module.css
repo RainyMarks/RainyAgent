@@ -172,3 +172,6 @@
 .panelTab:hover { background: transparent; color: var(--dsw-alias-label-primary); }
 .panelTab[aria-selected='true'] { background: transparent; color: var(--dsw-alias-label-primary);
   box-shadow: inset 0 -2px 0 var(--dsw-alias-state-business-primary); }
+
+/* Blank slot keeping unchecked run-menu rows aligned with the checked one. */
+.menuCheck { display: inline-block; width: 14px; }

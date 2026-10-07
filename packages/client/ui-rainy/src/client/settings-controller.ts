@@ -40,6 +40,10 @@ export class SettingsController {
         await this.refreshAfterChange()
         return configured
       },
+      saveGlobalPrompt: async (text) => {
+        await control('configure-global-prompt', { text }, z.unknown())
+        await this.refreshAfterChange()
+      },
       discover: async setup => (await control('discover-models', setup,
         z.object({ data: z.array(z.object({ id: z.string(), contextWindow: z.number().optional() })).optional() }))).data ?? [],
       probe: setup => control('probe-model', setup, z.object({ stream: z.boolean(), toolCall: z.boolean(), text: z.string().optional() })),

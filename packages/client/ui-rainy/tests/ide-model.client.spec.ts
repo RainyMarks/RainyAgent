@@ -91,6 +91,20 @@ describe('workspace recovery', () => {
     expect(restoreSession).toHaveBeenLastCalledWith(b, selected)
   })
 
+  it('shows the AI panel for a chat opened from history even when that project saved it hidden', async () => {
+    const { model, request } = await fixture()
+    const hidden = (revision = 0) => ({ ...state(revision), data: { ...state(revision).data,
+      layout: { ...state(revision).data.layout, agentVisible: false } } })
+    request.mockResolvedValueOnce(state(1)).mockResolvedValueOnce(hidden())
+      .mockResolvedValueOnce({ path: '', entries: [] }).mockResolvedValueOnce({ version: 1, workspaceId: b.workspaceId })
+    await model.selectWorkspace(b, 'from-history' as SessionId)
+    expect(model.state.getSnapshot().data.layout.agentVisible).toBe(true)
+    request.mockResolvedValueOnce(state(2)).mockResolvedValueOnce(hidden())
+      .mockResolvedValueOnce({ path: '', entries: [] }).mockResolvedValueOnce({ version: 1, workspaceId: a.workspaceId })
+    await model.selectWorkspace(a)
+    expect(model.state.getSnapshot().data.layout.agentVisible).toBe(false)
+  })
+
   it('creates a file at an attached root and blocks unmounting its unsaved buffer', async () => {
     const { model, request } = await fixture()
     const rootId = 'attached' as IdeRootId

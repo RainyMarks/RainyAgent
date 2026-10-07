@@ -1,6 +1,6 @@
 /** Explicit controls for bundled local inference and externally selected model weights. */
 import { useEffect, useRef, useState } from 'react'
-import { Button, IconLoadingOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, IconChevronDownOutlineRegular, IconLoadingOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { TranslateNS } from '@deepseek-ai/dsh-client-locale/client'
 import { strataSettingsSchema } from '../strata-protocol.ts'
 import type { StrataModelPicker, StrataSettings as EngineSettings, StrataStatus } from '../strata-protocol.ts'
@@ -32,22 +32,33 @@ function formOf(settings: EngineSettings): Form {
 function sameForm(left: Form, right: Form): boolean { return JSON.stringify(left) === JSON.stringify(right) }
 
 /** Show runtime readiness and model controls without creating a server or changing the selected model.
+ * The block starts collapsed below the everyday model settings; its summary keeps the engine phase visible.
  * @param props Retained native state, explicit callbacks, and locale-owned text.
- * @returns A card inside the existing model settings page.
+ * @returns A collapsible card inside the existing model settings page.
  */
 export function StrataSettings(props: Props) {
   const { snapshot, t, strataRefresh } = props
-  return <article className={css.card} data-rainy-strata aria-busy={snapshot.pending !== undefined || snapshot.loading}>
-    <h3 className={css.heading}>{t('strataTitle')}</h3>
-    <p className={css.muted}>{t('strataNote')}</p>
-    {!snapshot.available ? <p className={css.notice}>{t('strataDesktopOnly')}</p> : <>
-      {snapshot.error !== '' && <p className={`${css.notice} ${css.error}`} role="alert">{snapshot.error}</p>}
-      {snapshot.status === undefined ? <>
-        {snapshot.loading ? <div className={css.spinner} role="status" aria-label={t('strataLoading')}><IconLoadingOutlineRegular size={20} /></div>
-          : <div className={css.actions}><Button variant="outline" onClick={() => { void strataRefresh() }}>{t('settingsRetry')}</Button></div>}
-      </> : <StrataForm {...props} status={snapshot.status} />}
-    </>}
-  </article>
+  const [open, setOpen] = useState(false)
+  const phase = snapshot.status?.phase
+  return <details className={`${css.card} ${css.collapsible}`} data-rainy-strata open={open}
+    onToggle={(event) => { setOpen(event.currentTarget.open) }} aria-busy={snapshot.pending !== undefined || snapshot.loading}>
+    <summary>
+      <span className={css.subheading}>{t('strataTitle')}</span>
+      <span className={css.summaryState}>
+        {phase !== undefined && <span role="status" aria-live="polite">{t(phaseKeys[phase])}</span>}
+        <IconChevronDownOutlineRegular className={css.chevron} size={14} />
+      </span>
+    </summary>
+    <div className={css.stack}>
+      {!snapshot.available ? <p className={css.notice}>{t('strataDesktopOnly')}</p> : <>
+        {snapshot.error !== '' && <p className={`${css.notice} ${css.error}`} role="alert">{snapshot.error}</p>}
+        {snapshot.status === undefined ? <>
+          {snapshot.loading ? <div className={css.spinner} role="status" aria-label={t('strataLoading')}><IconLoadingOutlineRegular size={20} /></div>
+            : <div className={css.actions}><Button variant="outline" onClick={() => { void strataRefresh() }}>{t('settingsRetry')}</Button></div>}
+        </> : <StrataForm {...props} status={snapshot.status} />}
+      </>}
+    </div>
+  </details>
 }
 
 function StrataForm({ snapshot, status, t, strataSave, strataStart, strataStop, strataChoose, strataConnect, strataRefresh }:
@@ -85,12 +96,13 @@ function StrataForm({ snapshot, status, t, strataSave, strataStart, strataStop, 
   if (!contexts.includes(form.contextWindow)) contexts.push(form.contextWindow)
   const canStop = preparing || (status.server?.owned === true && status.phase === 'running')
   return <>
-    <div className={css.row}><span role="status" aria-live="polite">{t(phaseKeys[status.phase])}</span>
-      <Button size="sm" variant="outline" disabled={snapshot.loading || pending} onClick={() => { void strataRefresh() }}>{t('settingsRefresh')}</Button></div>
-    <p className={status.runtime.available ? css.muted : `${css.notice} ${css.error}`}>
-      {t(status.runtime.available ? 'strataRuntimeReady' : 'strataRuntimeMissing')}
-      {status.runtime.available && status.runtime.version !== null ? ` · ${status.runtime.version}` : ''}
-    </p>
+    <div className={css.row}>
+      <p className={status.runtime.available ? css.muted : `${css.notice} ${css.error}`}>
+        {t(status.runtime.available ? 'strataRuntimeReady' : 'strataRuntimeMissing')}
+        {status.runtime.available && status.runtime.version !== null ? ` · ${status.runtime.version}` : ''}
+      </p>
+      <Button size="sm" variant="outline" disabled={snapshot.loading || pending} onClick={() => { void strataRefresh() }}>{t('settingsRefresh')}</Button>
+    </div>
     <p className={css.muted}>{t('strataSupported')}</p>
     {input('modelPath', t('strataModelPath'))}
     <div className={css.actions}>
@@ -107,14 +119,13 @@ function StrataForm({ snapshot, status, t, strataSave, strataStart, strataStop, 
       <Button variant="outline" disabled={locked} onClick={() => { void choose('mtp', 'mtpPath') }}>{t('strataChooseMtpFile')}</Button>
       <Button variant="outline" disabled={locked} onClick={() => { void choose('directory', 'mtpPath') }}>{t('strataChooseMtp')}</Button>
     </div>
-    <p className={css.muted}>{t('strataMtpNote')}</p>
     <div className={css.grid}>
       <label className={css.field}><span>{t('strataContext')}</span><Choice label={t('strataContext')} value={form.contextWindow}
         disabled={locked} items={contexts.map(value => ({ id: value, label: Number(value).toLocaleString() }))}
         onChange={(value) => { setForm(current => ({ ...current, contextWindow: value })) }} /></label>
       {input('port', t('strataPort'), { min: 1024, max: 65535, step: 1 })}
     </div>
-    <details><summary>{t('strataAdvanced')}</summary><div className={css.grid}>
+    <details><summary>{t('strataAdvanced')}</summary><div className={`${css.grid} ${css.disclosed}`}>
       <label className={css.field}><span>{t('strataKvCache')}</span><Choice label={t('strataKvCache')} value={form.kvCache}
         disabled={locked} items={(['int8', 'q4_0', 'k8v4'] as const).map(value => ({ id: value, label: value }))}
         onChange={(value) => {
@@ -143,6 +154,5 @@ function StrataForm({ snapshot, status, t, strataSave, strataStart, strataStop, 
       <Button variant="primary" disabled={pending || dirty || !status.server?.loaded || status.server.authenticationRequired || (status.phase !== 'running' && status.phase !== 'external')}
         onClick={() => { void strataConnect() }}>{t('strataConnect')}</Button>
     </div>
-    <p className={css.muted}>{t('strataRequestSettings')}</p>
   </>
 }

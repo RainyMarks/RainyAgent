@@ -75,7 +75,7 @@ describe('CMake run configuration fields', () => {
     const { model } = fixture([{ name: 'module', language: 'python', program: 'main.py', pythonModule: 'package.main' }])
     render(<RunConfigurationDialog open close={vi.fn()} state={model.state.getSnapshot()} model={model} t={t} />)
     fireEvent.click(screen.getByRole('button', { name: zh.ideLanguage }))
-    fireEvent.click(screen.getByRole('menuitem', { name: 'cpp' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'C++' }))
     fireEvent.change(screen.getByRole('textbox', { name: zh.ideProgram }), { target: { value: 'main.cpp' } })
     fireEvent.click(screen.getByRole('button', { name: zh.ideSave }))
     const saved = model.state.getSnapshot().data.execution?.profiles[0]

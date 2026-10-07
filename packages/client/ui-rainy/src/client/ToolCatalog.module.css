@@ -95,3 +95,18 @@
   .details { flex-basis: 100%; }
   .actions { width: 100%; }
 }
+
+/* The complete list reads by task: a quiet heading with a count above each group. */
+.group { display: flex; flex-direction: column; min-width: 0; }
+.group + .group { margin-top: 8px; }
+.groupTitle {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 4px 2px;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+.groupTitle span { color: var(--dsw-alias-label-tertiary); font-weight: 400; }

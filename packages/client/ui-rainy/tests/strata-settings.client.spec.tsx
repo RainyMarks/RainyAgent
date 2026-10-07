@@ -23,21 +23,33 @@ function fixture(locale: 'zh' | 'en' = 'zh') {
   return { ...h, copy, show: () => render(<Page />), mount: async () => { await h.controller.refresh(); return render(<Page />) } }
 }
 
-it.each(['zh', 'en'] as const)('shows bundled runtime, required MTP weights, and separate request settings in %s', async (locale) => {
+it.each(['zh', 'en'] as const)('shows bundled runtime and required MTP weights without request settings in %s', async (locale) => {
   const h = fixture(locale)
-  await h.mount()
-  expect(screen.getByText(h.copy.strataMtpNote)).toBeTruthy()
-  expect(screen.getByText(h.copy.strataRequestSettings)).toBeTruthy()
+  const { container } = await h.mount()
+  expect(screen.getByText(h.copy.strataSupported)).toBeTruthy()
   expect(screen.queryByLabelText(h.copy.settingsThinking)).toBeNull()
   expect(screen.queryByLabelText(h.copy.settingsOutput)).toBeNull()
-  const card = screen.getByRole('article')
-  const copy = Array.from(card.querySelectorAll('h3,p,[role="status"]')).map(value => value.textContent).filter(Boolean)
+  const card = container.querySelector('[data-rainy-strata]')!
+  const copy = Array.from(card.querySelectorAll('*')).filter(value => value.matches('summary > span:first-child, p, [role="status"]'))
+    .map(value => value.textContent).filter(Boolean)
   const fields = Array.from(card.querySelectorAll('label')).map((label) => {
     const input = label.querySelector('input')
     return `${label.querySelector('span')?.textContent}: ${input?.value ?? label.querySelector('button')?.textContent ?? ''}`.trimEnd()
   })
   const controls = Array.from(card.querySelectorAll('button')).map(button => `${button.textContent}: ${button.disabled ? 'disabled' : 'enabled'}`)
   await expect([...copy, ...fields, ...controls].join('\n') + '\n').toMatchFileSnapshot(`./expected/strata-${locale}.txt`)
+})
+
+it('starts collapsed with the engine phase in its summary and expands on request', async () => {
+  const h = fixture()
+  const { container } = await h.mount()
+  const card = container.querySelector<HTMLDetailsElement>('details[data-rainy-strata]')!
+  expect(card.open).toBe(false)
+  expect(card.querySelector('summary')?.textContent).toBe(`${zh.strataTitle}${zh.strataStoppedState}`)
+  fireEvent.click(card.querySelector('summary')!)
+  await waitFor(() => { expect(card.open).toBe(true) })
+  await act(async () => { await h.controller.refresh() })
+  expect(card.open).toBe(true)
 })
 
 it('keeps a cancelled picker unchanged and saves selected main and MTP files before startup', async () => {

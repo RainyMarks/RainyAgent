@@ -8,6 +8,8 @@ import { describe, expect, it, onTestFinished } from 'vitest'
 import { mountAgentLoopTestDependencies } from '../../../packages/test-support/agent-loop-testkit/src/index.ts'
 import { MockAdapter } from '../../../packages/core/agent-loop/tests/mock-adapter.ts'
 import { previewBudget } from '../src/budget-preview.ts'
+import { estimateText } from '../src/budget.ts'
+import { GLOBAL_PROMPT_ORDER, GLOBAL_PROMPT_SECTION } from '../src/global-prompt.ts'
 
 class PreviewAdapter extends MockAdapter {
   constructor(private readonly window: number) {
@@ -97,6 +99,14 @@ describe('first-send budget preview', () => {
       expect(before.breakdown?.extensions).toBeGreaterThan(0)
       expect(before.breakdown?.tools).toBeGreaterThan(0)
       expect(draft.tokens).toBeGreaterThan(before.tokens)
+      const globalPrompt = 'Answer in Chinese.'
+      const withdraw = ctx.systemPrompt.section({
+        name: GLOBAL_PROMPT_SECTION, order: GLOBAL_PROMPT_ORDER, text: globalPrompt, interpolate: false,
+      })
+      const prompted = await preview.run({ workspaceId: workspace.id })
+      withdraw()
+      expect((prompted.breakdown?.instructions ?? 0) - (before.breakdown?.instructions ?? 0)).toBe(estimateText(globalPrompt))
+      expect(prompted.tokens).toBeGreaterThan(before.tokens)
       expect(created).toBe(0)
       expect(ctx.agents.list()).toEqual([])
       expect(adapter.requests).toEqual([])

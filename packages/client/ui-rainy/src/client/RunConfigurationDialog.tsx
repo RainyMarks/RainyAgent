@@ -10,6 +10,7 @@ import css from './IdeShell.module.css'
 import { fileLabel, fileReference, workspaceRoots } from './ide-paths.ts'
 import type { IdeRootId } from '../ide-files-protocol.ts'
 import { Choice } from './Choice.tsx'
+import { runLanguageNames, runTarget, runsFile, type RunFile } from './run-target.ts'
 
 interface Props {
   readonly open: boolean
@@ -56,11 +57,11 @@ export function RunConfigurationDialog({ open, close, state, model, t }: Props) 
   }
   useEffect(() => {
     if (!open) return
-    const saved = state.data.execution
     const path = state.data.activePath ?? ''
     const language = sourceLanguage(path)
+    // The pinned profile, else the open file's saved or extension-derived settings.
     load(
-      saved?.profiles.find(entry => entry.name === saved.activeProfile) ?? {
+      runTarget(state.data.execution, openFile())?.configuration ?? {
         name: fileLabel(state.workspace, path),
         program: fileReference(path).path,
         rootId: fileReference(path).rootId,
@@ -69,6 +70,13 @@ export function RunConfigurationDialog({ open, close, state, model, t }: Props) 
       },
     )
   }, [open])
+  const openFile = (): RunFile | undefined => {
+    const path = state.data.activePath
+    if (path === null) return undefined
+    const reference = fileReference(path)
+    return { path, label: fileLabel(state.workspace, path), program: reference.path,
+      ...reference.rootId === undefined ? {} : { rootId: reference.rootId } }
+  }
   const field = (label: Parameters<Props['t']>[0], value: string, set: (value: string) => void) => (
     <label className={css.field}>
       {t(label)}
@@ -113,10 +121,12 @@ export function RunConfigurationDialog({ open, close, state, model, t }: Props) 
             },
       }
       const current = state.data.execution ?? { profiles: [], activeProfile: null, breakpoints: [], watches: [] }
+      const file = openFile()
+      // Settings for the open file apply whenever it is open; a profile for another program is pinned until the user unpins it.
       model.execution({
         ...current,
         profiles: [...current.profiles.filter(entry => entry.name !== configuration.name), configuration],
-        activeProfile: configuration.name,
+        activeProfile: file !== undefined && runsFile(configuration, file) ? null : configuration.name,
       })
       close()
     } catch (error) {
@@ -164,7 +174,7 @@ export function RunConfigurationDialog({ open, close, state, model, t }: Props) 
           <Choice
             label={t('ideLanguage')}
             value={profile.language}
-            items={languages.map(language => ({ id: language, label: language }))}
+            items={languages.map(language => ({ id: language, label: runLanguageNames[language] }))}
             onChange={(value) => {
               const language = languages.find(language => language === value)
               if (language !== undefined) setProfile({ ...profile, language, pythonModule: language === 'python' ? profile.pythonModule : undefined })

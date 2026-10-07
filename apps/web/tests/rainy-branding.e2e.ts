@@ -10,12 +10,13 @@ import { saveFailureShot } from './support.ts'
 
 const zh = {
   ideAddFolder: '添加文件夹到工作区', ideConfirm: '确认', ideExplorer: '文件', ideNewFile: '新建文件',
-  models: '模型与上下文', extensions: 'Skills 与 MCP', settings: '设置',
+  settingsModels: '模型', extensions: 'Skills 与 MCP', settings: '设置',
   settingsBaseUrl: 'Base URL（从当前执行环境访问）', settingsContext: '实际上下文长度',
   settingsMemory: '项目记忆', settingsMemoryGenerate: '自动整理此项目的记忆', settingsMemoryUse: '自动读取项目记忆',
   settingsModelId: '模型 ID', settingsPreviewAttachments: '不包含尚未发送的草稿和附件。',
   settingsProvider: '供应商 ID', settingsSavedModels: '已保存的模型配置', settingsSaveModel: '保存并选为默认',
   settingsRuntimeKind: '运行方式', settingsLocalModel: '本地模型', settingsApiModel: 'API 模型',
+  settingsGlobalPrompt: '全局提示词', settingsSave: '保存',
 } as const
 
 const RAINY_DIRECTORY = fileURLToPath(new URL('../../rainy-desktop/', import.meta.url))
@@ -189,13 +190,28 @@ it('opens the chosen project, attaches an independent directory, and keeps all s
   await settings.getByText(zh.settingsPreviewAttachments, { exact: true }).waitFor()
   expect(await settings.getByRole('alert').count()).toBe(0)
   expect(scaffold.ctx.agents.list()).toHaveLength(sessionsBeforePreview)
-  await settings.getByRole('heading', { name: zh.models, exact: true }).scrollIntoViewIfNeeded()
+  const globalPrompt = '始终使用中文回答。'
+  await settings.getByRole('textbox', { name: zh.settingsGlobalPrompt, exact: true }).fill(`  ${globalPrompt}\n`)
+  const promptResponse = page.waitForResponse(response => isControlResponse(response, 'configure-global-prompt'))
+  await settings.locator('[data-rainy-global-prompt]').getByRole('button', { name: zh.settingsSave, exact: true }).click()
+  expect(await (await promptResponse).json()).toEqual({ result: { text: globalPrompt, maxChars: 4000 } })
+  await expect.poll(() => settings.getByRole('textbox', { name: zh.settingsGlobalPrompt, exact: true }).inputValue()).toBe(globalPrompt)
+  const status = await page.evaluate(async () => {
+    const value: unknown = await (await fetch('/rainy/control', { credentials: 'same-origin' })).json()
+    return value
+  })
+  expect(status).toMatchObject({ globalPrompt: { text: globalPrompt, maxChars: 4000 } })
+  if (EVIDENCE_DIRECTORY !== undefined) {
+    await settings.locator('[data-rainy-strata]').scrollIntoViewIfNeeded()
+    await page.screenshot({ path: join(EVIDENCE_DIRECTORY, 'global-prompt-and-budget.png') })
+  }
+  await settings.getByRole('heading', { name: zh.settingsModels, exact: true }).scrollIntoViewIfNeeded()
   if (EVIDENCE_DIRECTORY !== undefined) await page.screenshot({ path: join(EVIDENCE_DIRECTORY, 'first-message-budget.png') })
   const colors: string[] = []
   for (const appearance of ['深色', '浅色']) {
     await settings.getByRole('button', { name: '通用设置', exact: true }).click()
     await settings.getByRole('button', { name: appearance, exact: true }).click()
-    await settings.getByRole('button', { name: zh.models, exact: true }).click()
+    await settings.getByRole('button', { name: zh.settingsModels, exact: true }).click()
     await settings.getByRole('button', { name: zh.settingsSavedModels, exact: true }).click()
     const menu = page.getByRole('menu')
     await menu.waitFor()

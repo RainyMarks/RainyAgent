@@ -45,6 +45,15 @@ describe('request budget', () => {
     ])
     expect(inHistory.extensions).toBe(count.extensions)
   })
+  it('moves user-authored system instructions from system text to instructions alongside project instructions', () => {
+    const system = 'Core instructions.\n\nSelected skill details.\n\nAlways answer in Chinese.'
+    const project = { role: 'user', source: { kind: 'agent-instructions' }, content: [{ type: 'text', text: 'Project constraint' }] }
+    const base = promptBreakdown({ system, messages: [project] }, ['Selected skill details.'])
+    const count = promptBreakdown({ system, messages: [project] }, ['Selected skill details.'], [], ['Always answer in Chinese.', 'absent'])
+    expect(count.instructions - base.instructions).toBe(estimateText('Always answer in Chinese.'))
+    expect(count.system + count.extensions + count.instructions).toBe(base.system + base.extensions + base.instructions)
+    expect(count.extensions).toBe(base.extensions)
+  })
   it('requires the exact counter to identify its chat template', async () => {
     const fetch = vi
       .spyOn(globalThis, 'fetch')

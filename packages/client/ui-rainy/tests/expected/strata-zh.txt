@@ -1,11 +1,8 @@
 Strata 本地模型
-引擎与 Python 随 RainyAgent 提供，请选择你自己的主模型和配套 MTP 权重
 已停止
 内置 Strata 与 Python 已就绪 · 0.1.39
-使用 Strata 支持的 Qwen3.8 Flash Next GGUF；分片放在同一目录并选择首片，也可导入 Strata profile
-API 服务需要配套 MTP 权重；可选择 MTP GGUF 或已准备目录，留空时从模型附近自动检测
+支持 Qwen3.8 Flash Next GGUF 与配套 MTP 权重；分片模型请选择首片，也可导入 Strata profile
 首次启动会在本机准备运行文件，模型权重不会自动下载
-推理档位和每次请求的输出上限在下方模型配置中调整
 模型文件、模型目录或 profile: C:\models\main.gguf
 MTP 文件或目录（留空自动检测）: C:\models\mtp.gguf
 引擎上下文长度: 32,768

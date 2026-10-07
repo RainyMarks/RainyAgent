@@ -7,10 +7,10 @@ import type { RainyModelSetup, SettingsStatus } from '../src/client/settings-pro
 const controllers: SettingsController[] = []
 afterEach(() => { for (const controller of controllers.splice(0)) controller.dispose(); vi.unstubAllGlobals() })
 
-function status(model: string): SettingsStatus {
+function status(model: string, globalPrompt = ''): SettingsStatus {
   return { selected: { provider: 'local', model },
     models: [{ provider: 'local', baseURL: 'http://127.0.0.1:8081/v1', model, contextWindow: 32768, local: true }],
-    budgets: [], sessions: [], tools: [] }
+    budgets: [], sessions: [], tools: [], globalPrompt: { text: globalPrompt, maxChars: 4000 } }
 }
 
 it('does not reuse a pre-save poll as the saved model status', async () => {
@@ -44,4 +44,17 @@ it('does not start a replacement status request after disposal', async () => {
   await Promise.all([poll, changed])
   expect(fetch).toHaveBeenCalledOnce()
   expect(controller.state.getSnapshot().status).toBeUndefined()
+})
+
+it('saves the global prompt through the control route and publishes the refreshed status', async () => {
+  const fetch = vi.fn<typeof globalThis.fetch>()
+    .mockResolvedValueOnce(Response.json({ result: { text: 'Answer in Chinese.', maxChars: 4000 } }))
+    .mockResolvedValueOnce(Response.json(status('model', 'Answer in Chinese.')))
+  vi.stubGlobal('fetch', fetch)
+  const controller = new SettingsController()
+  controllers.push(controller)
+  await controller.operations.saveGlobalPrompt('Answer in Chinese.')
+  const body = fetch.mock.calls[0]?.[1]?.body
+  expect(typeof body === 'string' ? JSON.parse(body) : body).toEqual({ method: 'configure-global-prompt', params: { text: 'Answer in Chinese.' } })
+  expect(controller.state.getSnapshot().status?.globalPrompt).toEqual({ text: 'Answer in Chinese.', maxChars: 4000 })
 })

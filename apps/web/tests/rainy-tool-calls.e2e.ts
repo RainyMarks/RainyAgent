@@ -34,9 +34,9 @@ beforeAll(async () => {
   })
   await rows.nth(1).click()
   await selected
+  // Opening a chat from another project's history keeps the AI panel open even though that project saved it hidden.
   const toggle = page.locator('[data-rainy-topbar]').getByRole('button', { name: /Show or hide AI assistant|显示或隐藏 AI 助手/ })
-  await toggle.and(page.locator('[aria-pressed="false"]')).waitFor({ state: 'visible' })
-  await toggle.click()
+  await toggle.and(page.locator('[aria-pressed="true"]')).waitFor({ state: 'visible' })
   await agent.waitFor({ state: 'visible' })
   await expandOwningTurnProcess(page, page.locator('[data-chat-call-id]').first())
 })
