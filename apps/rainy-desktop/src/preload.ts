@@ -7,6 +7,7 @@ import type { ToolPackWindowProgress } from './toolpack-maintenance.ts'
 import type { IdeNativeDirectory } from './ide-native.ts'
 import type { IdeEnvironmentAction, IdeEnvironmentSnapshot } from './ide-environment.ts'
 import type { StrataNativeHost, StrataModelPicker, StrataSettings } from '@deepseek-ai/dsh-client-ui-rainy/strata-protocol'
+import type { OptionalModuleId, OptionalModulesBridge, OptionalModulesState } from '@deepseek-ai/dsh-client-ui-rainy/modules-protocol'
 
 /** Payload sent by the main process on each progress channel. */
 interface ProgressChannels {
@@ -14,6 +15,7 @@ interface ProgressChannels {
   'rainy:environment-progress': EnvironmentSnapshot
   'rainy:ide-environment-progress': IdeEnvironmentSnapshot
   'rainy:tools-download-progress': NativeToolsDownloadState
+  'rainy:modules-progress': OptionalModulesState
   /** Validated by the receiving bridge, which forwards only the message text. */
   'rainy:component-progress': unknown
 }
@@ -85,10 +87,21 @@ if (process.isMainFrame && location.protocol === 'http:' && location.hostname ==
       if (value !== null && typeof value === 'object' && 'message' in value && typeof value.message === 'string') listener(value.message)
     }),
   })
+  const modules: OptionalModulesBridge = {
+    list: () => ipcRenderer.invoke('rainy:modules-list'),
+    state: () => ipcRenderer.invoke('rainy:modules-state'),
+    install: (id: OptionalModuleId) => ipcRenderer.invoke('rainy:modules-install', id),
+    remove: (id: OptionalModuleId) => ipcRenderer.invoke('rainy:modules-remove', id),
+    cancel: () => ipcRenderer.invoke('rainy:modules-cancel'),
+    onProgress: receive => subscribe('rainy:modules-progress', receive),
+  }
+  contextBridge.exposeInMainWorld('__RAINY_MODULES__', modules)
   contextBridge.exposeInMainWorld('__RAINY_TOOLS__', {
     checkToolUpdates: (): Promise<NativeToolsUpdateState> => ipcRenderer.invoke('rainy:tools-check-updates'),
     getDownloadState: (): Promise<NativeToolsDownloadState> => ipcRenderer.invoke('rainy:tools-download-state'),
-    downloadTools: (): Promise<void> => ipcRenderer.invoke('rainy:tools-download'),
+    installTools: (ids: readonly NativeToolId[]): Promise<void> => ipcRenderer.invoke('rainy:tools-install', ids),
+    removeTool: (id: NativeToolId): Promise<void> => ipcRenderer.invoke('rainy:tools-remove', id),
+    repairTools: (): Promise<void> => ipcRenderer.invoke('rainy:tools-repair'),
     cancelDownload: (): Promise<void> => ipcRenderer.invoke('rainy:tools-download-cancel'),
     onDownloadProgress: (receive: (state: NativeToolsDownloadState) => void) => subscribe('rainy:tools-download-progress', receive),
     listTools: (): Promise<NativeToolCatalog> => ipcRenderer.invoke('rainy:tools-list'),

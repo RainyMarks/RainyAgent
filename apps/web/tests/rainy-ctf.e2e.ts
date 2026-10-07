@@ -72,13 +72,16 @@ async function openWorkbench(page: Page): Promise<Frame> {
   return frame
 }
 
+const INSTALLED = { outdated: false, downloadBytes: 0 }
 const CATALOG: NativeToolCatalog = { tools: [
-  { id: 'cyberchef', name: 'CyberChef', category: 'web', version: '10.19.4', launchKind: 'web', status: 'ready', verified: false, missing: [] },
-  { id: 'ffmpeg', name: 'FFmpeg', category: 'misc', version: '7.1', launchKind: 'terminal', status: 'ready', verified: true, missing: [] },
-  { id: 'x64dbg', name: 'x64dbg', category: 'reverse', version: '2026-09-01', launchKind: 'desktop', status: 'ready', verified: true,
+  { ...INSTALLED, id: 'cyberchef', name: 'CyberChef', category: 'web', version: '10.19.4', launchKind: 'web', status: 'ready', verified: false, missing: [] },
+  { ...INSTALLED, id: 'ffmpeg', name: 'FFmpeg', category: 'misc', version: '7.1', launchKind: 'terminal', status: 'ready', verified: true, missing: [] },
+  { ...INSTALLED, id: 'x64dbg', name: 'x64dbg', category: 'reverse', version: '2026-09-01', launchKind: 'desktop', status: 'ready', verified: true,
     missing: [], variants: [{ id: 'x32', name: 'x32dbg', status: 'ready' }] },
-  { id: '7zip', name: '7-Zip', category: 'misc', version: '25.01', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
-], preferences: { favorites: [], recent: [] } }
+  { ...INSTALLED, id: '7zip', name: '7-Zip', category: 'misc', version: '25.01', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
+  { id: 'exiftool', name: 'ExifTool', category: 'misc', version: '13.30', launchKind: 'terminal', status: 'available', verified: false, missing: [],
+    outdated: false, downloadBytes: 12_345_678 },
+], preferences: { favorites: [], recent: [] }, catalogOutdated: false }
 
 async function installCatalogFixture(page: Page): Promise<void> {
   // Only the native preload is substituted: Rainy's profile, rendering and Session routes remain real.
@@ -88,13 +91,27 @@ async function installCatalogFixture(page: Page): Promise<void> {
     const preferences = (): NativeToolPreferences => JSON.parse(localStorage.getItem(storageKey)
       ?? JSON.stringify(catalog.preferences)) as NativeToolPreferences
     const save = (value: NativeToolPreferences): void => { localStorage.setItem(storageKey, JSON.stringify(value)) }
+    // Downloads survive reloads like the native installation does.
+    const downloadedKey = 'rainy-tool-catalog-downloaded'
+    const downloaded = new Set<string>(JSON.parse(localStorage.getItem(downloadedKey) ?? '[]') as string[])
+    const operations: string[] = []
+    Object.defineProperty(globalThis, '__RAINY_TOOL_OPERATIONS__', { value: operations })
     const bridge: NativeToolsBridge = {
       async checkToolUpdates() { return { phase: 'current', version: '1.0.0', error: '' } },
-      async getDownloadState() { return { phase: 'idle', completedBytes: 0, totalBytes: 2318669038, error: '' } },
-      async downloadTools() {},
+      async getDownloadState() { return { phase: operations.length ? 'complete' : 'idle', completedBytes: 0, totalBytes: 0, error: '' } },
+      async installTools(ids) {
+        operations.push(`install ${ids.join(',')}`)
+        for (const id of ids) downloaded.add(id)
+        localStorage.setItem(downloadedKey, JSON.stringify([...downloaded]))
+      },
+      async removeTool(id) { operations.push(`remove ${id}`) },
+      async repairTools() { operations.push('repair') },
       async cancelDownload() {},
       onDownloadProgress() { return () => {} },
-      async listTools() { return { ...catalog, preferences: preferences() } },
+      async listTools() {
+        return { ...catalog, preferences: preferences(), tools: catalog.tools.map(tool => downloaded.has(tool.id)
+          ? { ...tool, status: 'ready' as const, downloadBytes: 0 } : tool) }
+      },
       async setFavorites(favorites) { save({ ...preferences(), favorites }) },
       async launchTool(id: NativeToolId, variant?: 'x32') {
         if (id === 'x64dbg' && variant === undefined) return { ok: false, error: 'Fixture: debugger could not open' }
@@ -218,18 +235,21 @@ describe.skipIf(MODE === 'record')('web e2e: Rainy CTF recorded conversation dra
       expect(await directory.getByRole('button', { name: /^(Open|打开) 7-Zip$/ }).isDisabled()).toBe(true)
       expect(await directory.locator('[data-tool-id="cyberchef"]').innerText()).toMatch(/Not verified|待验证/)
       const missingTool = directory.locator('[data-tool-id="7zip"]')
-      const repair = missingTool.getByRole('button', { name: /^(Repair tool pack|修复工具包)$/ })
-      expect(await repair.getAttribute('aria-expanded')).toBe('false')
-      await repair.click()
-      expect(await repair.getAttribute('aria-expanded')).toBe('true')
-      const repairSteps = await missingTool.getByRole('listitem').allTextContents()
-      expect(repairSteps).toHaveLength(3)
+      const repairHint = await missingTool.getByText(/^(Download missing or damaged files again|重新下载缺失或损坏的文件)$/).innerText()
+      await missingTool.getByRole('button', { name: /^(Repair|修复)$/ }).click()
+      await expect.poll(() => catalogPage.evaluate(() => (globalThis as typeof globalThis & { __RAINY_TOOL_OPERATIONS__: string[] })
+        .__RAINY_TOOL_OPERATIONS__.join(';'))).toBe('repair')
+      const summary = await directory.getByText(/^(\d+ of \d+ tools downloaded|已下载 \d+ \/ \d+ 款工具)/).innerText()
+      const pending = directory.locator('[data-tool-id="exiftool"]')
+      const download = pending.getByRole('button', { name: /^(Download|下载) ExifTool$/ })
+      const downloadLabel = await download.innerText()
+      expect(await pending.getByRole('button', { name: /^(Open|打开) ExifTool$/ }).count()).toBe(0)
       if (EVIDENCE_DIRECTORY !== undefined) {
         await mkdir(EVIDENCE_DIRECTORY, { recursive: true })
         await catalogPage.screenshot({ path: join(EVIDENCE_DIRECTORY, 'catalog-repair-light.png') })
       }
-      await repair.click()
-      expect(await repair.getAttribute('aria-expanded')).toBe('false')
+      await download.click()
+      await pending.getByRole('button', { name: /^(Open|打开) ExifTool$/ }).waitFor({ state: 'visible' })
       if (EVIDENCE_DIRECTORY !== undefined) {
         await mkdir(EVIDENCE_DIRECTORY, { recursive: true })
         await catalogPage.screenshot({ path: join(EVIDENCE_DIRECTORY, 'catalog-light.png') })
@@ -242,7 +262,7 @@ describe.skipIf(MODE === 'record')('web e2e: Rainy CTF recorded conversation dra
       const launchFeedback = await launchNotice.innerText()
       await directory.getByRole('button', { name: /^(Open|打开) x64dbg$/ }).click()
       await catalogPage.getByText('Fixture: debugger could not open', { exact: true }).waitFor({ state: 'visible' })
-      expect(await directory.getByRole('listitem').count()).toBe(4)
+      expect(await directory.getByRole('listitem').count()).toBe(5)
       await directory.getByRole('button', { name: /^(Reverse engineering|逆向调试)$/ }).click()
       expect(await directory.getByRole('heading').allTextContents()).toEqual(['x64dbg'])
       await directory.getByRole('button', { name: /^(All|全部)$/ }).click()
@@ -285,22 +305,22 @@ describe.skipIf(MODE === 'record')('web e2e: Rainy CTF recorded conversation dra
       expect(recent).toEqual(['CyberChef'])
       await mkdir(CATALOG_DIRECTORY, { recursive: true })
       await directory.getByRole('button', { name: /^(Check tool updates|检查工具更新)$/ }).click()
-      await directory.getByText(/^(Tool pack is up to date|工具包已是最新版本)$/).waitFor({ state: 'visible' })
-      await directory.getByRole('button', { name: /^(Download all tools|下载全部工具)$/ }).waitFor({ state: 'visible' })
+      await directory.getByText(/^(Tools are up to date|工具已是最新版本)$/).waitFor({ state: 'visible' })
+      expect(await directory.getByRole('button', { name: /^(Download all|全部下载)/ }).count()).toBe(0)
       await compareOrRefreshGolden(join(CATALOG_DIRECTORY, 'common-tools.expected.md'), [
         '# Rainy common tools (native preload fixture)', '',
         '- Profile: Rainy desktop, with a recorded conversation',
         '- Common tools is the initial tab; IceSky frames before visiting: 0',
-        '- Online tool pack: download action and manual update check available',
-        '- Signed channel check: tool pack is up to date; installed catalog retained',
+        `- Per-tool downloads: ${summary}`,
+        `- Not downloaded entry: ExifTool — ${downloadLabel}; afterwards Open is available and Download all disappears`,
+        '- Signed channel check: tools are up to date; installed catalog retained',
         '- Unverified entry: CyberChef — launch enabled',
         `- Launch feedback: ${launchFeedback}`,
         '- Missing entry: 7-Zip — launch disabled (7zFM.exe)',
-        '- Missing entry repair guidance:',
-        ...repairSteps.map(step => `  - ${step}`),
+        `- Missing entry repair: ${repairHint}; the repair request reaches the desktop`,
         '- Reverse filter: x64dbg',
         '- Search ffprobe: FFmpeg',
-        '- Failed launch leaves all four tool rows visible',
+        '- Failed launch leaves all five tool rows visible',
         `- Favorites after reload: ${favorites.join(', ')}`,
         `- Recent after reload: ${recent.join(', ')}`,
         '- 950 px window: no horizontal directory overflow',

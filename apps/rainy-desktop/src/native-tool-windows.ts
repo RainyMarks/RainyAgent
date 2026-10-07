@@ -1,6 +1,7 @@
 /** Native tool windows and the trusted desktop catalog bridge. */
 import { BrowserWindow, ipcMain } from 'electron'
 import { NativeToolsLibrary, parseNativeFavorites, parseNativeLaunch } from './native-tools.ts'
+import type { NativeToolsRequest } from './native-tools-download.ts'
 import { startNativeProcess } from './native-tool-process.ts'
 import { serveNativeTool, type NativeToolWebPage } from './native-tool-web.ts'
 import { join } from 'node:path'
@@ -18,12 +19,13 @@ export function installNativeTools(options: {
   readonly installRoot: string
   readonly userData: string
   readonly download?: {
-    readonly metadataPath: string
-    readonly sourcePath: string
-    readonly catalogPath: string
+    /** Signed per-tool channel shipped with this carrier. */
+    readonly channelPath: string
     readonly keys: ReleaseKeyring
+    /** The carrier holds the installation lock of installRoot. */
+    readonly installRootLocked: boolean
   }
-}): { close(): Promise<void> } {
+}): { close(): Promise<void>; maintain(): Promise<number> } {
   const webpages = new Map<BrowserWindow, NativeToolWebPage>()
   const closingPages = new Set<Promise<void>>()
   let closed = false
@@ -33,10 +35,9 @@ export function installNativeTools(options: {
   const isCancelled = (): boolean => cancelRequested
   const onlineRoot = join(options.userData, 'native-tools')
   const download = options.download === undefined ? undefined : new NativeToolsDownloader({
-    installRoot: onlineRoot, cacheRoot: join(options.userData, 'native-tools-downloads'),
-    previousInstallRoot: options.installRoot,
-    metadataPath: options.download.metadataPath, sourcePath: options.download.sourcePath,
-    catalogPath: options.download.catalogPath, updateKeys: options.download.keys,
+    onlineRoot, cacheRoot: join(options.userData, 'native-tools-downloads'),
+    legacyRoot: options.installRoot, legacyLocked: options.download.installRootLocked,
+    channelPath: options.download.channelPath, keys: options.download.keys,
     fetch: (input, init) => options.window.webContents.session.fetch(input instanceof URL ? input.href : input, init),
     publish: (state) => { if (!closed && !options.window.isDestroyed()) options.window.webContents.send('rainy:tools-download-progress', state) },
   })
@@ -49,8 +50,7 @@ export function installNativeTools(options: {
     return closing
   }
   const library = new NativeToolsLibrary({ installRoot: options.installRoot, userData: options.userData,
-    ...download === undefined ? {} : { catalogPath: () => download.availableCatalog(),
-      selectRoot: async () => await download.hasInstalledTools() ? onlineRoot : options.installRoot },
+    ...download === undefined ? {} : { inventory: () => download.inventory() },
     start: async (invocation) => {
       if (isClosed()) throw new Error('RainyAgent 正在关闭')
       if (installing) throw new Error('请等待工具安装完成后再打开工具')
@@ -83,15 +83,14 @@ export function installNativeTools(options: {
     if (!download) throw new Error('当前版本未提供在线工具包，请更新 RainyAgent')
     return download.checkUpdates()
   })
-  ipcMain.handle('rainy:tools-download-state', async (event) => {
+  ipcMain.handle('rainy:tools-download-state', (event) => {
     trusted(event)
     if (!download) throw new Error('当前版本未提供在线工具包，请更新 RainyAgent')
     return download.status()
   })
-  ipcMain.handle('rainy:tools-download', async (event) => {
-    trusted(event)
+  const operate = (request: NativeToolsRequest): Promise<void> => {
     if (!download) throw new Error('当前版本未提供在线工具包，请更新 RainyAgent')
-    if (installOperation) return installOperation
+    if (installOperation) throw new Error('另一个工具操作正在进行，请等待完成或先取消')
     assertNoWebpages()
     installing = true
     cancelRequested = false
@@ -99,10 +98,20 @@ export function installNativeTools(options: {
       await library.waitForIdle()
       // A webpage launch accepted before installation began can open its window while the library drains.
       assertNoWebpages()
-      if (!isClosed() && !isCancelled()) await download.start(true)
+      if (!isClosed() && !isCancelled()) await download.start(request)
     })().finally(() => { installing = false; installOperation = undefined })
     return installOperation
+  }
+  ipcMain.handle('rainy:tools-install', async (event, value: unknown) => {
+    trusted(event)
+    const tools = parseNativeFavorites(value)
+    return operate(tools.length ? { operation: 'install', tools } : { operation: 'update' })
   })
+  ipcMain.handle('rainy:tools-remove', async (event, value: unknown) => {
+    trusted(event)
+    return operate({ operation: 'remove', tools: [parseNativeLaunch({ id: value }).id] })
+  })
+  ipcMain.handle('rainy:tools-repair', async (event) => { trusted(event); return operate({ operation: 'repair' }) })
   ipcMain.handle('rainy:tools-download-cancel', async (event) => { trusted(event); cancelRequested = true; await download?.cancel(); await installOperation })
   ipcMain.handle('rainy:tools-launch', async (event, value: unknown) => { trusted(event); const request = parseNativeLaunch(value); return library.launchTool(request.id, request.variant) })
   ipcMain.handle('rainy:tools-favorites', async (event, value: unknown) => { trusted(event); await library.setFavorites(parseNativeFavorites(value)) })
@@ -115,7 +124,9 @@ export function installNativeTools(options: {
     ipcMain.removeHandler('rainy:tools-launch')
     ipcMain.removeHandler('rainy:tools-favorites')
     ipcMain.removeHandler('rainy:tools-download-state')
-    ipcMain.removeHandler('rainy:tools-download')
+    ipcMain.removeHandler('rainy:tools-install')
+    ipcMain.removeHandler('rainy:tools-remove')
+    ipcMain.removeHandler('rainy:tools-repair')
     ipcMain.removeHandler('rainy:tools-download-cancel')
     closing = Promise.resolve().then(async () => {
       const owned = [...webpages]
@@ -130,6 +141,7 @@ export function installNativeTools(options: {
     })
     return closing
   }
+  const maintain = (): Promise<number> => closed || installOperation || !download ? Promise.resolve(0) : download.maintain()
   options.window.on('closed', () => { void close().catch((error: unknown) => { console.error('Native tool window cleanup failed', error) }) })
-  return { close }
+  return { close, maintain }
 }

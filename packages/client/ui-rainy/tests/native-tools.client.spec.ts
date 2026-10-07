@@ -3,12 +3,13 @@ import { describe, expect, it, vi } from 'vitest'
 import type { NativeToolCatalog, NativeToolLaunchResult, NativeToolsBridge } from '../src/native-tools-protocol.ts'
 import { NativeToolsController } from '../src/client/native-tools.ts'
 
+const tool = { outdated: false, downloadBytes: 0 }
 const catalog: NativeToolCatalog = { tools: [
-  { id: 'cyberchef', name: 'CyberChef', category: 'web', version: '10', launchKind: 'web', status: 'ready', verified: false, missing: [] },
-  { id: 'x64dbg', name: 'x64dbg', category: 'reverse', version: '2026', launchKind: 'desktop', status: 'ready', verified: true,
+  { ...tool, id: 'cyberchef', name: 'CyberChef', category: 'web', version: '10', launchKind: 'web', status: 'ready', verified: false, missing: [] },
+  { ...tool, id: 'x64dbg', name: 'x64dbg', category: 'reverse', version: '2026', launchKind: 'desktop', status: 'ready', verified: true,
     missing: [], variants: [{ id: 'x32', name: 'x32dbg', status: 'ready' }] },
-  { id: '7zip', name: '7-Zip', category: 'misc', version: '25', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
-], preferences: { favorites: [], recent: ['x64dbg'] } }
+  { ...tool, id: '7zip', name: '7-Zip', category: 'misc', version: '25', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
+], preferences: { favorites: [], recent: ['x64dbg'] }, catalogOutdated: false }
 
 function deferred<T>() {
   let resolve!: (value: T) => void
@@ -21,7 +22,9 @@ function fixture() {
   const bridge = { listTools: vi.fn<NativeToolsBridge['listTools']>().mockResolvedValue(catalog),
     checkToolUpdates: vi.fn<NativeToolsBridge['checkToolUpdates']>().mockResolvedValue({ phase: 'current', version: '1.0.0', error: '' }),
     getDownloadState: vi.fn<NativeToolsBridge['getDownloadState']>().mockResolvedValue({ phase: 'idle', completedBytes: 0, totalBytes: 10, error: '' }),
-    downloadTools: vi.fn<NativeToolsBridge['downloadTools']>().mockResolvedValue(),
+    installTools: vi.fn<NativeToolsBridge['installTools']>().mockResolvedValue(),
+    removeTool: vi.fn<NativeToolsBridge['removeTool']>().mockResolvedValue(),
+    repairTools: vi.fn<NativeToolsBridge['repairTools']>().mockResolvedValue(),
     cancelDownload: vi.fn<NativeToolsBridge['cancelDownload']>().mockResolvedValue(),
     onDownloadProgress: vi.fn<NativeToolsBridge['onDownloadProgress']>().mockReturnValue(vi.fn()),
     launchTool: vi.fn<NativeToolsBridge['launchTool']>().mockResolvedValue({ ok: true }),
@@ -29,19 +32,20 @@ function fixture() {
   const toast = vi.fn()
   const copy = { opened: (name: string) => `Launch request sent for ${name}`, launchFailed: (name: string) => `Could not open ${name}`,
     favoritesFailed: () => 'Could not save favorites', favoriteSaved: (selected: boolean) => selected ? 'Added favorite' : 'Removed favorite',
-    downloadComplete: () => 'Installed tools', downloadFailed: () => 'Download failed' }
+    completed: (operation: string) => `Finished ${operation}`, downloadFailed: () => 'Download failed' }
   const controller = new NativeToolsController(bridge, copy, toast)
   return { controller, bridge, toast, copy }
 }
 
 describe('native tool directory', () => {
-  it('coalesces downloads, retains progress while hidden and refreshes availability after completion', async () => {
+  it('coalesces operations, retains progress while hidden and refreshes availability after completion', async () => {
     const h = fixture()
     await h.controller.load()
     const pending = deferred<undefined>()
-    h.bridge.downloadTools.mockReturnValueOnce(pending.promise)
-    const running = h.controller.download()
-    expect(h.controller.download()).toBe(running)
+    h.bridge.installTools.mockReturnValueOnce(pending.promise)
+    const running = h.controller.operate('install', ['cyberchef'])
+    expect(h.controller.operate('remove', ['x64dbg'])).toBe(running)
+    expect(h.controller.state.getSnapshot().download).toMatchObject({ phase: 'downloading', operation: 'install', tools: ['cyberchef'] })
     const receive = h.bridge.onDownloadProgress.mock.calls[0]![0]
     receive({ phase: 'downloading', completedBytes: 5, totalBytes: 10, error: '' })
     expect(h.controller.state.getSnapshot().download.completedBytes).toBe(5)
@@ -50,16 +54,41 @@ describe('native tool directory', () => {
     h.bridge.getDownloadState.mockResolvedValue({ phase: 'complete', completedBytes: 10, totalBytes: 10, error: '' })
     pending.resolve(undefined)
     await running
-    expect(h.bridge.downloadTools).toHaveBeenCalledOnce()
+    expect(h.bridge.installTools).toHaveBeenCalledExactlyOnceWith(['cyberchef'])
+    expect(h.bridge.removeTool).not.toHaveBeenCalled()
     expect(h.bridge.listTools).toHaveBeenCalledTimes(2)
-    expect(h.toast).toHaveBeenCalledWith('Installed tools', 'success')
+    expect(h.toast).toHaveBeenCalledWith('Finished install', 'success')
+  })
+
+  it('routes updates, removals and repairs to their bridge operations', async () => {
+    const h = fixture()
+    h.bridge.getDownloadState.mockResolvedValue({ phase: 'complete', completedBytes: 0, totalBytes: 0, error: '' })
+    await h.controller.operate('update')
+    await h.controller.operate('remove', ['7zip'])
+    await h.controller.operate('repair')
+    expect(h.bridge.installTools).toHaveBeenCalledExactlyOnceWith([])
+    expect(h.bridge.removeTool).toHaveBeenCalledExactlyOnceWith('7zip')
+    expect(h.bridge.repairTools).toHaveBeenCalledOnce()
+  })
+
+  it('marks a checked channel as available while installed tools are outdated', async () => {
+    const h = fixture()
+    h.bridge.listTools.mockResolvedValue({ ...catalog, catalogOutdated: true })
+    await h.controller.load()
+    await h.controller.checkUpdates()
+    h.bridge.listTools.mockResolvedValue(catalog)
+    await h.controller.load()
+    expect(h.controller.state.getSnapshot().update).toMatchObject({ phase: 'current', version: '1.0.0' })
+    h.bridge.listTools.mockResolvedValue({ ...catalog, tools: catalog.tools.map(entry => ({ ...entry, outdated: entry.id === '7zip' })) })
+    await h.controller.load()
+    expect(h.controller.state.getSnapshot().update.phase).toBe('available')
   })
 
   it('retains download errors for retry and removes its progress listener on disposal', async () => {
     const h = fixture()
     await h.controller.load()
-    h.bridge.downloadTools.mockRejectedValueOnce(new Error('offline'))
-    await h.controller.download()
+    h.bridge.installTools.mockRejectedValueOnce(new Error('offline'))
+    await h.controller.operate('install', ['7zip'])
     expect(h.controller.state.getSnapshot().download).toMatchObject({ phase: 'error', error: 'offline' })
     h.controller.dispose()
     expect(h.bridge.onDownloadProgress.mock.results[0]!.value).toHaveBeenCalledOnce()

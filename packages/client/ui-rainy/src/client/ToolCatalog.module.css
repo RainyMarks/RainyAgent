@@ -61,9 +61,7 @@
 .metadata { color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
 .actions { justify-content: flex-end; }
 .missing { margin: 8px 0 0; overflow-wrap: anywhere; color: var(--dsw-alias-label-secondary); }
-.repair { margin-top: 8px; }
-.repairSteps { margin: 8px 0 0; padding-left: 24px; color: var(--dsw-alias-label-secondary); overflow-wrap: anywhere; }
-.repairSteps li + li { margin-top: 8px; }
+.repair { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px; color: var(--dsw-alias-label-secondary); }
 
 .empty {
   display: flex;

@@ -2,7 +2,7 @@
 
 [English](README.md) | 中文
 
-RainyAgent 是 Windows 桌面编程 Agent，提供代码编辑器、AI 对话、项目记忆和供人操作的工具工作台。核心安装包包含 Windows Host 和完整 Strata 运行时，用户自行提供受支持的模型权重。命令可在 Windows 原生或选定的 WSL2 环境中执行，也可继续连接其他本地服务或 API。
+RainyAgent 是 Windows 桌面编程 Agent，提供代码编辑器、AI 对话、项目记忆和供人操作的工具工作台。核心安装包包含 Windows Host；Strata 引擎、PHP、WSL 运行环境和各个工具在需要时下载，用户自行提供受支持的模型权重。命令可在 Windows 原生或选定的 WSL2 环境中执行，也可继续连接其他本地服务或 API。
 
 Develop by NCUCyberBase.
 
@@ -12,28 +12,28 @@ Develop by NCUCyberBase.
 
 - Monaco 编辑器，支持文件标签、搜索、差异视图、未保存内容恢复和选中代码对话。
 - 项目终端、运行配置，以及 Python、JavaScript/TypeScript、C/C++ 调试；PHP 支持运行。
-- 内置 Strata 与 Python、模型发现、明确的上下文预算、请求诊断，以及可分别控制使用和生成的项目记忆。
-- 可选离线运行环境和包含 38 项工具的人工工具目录，与 Agent 默认工具分开。
+- 可下载的 Strata 引擎与 Python、模型发现、明确的上下文预算、请求诊断，以及可分别控制使用和生成的项目记忆。
+- 可选离线运行环境和包含 38 项工具的人工工具目录，工具按需逐个下载，与 Agent 默认工具分开。
 - 稳定版检查和后台下载，只有确认并完成保存退出后才安装更新。
 
 <a id="run"></a>
 ## 下载与开始使用
 
-下载 [RainyAgent 1.0.2 Windows x64 安装包](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.2/RainyAgent-1.0.2-windows-x64-setup.exe)。[发行页](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2)提供安装包和自动更新文件。新版常用工具位于 [1.0.2 资源归档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2-resources)；未变化的离线运行环境仍在 [1.0.0 资源归档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。
+下载 [RainyAgent 1.0.6 Windows x64 安装包](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6/RainyAgent-1.0.6-windows-x64-setup.exe)。[发行页](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.6)提供核心安装包和自动更新文件。[1.0.6 资源归档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.6-resources)存放工具归档、PHP 组件和 WSL 运行环境分片；Strata 归档和离线运行环境仍在 [1.0.0 资源归档](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources)。
 
-安装核心应用，从桌面快捷方式打开 RainyAgent，然后选择**文件 → 打开文件夹**。新安装直接使用 Windows；WSL2 和离线环境组件均为可选项。无需激活码。核心 EXE 已包含 Windows Host、Strata 引擎、Python 及其运行依赖；主模型与 MTP 权重不放入安装包。
+安装核心应用，从桌面快捷方式打开 RainyAgent，然后选择**文件 → 打开文件夹**。新安装直接使用 Windows；WSL2 和离线环境组件均为可选项。无需激活码。核心 EXE 包含 Windows Host。需要时在**设置 → 运行环境 → 可选组件**下载 Strata 引擎（约 560 MB）和 PHP；首次以 WSL 启动时会下载 WSL 运行环境（约 340 MB）。主模型与 MTP 权重不放入安装包。
 
-联网后进入 **CTF 工具 → 常用工具 → 下载全部工具**。安装后的工具可离线使用，工具目录会检测新增工具和更新。详见[工具安装与更新](apps/rainy-desktop/README.zh.md#ctf-workbench)。
+联网后进入 **CTF 工具 → 常用工具**，需要哪款工具就下载哪款，也可点击**全部下载**。已下载的工具可离线使用，工具目录会标出有更新的工具。详见[工具安装与更新](apps/rainy-desktop/README.zh.md#ctf-workbench)。
 
-自动更新替换核心应用，不会重新下载可选工具包、WSL 介质或科学计算环境。下载完成后可选择**稍后**或**重启安装**；普通退出不会安装更新。
+自动更新替换核心应用，不会重新下载工具、WSL 介质或科学计算环境；更新后首次以 WSL 启动时会下载该版本的 WSL 运行环境。下载完成后可选择**稍后**或**重启安装**；普通退出不会安装更新。
 
 ## 连接模型
 
-### 内置 Strata
+### Strata 本地模型
 
-核心应用包含 [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) 和 Python 3.12.14。其推理引擎面向 Windows x64 与 NVIDIA CUDA 13，要求 580 或更新驱动，包含 `sm75`、`sm86`、`sm89`、`sm120` GPU 目标；本包不提供 AMD 或 Linux 推理引擎。请准备受支持的 Qwen3.8 Flash Next 主模型 GGUF 及全部分片，以及配套 MTP GGUF 或已准备运行目录；发行包不含模型权重或派生的 dense/expert 数据包。
+Strata 引擎是约 560 MB 的可选下载，包含 [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) 和 Python 3.12.14。其推理引擎面向 Windows x64 与 NVIDIA CUDA 13，要求 580 或更新驱动，包含 `sm75`、`sm86`、`sm89`、`sm120` GPU 目标；本包不提供 AMD 或 Linux 推理引擎。请准备受支持的 Qwen3.8 Flash Next 主模型 GGUF 及全部分片，以及配套 MTP GGUF 或已准备运行目录；发行包不含模型权重或派生的 dense/expert 数据包。
 
-1. 打开**设置 → 模型 → Strata 本地模型**，选择主模型与配套 MTP 文件，或导入兼容的 Strata profile。MTP 路径留空时会尝试从模型附近自动检测。
+1. 打开**设置 → 模型 → Strata 本地模型**。引擎尚未下载时，先点击**下载**。然后选择主模型与配套 MTP 文件，或导入兼容的 Strata profile。MTP 路径留空时会尝试从模型附近自动检测。
 2. 保存上下文长度和本地端口，再点击**启动本地模型**。首次明确启动会在本机准备所需模型文件，不执行下载；准备和启动均可取消。
 3. 就绪后点击**连接并设为默认**。当前 Host 验证实际模型与上下文后才选用它；推理档位和每次请求的输出上限仍在上方普通模型设置中调整。
 
@@ -58,7 +58,7 @@ cd RainyAgent
 pnpm install --frozen-lockfile
 node apps/rainy-desktop/scripts/bootstrap-release-inputs.mjs --manifest apps/rainy-desktop/toolpacks/build-inputs.v1.json
 pnpm run build
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.2 -ComponentSource apps/rainy-desktop/release/offline-1.0.2/environment-components
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.6 -ComponentSource apps/rainy-desktop/release/offline-1.0.6/environment-components
 ```
 
 只有已准备的 WSL 构建发行版名称不同时，才替换命令中的 `Ubuntu`。[验收记录](apps/rainy-desktop/VALIDATION.md)按具体产物记录已经完成的构建、安装和运行检查；源码构建说明本身不代表干净机器验收结果。

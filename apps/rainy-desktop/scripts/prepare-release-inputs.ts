@@ -29,10 +29,12 @@ if (tools) {
   const source = resolve(tools)
   const metadataText = await readFile(join(source, 'native-tools-metadata.json'), 'utf8')
   const metadata = toolPackMetadataSchema.parse(JSON.parse(metadataText))
-  for (const volume of metadata.volumes) await publish(join(source, volume.file), join(output, volume.file), volume)
+  // A per-tool pack lists one archive per unit; earlier packs list split volumes.
+  const media = metadata.version === 1 ? metadata.volumes : metadata.archives
+  for (const volume of media) await publish(join(source, volume.file), join(output, volume.file), volume)
   await writeFile(join(output, 'native-tools-metadata.json'), metadataText)
   await copyFile(join(source, '工具清单.json'), join(output, '工具清单.json'))
-  console.log(JSON.stringify({ reusedToolPack: metadata.id, volumes: metadata.volumes.length }))
+  console.log(JSON.stringify({ reusedToolPack: metadata.id, files: media.length }))
 }
 const catalog = []
 for (const id of ['windows-basic', 'windows-science-cpu', 'windows-science-cuda', 'windows-cpp', 'linux-basic', 'linux-science-cpu', 'linux-science-cuda']) {

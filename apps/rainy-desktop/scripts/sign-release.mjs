@@ -58,8 +58,8 @@ export async function signReleaseResources(resourceRoot, options = {}) {
     if (sha256 === privateKeyDigest) throw new Error('A private release key was copied into packaged resources')
     files.push({ path: relative(root, path).replaceAll('\\', '/'), sha256, bytes: info.size })
   }
-  for (const name of ['windows-host', 'release-public-keys.json', 'environment-component-catalog.json',
-    'install-environment-component.py', 'linux-runtime.tar.gz', 'linux-runtime.json', 'install-runtime.py', 'native-tools-metadata.json', 'icon.ico']) {
+  for (const name of ['windows-host', 'release-public-keys.json', 'environment-component-catalog.json', 'install-environment-component.py',
+    'linux-runtime.json', 'install-runtime.py', 'optional-modules.json', 'native-tools-channel.signed.json', 'native-tools-public-keys.json', 'icon.ico']) {
     await inventory(join(root, name))
   }
   const updaterPath = join(root, 'app-update.yml')
@@ -69,22 +69,6 @@ export async function signReleaseResources(resourceRoot, options = {}) {
   if (updater) {
     if (!updater.isFile()) throw new Error('The generated app-update.yml must be a regular file')
     await inventory(updaterPath)
-  }
-  const strataPath = join(root, 'strata-runtime')
-  let strata
-  try { strata = await lstat(strataPath) }
-  catch (error) { if (error.code !== 'ENOENT') throw error }
-  if (strata) {
-    if (!strata.isDirectory() || strata.isSymbolicLink()) throw new Error('The bundled Strata runtime must be a regular directory')
-    await inventory(strataPath)
-  }
-  const phpPath = join(root, 'php')
-  let php
-  try { php = await lstat(phpPath) }
-  catch (error) { if (error.code !== 'ENOENT') throw error }
-  if (php) {
-    if (!php.isDirectory() || php.isSymbolicLink()) throw new Error('The bundled PHP runtime must be a regular directory')
-    await inventory(phpPath)
   }
   const windowsInventory = JSON.parse(await readFile(join(root, 'windows-host/runtime.json'), 'utf8'))
   const expectedWindows = new Map(windowsInventory.files.map(file => [file.path, file]))

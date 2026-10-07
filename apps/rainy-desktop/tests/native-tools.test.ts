@@ -5,7 +5,7 @@ import { join, relative } from 'node:path'
 import { createHash } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { NativeToolsLibrary, parseNativeFavorites, parseNativeLaunch, resolveNativePath, type NativeInvocation } from '../src/native-tools.ts'
+import { NativeToolsLibrary, parseNativeFavorites, parseNativeLaunch, resolveNativePath, type NativeInvocation, type NativeToolsInventorySource } from '../src/native-tools.ts'
 import { nativeConsoleCommand, nativeConsoleLauncher, nativeToolEnvironment } from '../src/native-tool-process.ts'
 import { serveNativeTool, type NativeToolWebPage } from '../src/native-tool-web.ts'
 import { windowsPowerShellPath } from '../src/powershell.ts'
@@ -61,23 +61,31 @@ describe('native tool catalog', () => {
     expect((await library.listTools()).tools[0]).toMatchObject({ status: 'missing' })
     expect(await library.launchTool('ida')).toMatchObject({ ok: false })
   })
-  it('uses the carrier catalog before downloading and switches to durable per-user tools', async () => {
-    const catalogPath = join(fixture, 'bundled-catalog.json')
-    await writeFile(catalogPath, JSON.stringify({ version: 1, tools: [installedTool()] }))
+  it('lists tools not yet downloaded from the newest catalog and launches installed ones with their own entries', async () => {
     const onlineRoot = join(userData, 'native-tools')
-    await mkdir(onlineRoot, { recursive: true })
-    let selectedRoot = onlineRoot
+    const newest = JSON.stringify({ version: 1, tools: [{ ...installedTool(), version: 'next' }] })
+    let inventory: NativeToolsInventorySource = { root: onlineRoot, catalogText: newest, catalogOutdated: false,
+      states: new Map([['7zip', { installed: false, outdated: false, downloadBytes: 42 }]]) }
     const start = vi.fn()
-    const library = new NativeToolsLibrary({ installRoot, userData, catalogPath, selectRoot: async () => selectedRoot, start })
-    expect((await library.listTools()).tools[0]).toMatchObject({ id: '7zip', status: 'missing' })
+    const library = new NativeToolsLibrary({ installRoot, userData, inventory: async () => inventory, start })
+    expect((await library.listTools()).tools).toMatchObject([{ id: '7zip', status: 'available', version: 'next', downloadBytes: 42, missing: [] }])
+    expect(await library.launchTool('7zip')).toMatchObject({ ok: false })
+    expect(start).not.toHaveBeenCalled()
     await mkdir(join(onlineRoot, 'tools/7zip'), { recursive: true })
     await writeFile(join(onlineRoot, 'tools/7zip/7z.exe'), 'downloaded tool')
-    await writeFile(join(onlineRoot, 'tools/manifest.json'), await readFile(catalogPath))
-    expect((await library.listTools()).tools[0]).toMatchObject({ status: 'ready' })
+    inventory = { ...inventory, installedCatalogText: JSON.stringify({ version: 1, tools: [installedTool()] }), catalogOutdated: true,
+      states: new Map([['7zip', { installed: true, outdated: true, downloadBytes: 7 }]]) }
+    expect(await library.listTools()).toMatchObject({ catalogOutdated: true,
+      tools: [{ id: '7zip', status: 'ready', version: 'test', outdated: true, downloadBytes: 7 }] })
     await library.launchTool('7zip')
     expect(start.mock.calls[0][0]).toMatchObject({ target: await realpath(join(onlineRoot, 'tools/7zip/7z.exe')) })
-    selectedRoot = installRoot
-    expect((await library.listTools()).tools[0]).toMatchObject({ status: 'ready' })
+  })
+
+  it('reads the carrier catalog when the installation has none', async () => {
+    const catalogPath = join(fixture, 'bundled-catalog.json')
+    await writeFile(catalogPath, JSON.stringify({ version: 1, tools: [installedTool()] }))
+    const library = new NativeToolsLibrary({ installRoot, userData, catalogPath, start: vi.fn() })
+    expect((await library.listTools()).tools).toMatchObject([{ id: '7zip', status: 'ready', outdated: false, downloadBytes: 0 }])
   })
   it('separates installed dependencies from functional acceptance and invalidates stale acceptance', async () => {
     const text = await catalog()

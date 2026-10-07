@@ -1,16 +1,13 @@
-/** Build a deterministic, inventoried native-tool archive with independently checked volumes. */
+/** Build deterministic, inventoried native-tool archives, one per installation unit. */
 import { createHash } from 'node:crypto'
 import { createReadStream, lstatSync } from 'node:fs'
 import { link, lstat, mkdir, mkdtemp, open, readFile, rename, rm, unlink } from 'node:fs/promises'
 import { dirname, isAbsolute, parse, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { Writable } from 'node:stream'
-import { pipeline } from 'node:stream/promises'
 import { create as createTar } from 'tar'
 
 const APP_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const APP_VERSION = JSON.parse(await readFile(resolve(APP_ROOT, 'package.json'), 'utf8')).version
-const VOLUME_BYTES = 2 * 1024 ** 3
 const CONTROL_FILES = ['tools/manifest.json', 'tools/verified.json']
 const HASH = /^[a-f0-9]{64}$/
 const DEVICE = /^(?:con|prn|aux|nul|clock\$|conin\$|conout\$|com[1-9¹²³]|lpt[1-9¹²³])(?:\.|$)/i
@@ -193,79 +190,42 @@ function checkArchiveSource(stage, path, stat, expected) {
   }
 }
 
-class VolumeWriter extends Writable {
-  volumes = []
-  current
-  inFlight = Promise.resolve()
-  stopping = false
-
-  constructor(directory, id, limit) { super(); this.directory = directory; this.id = id; this.limit = limit }
-
-  _write(chunk, _encoding, callback) {
-    this.inFlight = this.writeChunk(chunk)
-    this.inFlight.then(() => callback(), callback)
-  }
-
-  _final(callback) {
-    this.inFlight = this.finishVolume()
-    this.inFlight.then(() => callback(), callback)
-  }
-
-  _destroy(error, callback) {
-    this.stopping = true
-    this.inFlight.catch((writeError) => {
-      // The write callback already delivered this failure to Writable.
-      void writeError
-    }).then(async () => {
-      const current = this.current
-      this.current = undefined
-      if (current !== undefined) await current.handle.close()
-    }).then(() => callback(error), closeError => callback(error ?? closeError))
-  }
-
-  async writeChunk(chunk) {
-    let offset = 0
-    while (offset < chunk.length) {
-      if (this.stopping) throw new Error('Archive output stopped.')
-      if (this.current === undefined) {
-        const file = `native-tools-${this.id.slice(0, 16)}.tar.gz.${String(this.volumes.length + 1).padStart(3, '0')}`
-        this.current = { file, bytes: 0, hash: createHash('sha256'), handle: await open(resolve(this.directory, file), 'wx', 0o600) }
-      }
-      const current = this.current
-      const slice = chunk.subarray(offset, offset + Math.min(this.limit - current.bytes, chunk.length - offset))
+async function archiveUnit(stage, temporary, file, paths, stats) {
+  const hash = createHash('sha256')
+  let bytes = 0
+  const handle = await open(resolve(temporary, file), 'wx', 0o600)
+  try {
+    let archive
+    archive = createTar({ cwd: stage, gzip: true, portable: true, mtime: new Date(0), strict: true,
+      noDirRecurse: true, follow: false, filter: (path, stat) => {
+        try { checkArchiveSource(stage, path, stat, stats.get(path)); return true }
+        catch (error) { archive.destroy(error); return false }
+      } }, paths)
+    for await (const chunk of archive) {
+      hash.update(chunk)
+      bytes += chunk.length
       let written = 0
-      while (written < slice.length) {
-        const result = await current.handle.write(slice, written, slice.length - written)
-        if (result.bytesWritten === 0) throw new Error(`Archive volume write made no progress: ${current.file}`)
+      while (written < chunk.length) {
+        const result = await handle.write(chunk, written, chunk.length - written)
+        if (result.bytesWritten === 0) throw new Error(`Archive write made no progress: ${file}`)
         written += result.bytesWritten
       }
-      current.hash.update(slice)
-      current.bytes += slice.length
-      offset += slice.length
-      if (current.bytes === this.limit) await this.finishVolume()
     }
-  }
-
-  async finishVolume() {
-    const current = this.current
-    this.current = undefined
-    if (current === undefined) return
-    try { await current.handle.sync() }
-    finally { await current.handle.close() }
-    this.volumes.push({ file: current.file, bytes: current.bytes, sha256: current.hash.digest('hex') })
-  }
+    await handle.sync()
+  } finally { await handle.close() }
+  return { bytes, sha256: hash.digest('hex') }
 }
 
-async function publishVolume(temporary, output, volume) {
-  const source = resolve(temporary, volume.file)
-  const destination = resolve(output, volume.file)
+async function publishArchive(temporary, output, archive) {
+  const source = resolve(temporary, archive.file)
+  const destination = resolve(output, archive.file)
   try { await link(source, destination) }
   catch (error) {
     if (error.code !== 'EEXIST') throw error
     const stat = await lstat(destination)
-    if (stat.isSymbolicLink() || !stat.isFile()) throw new Error(`Archive output is not a regular file: ${volume.file}`)
+    if (stat.isSymbolicLink() || !stat.isFile()) throw new Error(`Archive output is not a regular file: ${archive.file}`)
     const existing = await fingerprint(destination)
-    if (existing.bytes !== volume.bytes || existing.sha256 !== volume.sha256) throw new Error(`Existing archive volume has different bytes: ${volume.file}`)
+    if (existing.bytes !== archive.bytes || existing.sha256 !== archive.sha256) throw new Error(`Existing unit archive has different bytes: ${archive.file}`)
   }
   await unlink(source)
 }
@@ -286,14 +246,25 @@ async function cleanupTemporary(output, temporary) {
 }
 
 /**
- * Verify source bytes and publish volumes before atomically replacing their metadata.
- * @param {{stage?: string, output?: string, volumeBytes?: number}} options Source stage, output directory and maximum volume size.
- * @returns {Promise<object>} Published version 1 metadata; previous pack volumes remain available.
+ * Name a unit archive by its file inventory, so a later pack reuses the archive of an unchanged tool.
+ * @param {{path:string,kind:string}} unit Installation unit.
+ * @param {Array<{path:string,bytes:number,sha256:string}>} files The unit's inventoried files.
+ * @returns {string} Archive file name.
+ */
+export function unitArchiveName(unit, files) {
+  return `rainy-unit-${createHash('sha256').update(JSON.stringify({ unit: unit.path, kind: unit.kind, files })).digest('hex').slice(0, 20)}.tar.gz`
+}
+
+/**
+ * Verify source bytes and publish one archive per installation unit before atomically replacing their metadata.
+ * @param {{stage?: string, output?: string, previous?: string}} options Source stage, output directory and earlier
+ *   version 2 metadata whose archive records are reused for units with identical files.
+ * @returns {Promise<object>} Published version 2 metadata; archives of earlier packs remain available.
  */
 export async function packageNativeTools({ stage = resolve(APP_ROOT, `toolpacks/stage-${APP_VERSION}`),
-  output = resolve(APP_ROOT, `release/offline-${APP_VERSION}`), volumeBytes = VOLUME_BYTES } = {}) {
-  if (typeof stage !== 'string' || typeof output !== 'string' || !Number.isSafeInteger(volumeBytes) || volumeBytes <= 0 || volumeBytes > VOLUME_BYTES) {
-    throw new Error('Stage and output must be paths; volume bytes must be an integer from 1 to 2147483648.')
+  output = resolve(APP_ROOT, `release/offline-${APP_VERSION}`), previous } = {}) {
+  if (typeof stage !== 'string' || typeof output !== 'string' || previous !== undefined && typeof previous !== 'string') {
+    throw new Error('Stage, output and previous metadata must be paths.')
   }
   stage = resolve(stage)
   output = resolve(output)
@@ -302,23 +273,38 @@ export async function packageNativeTools({ stage = resolve(APP_ROOT, `toolpacks/
   await realDirectory(stage)
   const { files, unpackedBytes, names } = parseInventory(await readJson(resolve(stage, 'toolpack-files.json')))
   const units = installationUnits(await readJson(resolve(stage, 'tools/manifest.json')), files, names)
+  const reusable = new Map()
+  if (previous !== undefined) {
+    const earlier = await readJson(resolve(previous))
+    if (!object(earlier) || earlier.version !== 2 || !Array.isArray(earlier.archives)) throw new Error('Previous metadata must be a version 2 tool pack.')
+    for (const archive of earlier.archives) {
+      if (!object(archive) || typeof archive.file !== 'string' || !/^rainy-unit-[a-f0-9]{20}\.tar\.gz$/.test(archive.file)
+        || !Number.isSafeInteger(archive.bytes) || archive.bytes <= 0 || typeof archive.sha256 !== 'string' || !HASH.test(archive.sha256)) {
+        throw new Error('Previous metadata contains an invalid unit archive.')
+      }
+      reusable.set(archive.file, { bytes: archive.bytes, sha256: archive.sha256 })
+    }
+  }
   const stats = await verifySources(stage, files)
   const id = createHash('sha256').update(JSON.stringify({ files, units })).digest('hex')
   await realDirectory(output, true)
   const temporary = await mkdtemp(resolve(output, '.native-toolpack-'))
   try {
-    const writer = new VolumeWriter(temporary, id, volumeBytes)
-    let archive
-    archive = createTar({ cwd: stage, gzip: true, portable: true, mtime: new Date(0), strict: true,
-      noDirRecurse: true, follow: false, filter: (path, stat) => {
-        try { checkArchiveSource(stage, path, stat, stats.get(path)); return true }
-        catch (error) { archive.destroy(error); return false }
-      } }, files.map(file => file.path))
-    await pipeline(archive, writer)
-    const metadata = { version: 1, id, format: 'tar.gz', volumeSize: volumeBytes, unpackedBytes, files, units, volumes: writer.volumes }
+    const archives = []
+    const built = []
+    for (const unit of units) {
+      const unitFiles = files.filter(file => unit.kind === 'file' ? file.path === unit.path : file.path.startsWith(unit.path + '/'))
+      const file = unitArchiveName(unit, unitFiles)
+      const earlier = reusable.get(file)
+      if (earlier !== undefined) { archives.push({ unit: unit.path, file, ...earlier }); continue }
+      const archive = { unit: unit.path, file, ...await archiveUnit(stage, temporary, file, unitFiles.map(entry => entry.path), stats) }
+      archives.push(archive)
+      built.push(archive)
+    }
+    const metadata = { version: 2, id, format: 'tar.gz', unpackedBytes, files, units, archives }
     await writeDurable(resolve(temporary, 'native-tools-metadata.json'), JSON.stringify(metadata, null, 2) + '\n')
     await realDirectory(output)
-    for (const volume of metadata.volumes) await publishVolume(temporary, output, volume)
+    for (const archive of built) await publishArchive(temporary, output, archive)
     const metadataPath = resolve(output, 'native-tools-metadata.json')
     try {
       const existing = await lstat(metadataPath)
@@ -333,15 +319,14 @@ export async function packageNativeTools({ stage = resolve(APP_ROOT, `toolpacks/
 
 function argumentsFrom(argv) {
   const result = {}
-  const keys = new Map([['--stage', 'stage'], ['--output', 'output'], ['--volume-bytes', 'volumeBytes']])
+  const keys = new Map([['--stage', 'stage'], ['--output', 'output'], ['--previous', 'previous']])
   for (let index = 0; index < argv.length; index += 2) {
     const key = keys.get(argv[index])
     const value = argv[index + 1]
     if (key === undefined || value === undefined || value.startsWith('--') || Object.hasOwn(result, key)) {
-      throw new Error('Usage: package-native-tools.mjs [--stage <directory>] [--output <directory>] [--volume-bytes <bytes>]')
+      throw new Error('Usage: package-native-tools.mjs [--stage <directory>] [--output <directory>] [--previous <metadata.json>]')
     }
-    if (key === 'volumeBytes' && !/^\d+$/.test(value)) throw new Error('Volume bytes must be an integer.')
-    result[key] = key === 'volumeBytes' ? Number(value) : value
+    result[key] = value
   }
   return result
 }
@@ -349,7 +334,7 @@ function argumentsFrom(argv) {
 async function main() {
   const metadata = await packageNativeTools(argumentsFrom(process.argv.slice(2)))
   console.log(JSON.stringify({ id: metadata.id, files: metadata.files.length, unpackedBytes: metadata.unpackedBytes,
-    volumes: metadata.volumes.length, compressedBytes: metadata.volumes.reduce((sum, volume) => sum + volume.bytes, 0) }))
+    archives: metadata.archives.length, compressedBytes: metadata.archives.reduce((sum, archive) => sum + archive.bytes, 0) }))
 }
 
 if (process.argv[1] !== undefined && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

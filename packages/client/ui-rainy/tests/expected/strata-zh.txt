@@ -1,6 +1,6 @@
 Strata 本地模型
 已停止
-内置 Strata 与 Python 已就绪 · 0.1.39
+Strata 引擎已就绪 · 0.1.39
 支持 Qwen3.8 Flash Next GGUF 与配套 MTP 权重；分片模型请选择首片，也可导入 Strata profile
 首次启动会在本机准备运行文件，模型权重不会自动下载
 模型文件、模型目录或 profile: C:\models\main.gguf

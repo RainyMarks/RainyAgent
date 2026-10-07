@@ -2,7 +2,7 @@
 import { execFile } from 'node:child_process'
 import { createHash, randomUUID } from 'node:crypto'
 import { access, mkdir, open, readFile, readdir, rename, rm, stat } from 'node:fs/promises'
-import { constants } from 'node:fs'
+import { constants, existsSync } from 'node:fs'
 import { delimiter, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { homedir } from 'node:os'
 import { promisify } from 'node:util'
@@ -358,7 +358,9 @@ export class RuntimeEnvironments {
     if (!this.loaded) throw new Error('Runtime selections have not finished loading.')
     const match = Object.values(this.state.workspaces).filter(entry => inside(entry.root, cwd))
       .sort((left, right) => right.root.length - left.root.length).at(0)
-    const executables = { ...this.options.builtinExecutables, ...this.bundledExecutables, ...(match?.selected ?? {}) }
+    // A built-in interpreter counts only once its optional component has been downloaded.
+    const builtin = Object.fromEntries(Object.entries(this.options.builtinExecutables ?? {}).filter(([, path]) => existsSync(path)))
+    const executables = { ...builtin, ...this.bundledExecutables, ...(match?.selected ?? {}) }
     const directories = [...new Set(Object.values(executables).map(path => dirname(path)))]
     if (match?.pythonPrefix && this.platform === 'windows') {
       directories.push(join(match.pythonPrefix, 'Scripts'), join(match.pythonPrefix, 'Library', 'bin'))

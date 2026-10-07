@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { isAbsolute, join, relative } from 'node:path'
+import { dirname, isAbsolute, join, relative } from 'node:path'
 import { tmpdir } from 'node:os'
 import { WorkspaceId } from '@deepseek-ai/dsh-workspace'
 import { createProjectRegistry, ExecutionTargetId } from '../src/project-registry.ts'
@@ -131,6 +131,21 @@ describe('runtime selection', () => {
     const selected = join(root, 'php-8.5', 'php.exe')
     await runtime.select(workspace, 'php', selected)
     expect(runtime.resolve(project).executables.php).toBe(selected)
+  })
+
+  it('ignores the built-in PHP until its component is downloaded', async () => {
+    const root = await directory()
+    const project = join(root, 'project')
+    const builtin = join(root, 'modules', 'php', 'php.exe')
+    await mkdir(project, { recursive: true })
+    const runtime = new RuntimeEnvironments({ root, targetId: 'windows-local', platform: 'windows', probeTimeoutMs: 1000, maxCandidates: 16,
+      builtinExecutables: { php: builtin }, resolveWorkspace: () => ({ path: project }),
+      run: async command => JSON.stringify({ platform: 'windows', version: '8.5.0', executable: command.executable, capabilities: [] }) })
+    await runtime.initialize()
+    expect(runtime.resolve(project).executables.php).toBeUndefined()
+    await mkdir(dirname(builtin), { recursive: true })
+    await writeFile(builtin, '')
+    expect(runtime.resolve(project).executables.php).toBe(builtin)
   })
 })
 

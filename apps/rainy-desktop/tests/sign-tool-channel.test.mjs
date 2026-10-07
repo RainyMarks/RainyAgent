@@ -24,15 +24,18 @@ test('tool publisher uses the pinned public identity and a separate signature do
       writeFile(privateKeyPath, keys.privateKey.export({ format: 'pem', type: 'pkcs8' }), { mode: 0o600 }),
       writeFile(publicKeysPath, JSON.stringify(releasePublicKeys(keys.privateKey))),
       writeFile(catalogPath, catalog),
-      writeFile(metadataPath, JSON.stringify({ id: 'a'.repeat(64), files: [{ path: 'tools/manifest.json', bytes: Buffer.byteLength(catalog), sha256 }] })),
-      writeFile(sourcePath, JSON.stringify({ packId: 'a'.repeat(64) })),
+      writeFile(metadataPath, JSON.stringify({ version: 2, id: 'a'.repeat(64), files: [{ path: 'tools/manifest.json', bytes: Buffer.byteLength(catalog), sha256 }] })),
+      writeFile(sourcePath, JSON.stringify({ version: 2, packId: 'a'.repeat(64) })),
     ])
     const options = { revision: 1, releaseVersion: '1.0.0', privateKeyPath, publicKeysPath, catalogPath, metadataPath, sourcePath }
     const envelope = await signToolChannel(options)
     const payload = Buffer.from(envelope.payload, 'base64')
     const publicPem = Object.values(releasePublicKeys(keys.privateKey).keys)[0]
-    assert.equal(verify(null, Buffer.concat([Buffer.from('RainyAgent/tool-channel/v1\0'), payload]), publicPem,
+    assert.equal(verify(null, Buffer.concat([Buffer.from('RainyAgent/tool-channel/v2\0'), payload]), publicPem,
       Buffer.from(envelope.signature, 'base64')), true)
+    await writeFile(sourcePath, JSON.stringify({ version: 1, packId: 'a'.repeat(64) }))
+    await assert.rejects(signToolChannel(options), /do not match their frozen metadata/)
+    await writeFile(sourcePath, JSON.stringify({ version: 2, packId: 'a'.repeat(64) }))
     await writeFile(publicKeysPath, JSON.stringify(releasePublicKeys(other.privateKey)))
     await assert.rejects(signToolChannel(options), /does not match the public keys/)
     assert.equal((await readFile(catalogPath, 'utf8')), catalog)

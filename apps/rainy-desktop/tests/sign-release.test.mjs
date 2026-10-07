@@ -29,8 +29,8 @@ async function resources(f) {
   await writeFile(join(f.root, 'windows-host/runtime.json'), JSON.stringify({ files: [
     { path: 'host.js', bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') },
   ] }))
-  for (const name of ['environment-component-catalog.json', 'install-environment-component.py', 'linux-runtime.tar.gz',
-    'linux-runtime.json', 'install-runtime.py', 'native-tools-metadata.json', 'icon.ico']) await writeFile(join(f.root, name), name)
+  for (const name of ['environment-component-catalog.json', 'install-environment-component.py', 'linux-runtime.json', 'install-runtime.py',
+    'optional-modules.json', 'native-tools-channel.signed.json', 'native-tools-public-keys.json', 'icon.ico']) await writeFile(join(f.root, name), name)
 }
 
 test('local builds create a reusable key and distribute only its public half', async t => {
@@ -65,8 +65,8 @@ test('packaged resources receive a verifiable signature without a license manage
   assert(verify(null, Buffer.concat([Buffer.from('RainyAgent/release-manifest/v1\0'), bytes]), Object.values(f.keys.keys)[0],
     Buffer.from(envelope.signature, 'base64url')))
   const manifest = JSON.parse(bytes.toString())
-  assert.equal(manifest.files.length, 10)
-  assert.equal(result.files, 10)
+  assert.equal(manifest.files.length, 11)
+  assert.equal(result.files, 11)
   assert(manifest.files.every(row => !/private|issuer|license-verifier/u.test(row.path)))
 })
 
@@ -81,7 +81,7 @@ test('generated updater configuration is included in the signed resource invento
   assert(verify(null, Buffer.concat([Buffer.from('RainyAgent/release-manifest/v1\0'), payload]), Object.values(f.keys.keys)[0],
     Buffer.from(envelope.signature, 'base64url')))
   const manifest = JSON.parse(payload)
-  assert.equal(result.files, 11)
+  assert.equal(result.files, 12)
   assert.deepEqual(manifest.files.find(file => file.path === 'app-update.yml'), {
     path: 'app-update.yml', bytes: updater.length, sha256: createHash('sha256').update(updater).digest('hex'),
   })
@@ -95,31 +95,20 @@ test('an updater configuration directory prevents resource signing', async t => 
   assert(!(await readdir(f.root)).includes('release-manifest.signed.json'))
 })
 
-test('a bundled Strata runtime is included in the signed inventory', async t => {
+test('components that are downloaded on demand are not part of the signed inventory', async t => {
   const f = await fixture(t)
   await resources(f)
-  const bytes = Buffer.from('bundled engine fixture')
-  await mkdir(join(f.root, 'strata-runtime/engine'), { recursive: true })
-  await writeFile(join(f.root, 'strata-runtime/engine/strata.exe'), bytes)
+  for (const path of ['strata-runtime/engine/strata.exe', 'php/php.exe']) {
+    await mkdir(join(f.root, path, '..'), { recursive: true })
+    await writeFile(join(f.root, path), 'left by an earlier installer')
+  }
   const result = await signReleaseResources(f.root, { privateKeyPath: f.privateKeyPath })
   const envelope = JSON.parse(await readFile(result.path, 'utf8'))
   const manifest = JSON.parse(Buffer.from(envelope.payload, 'base64url'))
-  assert.deepEqual(manifest.files.find(file => file.path === 'strata-runtime/engine/strata.exe'), {
-    path: 'strata-runtime/engine/strata.exe', bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex'),
-  })
-})
-
-test('the bundled PHP runtime is included in the signed inventory', async t => {
-  const f = await fixture(t)
-  await resources(f)
-  const bytes = Buffer.from('bundled php fixture')
-  await mkdir(join(f.root, 'php/ext'), { recursive: true })
-  await writeFile(join(f.root, 'php/php.exe'), bytes)
-  await writeFile(join(f.root, 'php/ext/php_curl.dll'), bytes)
-  const result = await signReleaseResources(f.root, { privateKeyPath: f.privateKeyPath })
-  const envelope = JSON.parse(await readFile(result.path, 'utf8'))
-  const manifest = JSON.parse(Buffer.from(envelope.payload, 'base64url'))
-  assert.deepEqual(manifest.files.filter(file => file.path.startsWith('php/')).map(file => file.path), ['php/ext/php_curl.dll', 'php/php.exe'])
+  assert.deepEqual(manifest.files.filter(file => /^(strata-runtime|php)\//u.test(file.path)), [])
+  assert.deepEqual(manifest.files.filter(file => file.path.endsWith('.json') && !file.path.includes('/')).map(file => file.path).sort(), [
+    'environment-component-catalog.json', 'linux-runtime.json', 'native-tools-channel.signed.json', 'native-tools-public-keys.json',
+    'optional-modules.json', 'release-public-keys.json'])
 })
 
 test('a mismatched key or a key within resources cannot sign a package', async t => {

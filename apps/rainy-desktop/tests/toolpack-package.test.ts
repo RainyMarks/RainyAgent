@@ -8,7 +8,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { promisify } from 'node:util'
 import { list as listTar } from 'tar'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { toolPackMetadataSchema, type ToolPackMetadata } from '../src/toolpack-format.ts'
+import { toolPackMetadataSchema, type ToolPackMetadataV2 } from '../src/toolpack-format.ts'
 
 const execute = promisify(execFile)
 const script = fileURLToPath(new URL('../scripts/package-native-tools.mjs', import.meta.url))
@@ -62,31 +62,47 @@ async function makeStage(options: { tools?: ManifestTool[]; payload?: Buffer } =
   return files
 }
 
-async function build(overrides: { stage?: string; output?: string; volumeBytes?: number } = {}): Promise<ToolPackMetadata> {
+async function build(overrides: { stage?: string; output?: string; previous?: string } = {}): Promise<ToolPackMetadataV2> {
   const directory = overrides.output ?? output
   await execute(process.execPath, [script, '--stage', overrides.stage ?? stage, '--output', directory,
-    '--volume-bytes', String(overrides.volumeBytes ?? 4096)], { windowsHide: true })
-  return toolPackMetadataSchema.parse(JSON.parse(await readFile(join(directory, 'native-tools-metadata.json'), 'utf8')))
+    ...overrides.previous === undefined ? [] : ['--previous', overrides.previous]], { windowsHide: true })
+  const metadata = toolPackMetadataSchema.parse(JSON.parse(await readFile(join(directory, 'native-tools-metadata.json'), 'utf8')))
+  if (metadata.version !== 2) throw new Error('Expected per-unit metadata')
+  return metadata
 }
 
-async function archiveBytes(metadata: ToolPackMetadata, directory = output): Promise<Buffer> {
+async function archiveBytes(metadata: ToolPackMetadataV2, directory = output): Promise<Buffer[]> {
   const buffers = []
-  for (const volume of metadata.volumes) {
-    const bytes = await readFile(join(directory, volume.file))
-    expect(bytes.length).toBe(volume.bytes)
-    expect(createHash('sha256').update(bytes).digest('hex')).toBe(volume.sha256)
-    expect((await lstat(join(directory, volume.file))).nlink).toBe(1)
+  for (const archive of metadata.archives) {
+    const bytes = await readFile(join(directory, archive.file))
+    expect(bytes.length).toBe(archive.bytes)
+    expect(createHash('sha256').update(bytes).digest('hex')).toBe(archive.sha256)
+    expect((await lstat(join(directory, archive.file))).nlink).toBe(1)
     buffers.push(bytes)
   }
-  return Buffer.concat(buffers)
+  return buffers
+}
+
+async function entries(gzip: Buffer): Promise<{ path: string; type: string; mtime: number | undefined; bytes: Buffer }[]> {
+  const found: { path: string; type: string; mtime: number | undefined; bytes: Buffer }[] = []
+  const parser = listTar({ strict: true, onReadEntry: (entry) => {
+    const chunks: Buffer[] = []
+    entry.on('data', (chunk: Buffer) => { chunks.push(chunk) })
+    entry.on('end', () => { found.push({ path: entry.path, type: entry.type, mtime: entry.mtime?.getTime(), bytes: Buffer.concat(chunks) }) })
+  } })
+  await new Promise<void>((resolvePromise, reject) => {
+    parser.on('error', reject)
+    parser.on('end', resolvePromise)
+    parser.end(gzip)
+  })
+  return found
 }
 
 describe('native tool archive CLI', () => {
-  it('streams multiple volumes containing only sorted inventoried files and fixed timestamps', async () => {
+  it('writes one archive per unit with only its sorted inventoried files and fixed timestamps', async () => {
     const files = await makeStage()
     await writeStage('tools/demo/private-cache.txt', 'not inventoried')
     const metadata = await build()
-    expect(metadata.volumes.length).toBeGreaterThan(1)
     expect(metadata.files.map(file => file.path)).toEqual(files.map(file => file.path).sort())
     expect(metadata.units).toEqual([
       { path: 'runtime/windows/test-runtime', kind: 'directory', preserve: [] },
@@ -94,29 +110,23 @@ describe('native tool archive CLI', () => {
       { path: 'tools/manifest.json', kind: 'file', preserve: [] },
       { path: 'tools/verified.json', kind: 'file', preserve: [] },
     ])
-    const gzip = await archiveBytes(metadata)
-    const entries: { path: string; type: string; mtime: number | undefined; bytes: Buffer }[] = []
-    const parser = listTar({ strict: true, onReadEntry: (entry) => {
-      const chunks: Buffer[] = []
-      entry.on('data', (chunk: Buffer) => { chunks.push(chunk) })
-      entry.on('end', () => { entries.push({ path: entry.path, type: entry.type, mtime: entry.mtime?.getTime(), bytes: Buffer.concat(chunks) }) })
-    } })
-    await new Promise<void>((resolvePromise, reject) => {
-      parser.on('error', reject)
-      parser.on('end', resolvePromise)
-      parser.end(gzip)
-    })
-    expect(entries.map(entry => entry.path)).toEqual(metadata.files.map(file => file.path))
-    for (const entry of entries) {
-      expect(entry.type).toBe('File')
-      expect(entry.mtime).toBe(0)
-      expect(entry.bytes).toEqual(await readFile(join(stage, ...entry.path.split('/'))))
+    expect(metadata.archives.map(archive => archive.unit)).toEqual(metadata.units.map(unit => unit.path))
+    const archives = await archiveBytes(metadata)
+    for (const [index, archive] of metadata.archives.entries()) {
+      const found = await entries(archives[index] ?? Buffer.alloc(0))
+      expect(found.map(entry => entry.path)).toEqual(metadata.files.map(file => file.path)
+        .filter(path => path === archive.unit || path.startsWith(archive.unit + '/')))
+      for (const entry of found) {
+        expect(entry.type).toBe('File')
+        expect(entry.mtime).toBe(0)
+        expect(entry.bytes).toEqual(await readFile(join(stage, ...entry.path.split('/'))))
+      }
     }
-    expect(await readdir(output)).toEqual(expect.arrayContaining(['native-tools-metadata.json', ...metadata.volumes.map(volume => volume.file)]))
+    expect(await readdir(output)).toEqual(expect.arrayContaining(['native-tools-metadata.json', ...metadata.archives.map(archive => archive.file)]))
     expect((await readdir(output)).some(file => file.startsWith('.native-toolpack-'))).toBe(false)
   })
 
-  it('reproduces bytes despite source mtimes and preserves volumes from earlier packs', async () => {
+  it('reproduces bytes despite source mtimes and keeps the archive name of every unchanged unit', async () => {
     const files = await makeStage()
     const first = await build()
     const firstBytes = await archiveBytes(first)
@@ -128,8 +138,23 @@ describe('native tool archive CLI', () => {
     await saveInventory(files.map(file => file.path === changed.path ? changed : file))
     const third = await build()
     expect(third.id).not.toBe(first.id)
+    const renamed = third.archives.filter((archive, index) => archive.file !== first.archives[index]?.file).map(archive => archive.unit)
+    expect(renamed).toEqual(['tools/demo'])
     expect(await archiveBytes(first)).toEqual(firstBytes)
     expect(await readFile(join(output, 'native-tools-metadata.json'), 'utf8')).toContain(third.id)
+  })
+
+  it('reuses the archive records of unchanged units from earlier metadata without writing them again', async () => {
+    const files = await makeStage()
+    const first = await build()
+    const earlier = join(fixture, 'earlier-metadata.json')
+    await writeFile(earlier, JSON.stringify(first))
+    const changed = await writeStage('tools/demo/data/sample.bin', Buffer.from('a new release'))
+    await saveInventory(files.map(file => file.path === changed.path ? changed : file))
+    const next = join(fixture, 'next output')
+    const second = await build({ output: next, previous: earlier })
+    expect(second.archives.filter(archive => archive.unit !== 'tools/demo')).toEqual(first.archives.filter(archive => archive.unit !== 'tools/demo'))
+    expect((await readdir(next)).sort()).toEqual(['native-tools-metadata.json', second.archives.find(archive => archive.unit === 'tools/demo')?.file].sort())
   })
 
   it('allows independent builders to publish the same deterministic pack concurrently', async () => {
@@ -140,12 +165,12 @@ describe('native tool archive CLI', () => {
     expect((await readdir(output)).filter(file => file.startsWith('.native-toolpack-'))).toEqual([])
   })
 
-  it('does not replace existing metadata when an archive volume conflicts', async () => {
+  it('does not replace existing metadata when a unit archive conflicts', async () => {
     await makeStage()
     const original = await build()
     const before = await readFile(join(output, 'native-tools-metadata.json'), 'utf8')
-    await writeFile(join(output, original.volumes[0].file), 'damaged existing volume')
-    await expect(build()).rejects.toThrow('Existing archive volume has different bytes')
+    await writeFile(join(output, original.archives[0]?.file ?? ''), 'damaged existing archive')
+    await expect(build()).rejects.toThrow('Existing unit archive has different bytes')
     expect(await readFile(join(output, 'native-tools-metadata.json'), 'utf8')).toBe(before)
     expect((await readdir(output)).some(file => file.startsWith('.native-toolpack-'))).toBe(false)
   })
@@ -221,15 +246,15 @@ describe('native tool archive CLI', () => {
     await expect(build()).rejects.toThrow('symlink or junction')
   })
 
-  it('validates input field types and command-line volume limits', async () => {
+  it('validates input field types, the output location and earlier metadata', async () => {
     const files = await makeStage()
     const inventory = await saveInventory(files)
     await writeFile(join(stage, 'toolpack-files.json'), JSON.stringify({ ...inventory, bytes: String(inventory.bytes) }))
     await expect(build()).rejects.toThrow('version 1 SHA-256 file inventory')
     await saveInventory(files)
-    await expect(build({ volumeBytes: 0 })).rejects.toThrow('integer from 1 to 2147483648')
-    await expect(build({ volumeBytes: 2147483649 })).rejects.toThrow('integer from 1 to 2147483648')
     await expect(build({ output: join(stage, 'output') })).rejects.toThrow('outside the source stage')
+    await writeFile(join(fixture, 'v1.json'), JSON.stringify({ version: 1, volumes: [] }))
+    await expect(build({ previous: join(fixture, 'v1.json') })).rejects.toThrow('version 2 tool pack')
   })
 
   it('can be imported without starting a build', async () => {

@@ -6,6 +6,7 @@ import type { ProjectMemoryStatus, RuntimeNativeHost } from './settings-protocol
 import type { SettingsSectionProps } from './SettingsSections.tsx'
 import { SettingsField, SettingsLoading, useSettingsAction } from './SettingsSections.tsx'
 import { Choice } from './Choice.tsx'
+import { OptionalModules } from './OptionalModules.tsx'
 import css from './SettingsSections.module.css'
 
 const languages: readonly RuntimeLanguage[] = ['python', 'node', 'php', 'c', 'cpp']
@@ -93,6 +94,7 @@ export function RuntimeSection({ useIde, runtime, runtimeNative, notify, t }: Se
         </li>)}</ul>}
       </article>)}
     </>}
+    <OptionalModules t={t} />
   </section>
 }
 

@@ -6,6 +6,7 @@ import { strataSettingsSchema } from '../strata-protocol.ts'
 import type { StrataModelPicker, StrataSettings as EngineSettings, StrataStatus } from '../strata-protocol.ts'
 import type { StrataActions, StrataSnapshot } from './strata-controller.ts'
 import { Choice } from './Choice.tsx'
+import { OptionalModules } from './OptionalModules.tsx'
 import css from './SettingsSections.module.css'
 
 interface Props extends StrataActions { snapshot: StrataSnapshot; t: TranslateNS<'rainy'> }
@@ -103,6 +104,7 @@ function StrataForm({ snapshot, status, t, strataSave, strataStart, strataStop, 
       </p>
       <Button size="sm" variant="outline" disabled={snapshot.loading || pending} onClick={() => { void strataRefresh() }}>{t('settingsRefresh')}</Button>
     </div>
+    {!status.runtime.available && <OptionalModules t={t} only="strata" onChange={() => { void strataRefresh() }} />}
     <p className={css.muted}>{t('strataSupported')}</p>
     {input('modelPath', t('strataModelPath'))}
     <div className={css.actions}>

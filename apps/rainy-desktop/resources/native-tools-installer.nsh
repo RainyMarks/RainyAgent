@@ -37,8 +37,8 @@
 !macroend
 
 !macro customInstall
-  ${IfNot} ${FileExists} "$EXEDIR\native-tools-*.tar.gz.*"
-    DetailPrint "未附带离线工具分卷，已跳过工具安装并保留现有工具。可稍后从完整离线目录安装。"
+  ${IfNot} ${FileExists} "$EXEDIR\rainy-unit-*.tar.gz"
+    DetailPrint "未附带离线工具包，已跳过工具安装并保留现有工具。可在应用的 CTF 工具页按需下载。"
     Goto rainyToolsInstallDone
   ${EndIf}
   DetailPrint "正在校验并安装离线工具包，请稍候..."
@@ -58,7 +58,7 @@
     SetErrorLevel 3
     Abort
   ${ElseIf} $0 != 0
-    MessageBox MB_OK|MB_ICONSTOP "离线工具安装未完成（退出代码 $0）。请关闭正在运行的工具，确认所有 native-tools 分卷与安装程序在同一目录，再重新运行安装程序。原工具及恢复记录已保留。" /SD IDOK
+    MessageBox MB_OK|MB_ICONSTOP "离线工具安装未完成（退出代码 $0）。请关闭正在运行的工具，确认所有 rainy-unit 工具包与安装程序在同一目录，再重新运行安装程序。原工具及恢复记录已保留。" /SD IDOK
     SetErrorLevel $0
     Abort
   ${EndIf}
@@ -129,6 +129,9 @@
   !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\linux-runtime.json"
   !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\linux-runtime.tar.gz"
   !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\native-tools-metadata.json"
+  !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\native-tools-channel.signed.json"
+  !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\native-tools-public-keys.json"
+  !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\optional-modules.json"
   !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\environment\wsl.3.0.1.0.x64.msi"
   !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\environment\ubuntu-26.04.1-wsl-amd64.wsl"
   !insertmacro rainyDeleteApplicationFile "$INSTDIR\resources\environment\media-verification.json"

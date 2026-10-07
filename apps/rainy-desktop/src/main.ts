@@ -20,6 +20,8 @@ import { randomUUID } from 'node:crypto'
 import { prepareDesktopEnvironment } from './native-environment-window.ts'
 import { installNativeTools } from './native-tool-windows.ts'
 import { runToolPackMaintenance } from './toolpack-maintenance.ts'
+import { OptionalModules } from './optional-modules.ts'
+import { removeRetiredResources } from './retired-resources.ts'
 import { acquireToolPackLock } from './toolpack.ts'
 import { chooseIdeDirectory, createIdeDirectoryPicker } from './ide-native.ts'
 import { createIdeEnvironmentWindow } from './ide-environment-window.ts'
@@ -47,6 +49,7 @@ let flushWorkbench: () => Promise<DraftFlushResult> = () => Promise.resolve({ ok
 let closeNativeTools: () => Promise<void> = () => Promise.resolve()
 let closeIdeEnvironment: () => Promise<void> = () => Promise.resolve()
 let closeStrata: () => Promise<void> = () => Promise.resolve()
+let closeModules: () => Promise<void> = () => Promise.resolve()
 let releaseToolPack: (() => Promise<void>) | undefined
 let componentInstallation: Promise<void> | undefined
 let updates: RainyUpdates | undefined
@@ -62,7 +65,7 @@ const lifecycle = createDesktopLifecycle({
     return answer.response === 0
   },
   cleanup: [async () => { await componentInstallation }, () => closeIdeEnvironment(), () => closeNativeTools(),
-    async () => { await transport?.stop() }, () => closeStrata(), async () => { await releaseToolPack?.() }],
+    async () => { await transport?.stop() }, () => closeStrata(), () => closeModules(), async () => { await releaseToolPack?.() }],
   reportCleanupFailure: (error) => { cleanupFailed = true; console.error('RainyAgent cleanup failed:', error) },
   exit: () => { app.quit() },
   restart: () => { app.relaunch(); quitAfterSave(true) },
@@ -197,8 +200,15 @@ async function start(): Promise<void> {
       } })
     timeline.mark(integrity.verified === 'full' ? 'verify (full)' : 'verify (stamp)')
   }
+  const modulesRoot = join(userData, 'modules')
+  const modules = new OptionalModules({ descriptorPath: join(resourceRoot, 'optional-modules.json'), root: modulesRoot,
+    fetch: (input, init) => window.webContents.session.fetch(input instanceof URL ? input.href : input, init),
+    publish: (state) => { if (!window.isDestroyed()) window.webContents.send('rainy:modules-progress', state) } })
+  closeModules = () => modules.close()
+  // A development checkout may still hold the engine that earlier releases bundled.
+  const checkoutStrata = resolve(__dirname, '../resources/strata-runtime')
   const strata = createStrataManager({
-    runtimeRoot: app.isPackaged ? join(resourceRoot, 'strata-runtime') : resolve(__dirname, '../resources/strata-runtime'),
+    runtimeRoot: !app.isPackaged && existsSync(checkoutStrata) ? checkoutStrata : join(modulesRoot, 'strata'),
     userData,
   })
   closeStrata = () => strata.close()
@@ -208,33 +218,64 @@ async function start(): Promise<void> {
   mkdirSync(carrierState, { recursive: true })
   const uvx = await uvxLookup
   const runtimeFiles = {
-    archive: join(resourceRoot, 'linux-runtime.tar.gz'),
     metadata: join(resourceRoot, 'linux-runtime.json'),
     installer: app.isPackaged ? join(resourceRoot, 'install-runtime.py') : resolve(__dirname, '../scripts/install-runtime.py'),
   }
-  /** Map the carrier paths into the distribution and unpack its Host, with one wsl.exe call per step. */
+  // A development checkout stages the runtime archive itself.
+  const linuxRuntimeArchive = async (): Promise<string> => !app.isPackaged && existsSync(join(resourceRoot, 'linux-runtime.tar.gz'))
+    ? join(resourceRoot, 'linux-runtime.tar.gz') : modules.path('linux-runtime')
+  /** Download this version's Linux runtime; failing that, the user retries, continues on Windows, or quits. */
+  const downloadLinuxRuntime = async (): Promise<boolean> => {
+    for (;;) {
+      try {
+        await modules.install('linux-runtime', (completed, total) => {
+          progress.step(`正在下载 WSL 运行环境 ${Math.round(completed / 1024 ** 2)} / ${Math.round(total / 1024 ** 2)} MB`, completed / total)
+        })
+        return true
+      } catch (error) {
+        const answer = await dialog.showMessageBox(window, { type: 'warning', title: 'RainyAgent', message: 'WSL 运行环境下载失败',
+          detail: `${errorText(error)}\n更新后第一次使用 WSL 时需要联网下载一次，已下载的部分会保留。`,
+          buttons: ['重试', '改用 Windows 原生运行', '退出'], defaultId: 0, cancelId: 2 })
+        if (answer.response === 1) return false
+        if (answer.response !== 0) throw new Error('未下载 WSL 运行环境，RainyAgent 已停止启动。')
+      }
+    }
+  }
+  /** Map the carrier paths into the distribution and unpack its Host, with one wsl.exe call per step.
+   * @returns the installed Host, or undefined when the user continues on Windows instead of downloading.
+   */
   const prepareWsl = async (distribution: string) => {
     progress.step(`正在启动 WSL · ${distribution}…`)
     const [archive, metadata, installer, state, mappedUvx] = await wslPaths(distribution,
-      [runtimeFiles.archive, runtimeFiles.metadata, runtimeFiles.installer, carrierState, ...uvx === undefined ? [] : [uvx]])
-    const output = (await run('wsl.exe', ['-d', distribution, '--exec', 'python3', installer, archive, metadata],
-      { windowsHide: true, timeout: 180000 })).stdout
-    const installed: unknown = JSON.parse(output)
+      [await linuxRuntimeArchive(), runtimeFiles.metadata, runtimeFiles.installer, carrierState, ...uvx === undefined ? [] : [uvx]])
+    const install = async (): Promise<unknown> => JSON.parse((await run('wsl.exe', ['-d', distribution, '--exec', 'python3', installer, archive, metadata],
+      { windowsHide: true, timeout: 180000 })).stdout)
+    let installed = await install()
+    if (installed !== null && typeof installed === 'object' && 'needsArchive' in installed) {
+      if (!await downloadLinuxRuntime()) return undefined
+      progress.step(`正在启动 WSL · ${distribution}…`)
+      installed = await install()
+    }
     return { installed, carrierState: state, uvx: mappedUvx }
   }
   let prepared: Awaited<ReturnType<typeof prepareWsl>> | undefined
+  let windowsInstead = false
   if (target.kind === 'wsl' && knownTarget) {
-    try { prepared = await prepareWsl(requireWslDistribution(target)) }
+    try { prepared = await prepareWsl(requireWslDistribution(target)); windowsInstead = prepared === undefined }
     catch (error) { appendFileSync(logPath, `Recorded WSL target unavailable, checking the environment: ${errorText(error)}\n`) }
   }
-  if (target.kind === 'wsl' && prepared === undefined) {
+  if (target.kind === 'wsl' && prepared === undefined && !windowsInstead) {
     progress.step('正在检查运行环境…')
     const environment = await prepareDesktopEnvironment(environmentSetup)
     target = (await listExecutionTargets()).find(value => value.kind === 'wsl' && value.distro === environment.distro)
       ?? { ...target, kind: 'wsl', distro: environment.distro, label: `WSL · ${environment.distro}` }
     environment.closeSetup()
     prepared = await prepareWsl(requireWslDistribution(target))
+    windowsInstead = prepared === undefined
   }
+  // Like a switch made in settings, continuing on Windows is recorded for later launches.
+  if (windowsInstead) target = (await listExecutionTargets()).find(value => value.kind === 'windows') ?? target
+  if (target.kind === 'wsl' && prepared === undefined) throw new Error('WSL 运行环境未就绪。')
   timeline.mark('runtime')
   const distro = target.kind === 'wsl' ? requireWslDistribution(target) : 'Windows'
   const convert = async (path: string) => target.kind === 'windows' ? path : wslPath(distro, '-u', path)
@@ -352,15 +393,16 @@ async function start(): Promise<void> {
     || !('host' in installed) || typeof installed.host !== 'string'
     || !(target.kind === 'windows' ? win32.isAbsolute(installed.host) : posix.isAbsolute(installed.host))) throw new Error('执行环境运行文件无效。')
   const idaMcpCommand = prepared === undefined ? uvx : prepared.uvx
-  const builtinPhp = app.isPackaged ? join(resourceRoot, 'php', 'php.exe')
-    : resolve(__dirname, '../runtime/component-stage/windows-basic/php/php.exe')
+  // The PHP component is downloaded from settings; the Host notices it at its fixed path without restarting.
+  const checkoutPhp = resolve(__dirname, '../runtime/component-stage/windows-basic/php/php.exe')
+  const builtinPhp = !app.isPackaged && existsSync(checkoutPhp) ? checkoutPhp : join(modulesRoot, 'php', 'php.exe')
   const hostEnvironment: Record<string, string> = {
     RAINY_EXECUTION_TARGET_ID: target.id,
     RAINY_CARRIER_STATE_ROOT: prepared === undefined ? carrierState : prepared.carrierState,
     ...(target.kind === 'windows' ? { RAINY_HOME: join(userData, 'native-home'),
       RAINY_TOOLCHAIN_ROOT: join(userData, 'env'),
       RAINY_PWSH_PATH: join(resourceRoot, 'windows-host', 'pwsh', 'pwsh.exe'),
-      ...existsSync(builtinPhp) ? { RAINY_BUILTIN_PHP: builtinPhp } : {},
+      RAINY_BUILTIN_PHP: builtinPhp,
       // Module compilation is cached across launches; resolution still dominates the native Host's startup.
       NODE_COMPILE_CACHE: join(userData, 'node-compile-cache') } : {}),
   }
@@ -393,11 +435,8 @@ async function start(): Promise<void> {
   const nativeTools = installNativeTools({ window, origin,
     installRoot: app.isPackaged ? installRoot : join(installRoot, `toolpacks/stage-${app.getVersion()}`), userData: app.getPath('userData'),
     download: {
-      keys: toolKeys,
-      metadataPath: app.isPackaged ? join(resourceRoot, 'native-tools-metadata.json')
-        : join(installRoot, `release/offline-${app.getVersion()}/native-tools-metadata.json`),
-      sourcePath: app.isPackaged ? join(resourceRoot, 'native-tools-download.json') : join(installRoot, 'resources/native-tools-download.json'),
-      catalogPath: app.isPackaged ? join(resourceRoot, 'native-tools-catalog.json') : join(installRoot, 'resources/native-tools-catalog.json'),
+      keys: toolKeys, installRootLocked: app.isPackaged,
+      channelPath: app.isPackaged ? join(resourceRoot, 'native-tools-channel.signed.json') : join(installRoot, 'toolpacks/native-tools-channel.v2.signed.json'),
     } })
   closeNativeTools = () => nativeTools.close()
   const trustedSender = (event: Pick<Electron.IpcMainEvent, 'sender' | 'senderFrame'>) => event.sender === window.webContents
@@ -582,6 +621,24 @@ async function start(): Promise<void> {
     if (!trustedSender(event)) throw new Error('Strata controls are available only in the RainyAgent window.')
     if (mutate && (lifecycle.closing || lifecycle.switching)) throw new Error('请等待应用切换或退出完成后再操作 Strata。')
   }
+  const admitModule = (event: Electron.IpcMainInvokeEvent): void => {
+    if (!trustedSender(event)) throw new Error('Component downloads are available only in the RainyAgent window.')
+  }
+  const moduleId = (value: unknown): 'strata' | 'php' => {
+    if (value !== 'strata' && value !== 'php') throw new Error('Invalid component.')
+    return value
+  }
+  handleIpc('rainy:modules-list', (event) => { admitModule(event); return modules.status() })
+  handleIpc('rainy:modules-state', (event) => { admitModule(event); return modules.progress() })
+  handleIpc('rainy:modules-install', async (event, value) => { admitModule(event); await modules.install(moduleId(value)) })
+  handleIpc('rainy:modules-remove', async (event, value) => {
+    admitModule(event)
+    const id = moduleId(value)
+    // An owned engine keeps its files open; external servers are never stopped.
+    if (id === 'strata') await strata.stop()
+    await modules.remove(id)
+  })
+  handleIpc('rainy:modules-cancel', async (event) => { admitModule(event); await modules.cancel() })
   handleIpc('rainy:strata-status', (event) => { admitStrata(event); return strata.status() })
   handleIpc('rainy:strata-save', (event, value) => { admitStrata(event, true); return strata.save(value) })
   handleIpc('rainy:strata-start', (event) => { admitStrata(event, true); return strata.start() })
@@ -659,6 +716,18 @@ async function start(): Promise<void> {
   void updates.check()
   const background = setTimeout(() => {
     void runBackgroundChecks({ integrity, target, settingsPath, logPath, window, busy: () => lifecycle.closing || lifecycle.switching })
+    void modules.clean().catch((error: unknown) => { appendFileSync(logPath, `Component cleanup failed: ${errorText(error)}
+`) })
+    if (app.isPackaged) {
+      void removeRetiredResources(resourceRoot).then((names) => {
+        if (names.length) appendFileSync(logPath, `Removed resources that earlier installers left behind: ${names.join(', ')}
+`)
+      }, (error: unknown) => { appendFileSync(logPath, `Retired resources were not removed: ${errorText(error)}
+`) })
+    }
+    void nativeTools.maintain().then((bytes) => {
+      if (bytes > 0) appendFileSync(logPath, `Removed ${Math.round(bytes / 1024 ** 2)} MiB of program files from tool upgrade backups\n`)
+    })
   }, BACKGROUND_CHECK_DELAY_MS)
   window.on('closed', () => { clearTimeout(background) })
 }

@@ -278,8 +278,14 @@ export async function resolveIdeRun(
       break
     }
     case 'php': {
-      const executable = await resolveIdeExecutable(options.subprocess, configuration.executable ?? runtime?.executables.php,
-        world.platform === 'windows' ? 'php.exe' : 'php', environment)
+      let executable: string
+      try {
+        executable = await resolveIdeExecutable(options.subprocess, configuration.executable ?? runtime?.executables.php,
+          world.platform === 'windows' ? 'php.exe' : 'php', environment)
+      } catch (error) {
+        if (configuration.executable !== undefined || world.platform !== 'windows') throw error
+        throw new Error('未找到 PHP。请在「设置 → 运行环境 → 可选组件」中下载 PHP，或在运行方式中指定已安装的 php.exe。', { cause: error })
+      }
       launch = { argv: [executable, program, ...arguments_], cwd, environment }
       break
     }

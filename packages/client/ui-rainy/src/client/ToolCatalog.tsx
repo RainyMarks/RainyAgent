@@ -1,10 +1,10 @@
-/** Human tool discovery and native launch controls in the retained CTF workspace. */
+/** Human tool discovery, per-tool downloads and native launch controls in the retained CTF workspace. */
 import { useState } from 'react'
 import type { PropsLocale } from '@deepseek-ai/dsh-client-ui-slots'
-import { Button, DisclosureRow, Input, Pill, Tag, Tooltip, IconSearchOutlineRegular, IconRefreshOutlineRegular,
-  IconPinOutlineRegular, IconPinFillRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input, Pill, Tag, Tooltip, fileSizeText, IconSearchOutlineRegular, IconRefreshOutlineRegular,
+  IconPinOutlineRegular, IconPinFillRegular, IconDownloadOutlineRegular, IconTrashOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import { nativeToolIds } from '../native-tools-protocol.ts'
-import type { NativeToolId, NativeToolSummary } from '../native-tools-protocol.ts'
+import type { NativeToolId, NativeToolSummary, NativeToolsOperation } from '../native-tools-protocol.ts'
 import type { NativeToolsState } from './native-tools.ts'
 import type { zh } from './locales.ts'
 import css from './ToolCatalog.module.css'
@@ -23,28 +23,18 @@ const purpose: Record<typeof nativeToolIds[number], keyof typeof zh> = {
   bruno: 'toolBruno', pcapfix: 'toolPcapfix',
 }
 const kindCopy = { desktop: 'toolsDesktop', terminal: 'toolsTerminal', web: 'toolsOfflineWeb' } as const
-type Filter = 'all' | 'favorites' | 'recent' | ToolGroup
+type Filter = 'all' | 'installed' | 'favorites' | 'recent' | ToolGroup
 const views: readonly { readonly id: Filter; readonly copyKey: keyof typeof zh }[] = [
-  { id: 'all', copyKey: 'toolsAll' }, { id: 'favorites', copyKey: 'toolsFavorites' }, { id: 'recent', copyKey: 'toolsRecent' },
+  { id: 'all', copyKey: 'toolsAll' }, { id: 'installed', copyKey: 'toolsInstalled' },
+  { id: 'favorites', copyKey: 'toolsFavorites' }, { id: 'recent', copyKey: 'toolsRecent' },
 ]
 const groupCopy = Object.fromEntries(toolGroups.map(group => [group.id, group.copyKey])) as Record<ToolGroup, keyof typeof zh>
-
-function ToolPackRepair({ t }: PropsLocale<'rainy'>) {
-  const [open, setOpen] = useState(false)
-  return <DisclosureRow title={t('toolsRepair')} icon={<IconRefreshOutlineRegular />} open={open}
-    expandable expandOnRowClick className={css.repair} onToggle={() => { setOpen(value => !value) }}>
-    <ol className={css.repairSteps}>
-      <li>{t('toolsRepairClose')}</li>
-      <li>{t('toolsRepairInstall')}</li>
-      <li>{t('toolsRepairRefresh')}</li>
-    </ol>
-  </DisclosureRow>
-}
+const sum = (tools: readonly NativeToolSummary[]): number => tools.reduce((total, tool) => total + tool.downloadBytes, 0)
 
 /** Actions supplied by the directory's retained owner. */
 export interface ToolCatalogActions {
   readonly checkToolUpdates: () => Promise<void>
-  readonly downloadTools: () => Promise<void>
+  readonly operateTools: (operation: NativeToolsOperation, ids?: readonly NativeToolId[]) => Promise<void>
   readonly cancelDownload: () => Promise<void>
   readonly loadTools: () => Promise<void>
   readonly launchTool: (id: NativeToolId, variant?: 'x32') => Promise<void>
@@ -52,30 +42,36 @@ export interface ToolCatalogActions {
 }
 
 /**
- * Filter the installed directory without changing its user-level preferences.
+ * Filter the directory, download single tools on demand and open the installed ones.
  * @param props - localized copy, authoritative availability, and native operations.
  * @returns the catalog, or the desktop availability notice in a browser.
  */
-export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, downloadTools, cancelDownload, checkToolUpdates }:
+export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, operateTools, cancelDownload, checkToolUpdates }:
   PropsLocale<'rainy'> & ToolCatalogActions & { readonly state: NativeToolsState }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
-  const downloading = state.download.phase === 'downloading' || state.download.phase === 'installing'
-  const complete = state.update.phase !== 'available' && state.tools.length > 0 && state.tools.every(tool => tool.status === 'ready'
-    && (tool.variants?.every(variant => variant.status === 'ready') ?? true))
-  const percentage = state.download.totalBytes > 0
-    ? Math.min(100, Math.floor(state.download.completedBytes * 100 / state.download.totalBytes)) : 0
+  const [removing, setRemoving] = useState<NativeToolId | undefined>()
+  const { download } = state
+  const operating = download.phase === 'verifying' || download.phase === 'downloading' || download.phase === 'installing'
+  const percentage = download.totalBytes > 0 ? Math.min(100, Math.floor(download.completedBytes * 100 / download.totalBytes)) : 0
+  const installed = state.tools.filter(tool => tool.status !== 'available')
+  const available = state.tools.filter(tool => tool.status === 'available')
+  const outdated = state.tools.filter(tool => tool.outdated)
+  const updatable = installed.length > 0 && (outdated.length > 0 || state.catalogOutdated)
   const description = (id: NativeToolId): string => {
     const known = nativeToolIds.find(value => value === id)
     return t(known === undefined ? 'toolExtra' : purpose[known])
   }
+  const progress = t(download.phase === 'verifying' ? 'toolsProgressVerify' : download.phase === 'downloading' ? 'toolsProgressDownload'
+    : download.operation === 'remove' ? 'toolsProgressRemove' : 'toolsProgressInstall', { progress: String(percentage) })
   const search = query.trim().toLocaleLowerCase()
   const favoriteIds = state.preferences.favorites
   const recentIds = state.preferences.recent
   const tools = state.tools.filter((tool) => {
+    if (filter === 'installed' && tool.status === 'available') return false
     if (filter === 'favorites' && !favoriteIds.includes(tool.id)) return false
     if (filter === 'recent' && !recentIds.includes(tool.id)) return false
-    if (filter !== 'all' && filter !== 'favorites' && filter !== 'recent' && toolGroup(tool) !== filter) return false
+    if (!views.some(view => view.id === filter) && toolGroup(tool) !== filter) return false
     return search === '' || `${tool.name} ${tool.id} ${description(tool.id)}`.toLocaleLowerCase().includes(search)
   })
   if (filter === 'recent') tools.sort((a, b) => recentIds.indexOf(a.id) - recentIds.indexOf(b.id))
@@ -86,36 +82,54 @@ export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, d
     <p>{t('toolsDesktopOnly')}</p><p className={css.secondary}>{t('toolsDesktopHint')}</p>
   </div>
   const busy = state.phase === 'loading' || state.savingFavorites || state.pending.length > 0
+  const locked = operating || state.phase === 'loading'
   const card = (tool: NativeToolSummary, showGroup: boolean) => {
     const favorite = favoriteIds.includes(tool.id)
     const pending = state.pending.includes(tool.id)
     const favoriteLabel = t(favorite ? 'toolsRemoveFavorite' : 'toolsAddFavorite', { name: tool.name })
+    const working = operating && (download.tools?.includes(tool.id) ?? false)
     return <li key={tool.id} className={css.card} data-tool-id={tool.id}>
       <div className={css.details}>
         <div className={css.nameRow}><h3>{tool.name}</h3>{showGroup && <Tag>{t(groupCopy[toolGroup(tool)])}</Tag>}</div>
         <p className={css.purpose}>{description(tool.id)}</p>
         <div className={css.metadata}>
           <span>{tool.version || t('toolsVersionUnknown')}</span><span>{t(kindCopy[tool.launchKind])}</span>
-          <Tag tone={tool.status === 'missing' ? 'warning' : tool.verified ? 'success' : 'neutral'}>
-            {t(tool.status === 'missing' ? 'toolsMissing' : tool.verified ? 'toolsReady' : 'toolsUnverified')}
+          <Tag tone={tool.status === 'missing' ? 'warning' : tool.status === 'ready' && tool.verified ? 'success' : 'neutral'}>
+            {t(tool.status === 'available' ? 'toolsNotInstalled' : tool.status === 'missing' ? 'toolsMissing' : tool.verified ? 'toolsReady' : 'toolsUnverified')}
           </Tag>
+          {tool.outdated && <Tag tone="warning">{t('toolsOutdated')}</Tag>}
+          {working && <span role="status">{progress}</span>}
         </div>
         {tool.missing.length > 0 && <p className={css.missing}>{tool.missing.join(' · ')}</p>}
-        {(tool.status === 'missing' || tool.variants?.some(variant => variant.status === 'missing')) && <ToolPackRepair t={t} />}
+        {(tool.status === 'missing' || tool.variants?.some(variant => variant.status === 'missing')) && <div className={css.repair}>
+          <span>{t('toolsRepairHint')}</span>
+          <Button size="sm" variant="outline" icon={<IconRefreshOutlineRegular />} disabled={locked}
+            onClick={() => { void operateTools('repair') }}>{t('toolsRepair')}</Button>
+        </div>}
       </div>
       <div className={css.actions}>
         <Tooltip label={favoriteLabel} portal>
-          <Button size="sm" aria-label={favoriteLabel} aria-pressed={favorite} disabled={state.savingFavorites || state.phase === 'loading' || downloading}
+          <Button size="sm" aria-label={favoriteLabel} aria-pressed={favorite} disabled={state.savingFavorites || state.phase === 'loading' || operating}
             icon={favorite ? <IconPinFillRegular /> : <IconPinOutlineRegular />} onClick={() => { void toggleFavorite(tool.id) }} />
         </Tooltip>
-        <Button size="sm" variant="outline" aria-label={t('toolsOpenName', { name: tool.name })}
-          disabled={tool.status === 'missing' || pending || state.phase === 'loading' || downloading} aria-busy={pending}
-          onClick={() => { void launchTool(tool.id) }}>
-          {t(pending ? 'toolsOpening' : tool.launchKind === 'terminal' ? 'toolsOpenTerminal' : 'toolsOpen')}
-        </Button>
-        {tool.variants?.map(variant => <Button key={variant.id} size="sm" variant="outline"
-          aria-label={t('toolsOpenName', { name: variant.name })} disabled={variant.status === 'missing' || pending || state.phase === 'loading' || downloading}
-          onClick={() => { void launchTool(tool.id, variant.id) }}>{variant.name}</Button>)}
+        {tool.status === 'available' ? <Button size="sm" variant="outline" icon={<IconDownloadOutlineRegular />}
+          aria-label={t('toolsDownloadName', { name: tool.name })} disabled={locked} aria-busy={working}
+          onClick={() => { void operateTools('install', [tool.id]) }}>{t('toolsDownload', { size: fileSizeText(tool.downloadBytes) })}</Button> : <>
+          <Button size="sm" variant="outline" aria-label={t('toolsOpenName', { name: tool.name })}
+            disabled={tool.status === 'missing' || pending || locked} aria-busy={pending}
+            onClick={() => { void launchTool(tool.id) }}>
+            {t(pending ? 'toolsOpening' : tool.launchKind === 'terminal' ? 'toolsOpenTerminal' : 'toolsOpen')}
+          </Button>
+          {tool.variants?.map(variant => <Button key={variant.id} size="sm" variant="outline"
+            aria-label={t('toolsOpenName', { name: variant.name })} disabled={variant.status !== 'ready' || pending || locked}
+            onClick={() => { void launchTool(tool.id, variant.id) }}>{variant.name}</Button>)}
+          {removing === tool.id ? <Button size="sm" variant="outline" disabled={locked || pending}
+            onClick={() => { setRemoving(undefined); void operateTools('remove', [tool.id]) }}>{t('toolsRemoveConfirm', { name: tool.name })}</Button>
+            : <Tooltip label={t('toolsRemoveName', { name: tool.name })} portal>
+              <Button size="sm" aria-label={t('toolsRemoveName', { name: tool.name })} disabled={locked || pending}
+                icon={<IconTrashOutlineRegular />} onClick={() => { setRemoving(tool.id) }} />
+            </Tooltip>}
+        </>}
       </div>
     </li>
   }
@@ -129,28 +143,27 @@ export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, d
       </Tooltip>
     </div>
     <div className={css.notice}>
-      <div><span>{t(complete ? 'toolsDownloadInstalled' : 'toolsDownloadDescription')}</span>
-        {state.download.totalBytes > 0 && state.download.phase !== 'installing' && <small>
-          {t('toolsDownloadSize', { size: (state.download.totalBytes / 1024 ** 3).toFixed(2) })}
-        </small>}
-        {downloading && <span role="status">{t(state.download.phase === 'installing' ? 'toolsDownloadInstalling' : 'toolsDownloadProgress', { progress: String(percentage) })}</span>}
-        {state.download.phase === 'cancelled' && <small>{t('toolsDownloadCancelled')}</small>}
-        {state.download.phase === 'error' && <small role="alert">{state.download.error}</small>}
+      <div><span>{t('toolsSummary', { installed: String(installed.length), total: String(state.tools.length) })}</span>
+        {operating && <span role="status">{progress}</span>}
+        {download.phase === 'cancelled' && <small>{t('toolsDownloadCancelled')}</small>}
+        {download.phase === 'error' && <small role="alert">{download.error}</small>}
         {state.update.phase === 'available' && <small>{t('toolsUpdateAvailable', { version: state.update.version })}</small>}
         {state.update.phase === 'current' && <small>{t('toolsUpdateCurrent')}</small>}
         {state.update.phase === 'error' && <small role="alert">{state.update.error}</small>}
       </div>
       <div className={css.actions}>
-        {downloading ? <Button size="sm" variant="outline" onClick={() => { void cancelDownload() }}>{t('toolsDownloadCancel')}</Button>
-          : <Button size="sm" variant="outline" disabled={complete || state.phase === 'loading' || state.savingFavorites || state.pending.length > 0}
-            onClick={() => { void downloadTools() }}>
-            {t(complete ? 'toolsDownloadInstalled' : state.download.phase === 'error' || state.download.phase === 'cancelled' ? 'toolsDownloadRetry'
-              : state.update.phase === 'available' ? 'toolsUpdateDownload' : 'toolsDownloadAll')}
+        {operating ? <Button size="sm" variant="outline" onClick={() => { void cancelDownload() }}>{t('toolsDownloadCancel')}</Button> : <>
+          {updatable && <Button size="sm" variant="primary" disabled={busy}
+            onClick={() => { void operateTools('update') }}>{t('toolsUpdateAll', { size: fileSizeText(sum(outdated)) })}</Button>}
+          {available.length > 0 && <Button size="sm" variant="outline" disabled={busy}
+            onClick={() => { void operateTools('install', available.map(tool => tool.id)) }}>
+            {t('toolsDownloadAll', { size: fileSizeText(sum(available)) })}
           </Button>}
-        <Button size="sm" variant="outline" disabled={downloading || state.update.phase === 'checking'}
+        </>}
+        <Button size="sm" variant="outline" disabled={operating || state.update.phase === 'checking'}
           onClick={() => { void checkToolUpdates() }}>{t(state.update.phase === 'checking' ? 'toolsUpdateChecking' : 'toolsUpdateCheck')}</Button>
       </div>
-      {downloading && <progress className={css.downloadProgress} aria-label={t('toolsDownloadAll')} value={percentage} max={100} />}
+      {operating && <progress className={css.downloadProgress} aria-label={progress} value={percentage} max={100} />}
     </div>
     <div className={css.filters} role="group" aria-label={t('toolsCategories')}>
       {filters.map(item => <Pill key={item.id} active={filter === item.id} aria-pressed={filter === item.id}
@@ -159,7 +172,6 @@ export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, d
     {state.phase === 'error' && <div className={css.notice} role="alert">
       <span>{t('toolsLoadFailed')}{state.error && <small>{state.error}</small>}</span>
       <Button size="sm" onClick={() => { void loadTools() }}>{t('ctfRetry')}</Button>
-      <ToolPackRepair t={t} />
     </div>}
     {state.phase === 'loading' && state.tools.length === 0 ? <div className={css.skeletons} role="status" aria-label={t('toolsLoading')}>
       {[0, 1, 2, 3].map(id => <div key={id} className={css.skeleton} aria-hidden="true"><span /><span /></div>)}

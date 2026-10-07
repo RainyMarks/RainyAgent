@@ -5,9 +5,9 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { c } from 'tar'
 import { afterEach, describe, expect, it } from 'vitest'
-import { createNativeToolPackInstaller, ToolPackInstallError } from '../src/toolpack.ts'
+import { createNativeToolPackInstaller, damagedToolPackUnits, ToolPackInstallError } from '../src/toolpack.ts'
 import { toolPackMetadataSchema } from '../src/toolpack-format.ts'
-import type { ToolPackMetadata, ToolPackPlatform } from '../src/toolpack-format.ts'
+import type { ToolPackMetadata, ToolPackMetadataV1, ToolPackMetadataV2, ToolPackPlatform } from '../src/toolpack-format.ts'
 import { findBusyToolPackProcess } from '../src/toolpack-platform.ts'
 import { renameToolPackPath, writeToolPackRecord } from '../src/toolpack-files.ts'
 import { nativeConsoleCommand } from '../src/native-tool-process.ts'
@@ -47,7 +47,7 @@ async function fixture(preserve: string[] = [], changes: Record<string, string> 
     { path: 'tools/manifest.json', kind: 'file', preserve: [] },
   ] satisfies ToolPackMetadata['units']).filter(unit => !omittedUnits.includes(unit.path))
   const id = hash(JSON.stringify({ files, units }))
-  const metadata: ToolPackMetadata = { version: 1, id, format: 'tar.gz', volumeSize: 128, unpackedBytes: files.reduce((sum, file) => sum + file.bytes, 0), files, units, volumes: [] }
+  const metadata: ToolPackMetadataV1 = { version: 1, id, format: 'tar.gz', volumeSize: 128, unpackedBytes: files.reduce((sum, file) => sum + file.bytes, 0), files, units, volumes: [] }
   async function archive(paths = files.map(file => file.path)): Promise<void> {
     const packed: Buffer[] = []
     for await (const chunk of c({ cwd: source, gzip: true, portable: true, noDirRecurse: true, mtime: new Date(0) }, paths)) {
@@ -81,6 +81,129 @@ async function upgradeFixture(
   const next = await fixture(preserve, newFiles, omittedUnits)
   return { ...next, installRoot: previous.installRoot, options: { ...next.options, installRoot: previous.installRoot }, previous }
 }
+
+const unitLayout: ToolPackMetadata['units'] = [
+  { path: 'tools/alpha', kind: 'directory', preserve: [] },
+  { path: 'tools/beta', kind: 'directory', preserve: [] },
+  { path: 'tools/manifest.json', kind: 'file', preserve: [] },
+]
+
+/** Write one archive per unit and version 2 metadata into a new media directory below root. */
+async function unitPack(root: string, name: string, content: Record<string, string>) {
+  const source = join(root, `${name}-source`)
+  const mediaDirectory = join(root, `${name}-media`)
+  const metadataPath = join(root, `${name}-metadata.json`)
+  await mkdir(mediaDirectory, { recursive: true })
+  for (const [path, value] of Object.entries(content)) await put(source, path, value)
+  const files = Object.entries(content).map(([path, value]) => ({ path, bytes: Buffer.byteLength(value), sha256: hash(value) }))
+    .sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0)
+  const archives: ToolPackMetadataV2['archives'] = []
+  for (const unit of unitLayout) {
+    const paths = files.filter(file => unit.kind === 'file' ? file.path === unit.path : file.path.startsWith(unit.path + '/')).map(file => file.path)
+    const packed: Buffer[] = []
+    const options = { cwd: source, gzip: true, portable: true, noDirRecurse: true, mtime: new Date(0) }
+    for await (const chunk of c(options, paths)) packed.push(Buffer.from(chunk))
+    const bytes = Buffer.concat(packed)
+    const file = `rainy-unit-${hash(JSON.stringify({ unit: unit.path, paths, content: paths.map(path => content[path]) })).slice(0, 20)}.tar.gz`
+    await writeFile(join(mediaDirectory, file), bytes)
+    archives.push({ unit: unit.path, file, bytes: bytes.length, sha256: hash(bytes) })
+  }
+  const metadata: ToolPackMetadataV2 = { version: 2, id: hash(JSON.stringify({ files, units: unitLayout })), format: 'tar.gz',
+    unpackedBytes: files.reduce((sum, file) => sum + file.bytes, 0), files, units: unitLayout, archives }
+  await writeFile(metadataPath, JSON.stringify(metadata))
+  const archiveOf = (unit: string): string => join(mediaDirectory, archives.find(archive => archive.unit === unit)?.file ?? '')
+  return { metadata, metadataPath, mediaDirectory, archiveOf }
+}
+
+async function unitFixture() {
+  const root = await mkdtemp(join(tmpdir(), 'rainy-toolpack-units-'))
+  roots.push(root)
+  const installRoot = join(root, 'installed')
+  await mkdir(installRoot)
+  const platform: ToolPackPlatform = { availableBytes: async () => 1024 ** 4, assertNotBusy: async () => {}, move: rename }
+  const first = await unitPack(root, 'first', { 'tools/alpha/app.exe': 'alpha one', 'tools/beta/app.exe': 'beta one',
+    'tools/manifest.json': '{"version":1,"tools":["alpha","beta"]}' })
+  const second = await unitPack(root, 'second', { 'tools/alpha/app.exe': 'alpha two', 'tools/beta/app.exe': 'beta one',
+    'tools/manifest.json': '{"version":1,"tools":["alpha","beta","two"]}' })
+  const install = createNativeToolPackInstaller(platform)
+  return { root, installRoot, platform, first, second, install }
+}
+
+describe('per-tool installation', () => {
+  it('installs only the selected tools and the catalog from their own archives', async () => {
+    const test = await unitFixture()
+    await unlink(test.first.archiveOf('tools/beta'))
+    const result = await test.install({ installRoot: test.installRoot, mediaDirectory: test.first.mediaDirectory,
+      metadataPath: test.first.metadataPath, units: ['tools/alpha'] })
+    expect(result.installedFiles).toBe(2)
+    expect(await readFile(join(test.installRoot, 'tools/alpha/app.exe'), 'utf8')).toBe('alpha one')
+    await expect(readdir(join(test.installRoot, 'tools/beta'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(JSON.parse(await readFile(join(test.installRoot, '.rainy-toolpack/installed.json'), 'utf8'))).toEqual({
+      version: 2, packId: test.first.metadata.id, units: ['tools/alpha', 'tools/manifest.json'] })
+    await expect(test.install({ installRoot: test.installRoot, mediaDirectory: test.first.mediaDirectory,
+      metadataPath: test.first.metadataPath, units: ['tools/gamma'] })).rejects.toMatchObject({ code: 'invalid-selection' })
+  })
+
+  it('downloads only changed units and keeps nothing but user files of a deselected tool', async () => {
+    const test = await unitFixture()
+    await test.install({ installRoot: test.installRoot, mediaDirectory: test.first.mediaDirectory, metadataPath: test.first.metadataPath })
+    await put(test.installRoot, 'tools/beta/notes.txt', 'personal notes')
+    // Unchanged beta needs no archive when it stays; the changed alpha and catalog do.
+    await unlink(test.second.archiveOf('tools/beta'))
+    const update = await test.install({ installRoot: test.installRoot, mediaDirectory: test.second.mediaDirectory,
+      metadataPath: test.second.metadataPath })
+    expect(update.installedFiles).toBe(2)
+    expect(await readFile(join(test.installRoot, 'tools/alpha/app.exe'), 'utf8')).toBe('alpha two')
+    expect(await readFile(join(test.installRoot, 'tools/beta/notes.txt'), 'utf8')).toBe('personal notes')
+    const removal = await test.install({ installRoot: test.installRoot, mediaDirectory: test.second.mediaDirectory,
+      metadataPath: test.second.metadataPath, units: ['tools/alpha'] })
+    expect(removal.installedFiles).toBe(0)
+    await expect(readdir(join(test.installRoot, 'tools/beta'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readdir(join(removal.backupDirectory, 'tools/beta'))).toEqual(['notes.txt'])
+    const journal: unknown = JSON.parse(await readFile(join(test.installRoot, '.rainy-toolpack/journal.json'), 'utf8'))
+    expect(journal).toMatchObject({ phase: 'committed', units: [{ path: 'tools/beta', retired: true }] })
+    // The previous record covered every unit, so a rollback would restore it without a unit list.
+    expect(journal).not.toHaveProperty('previousUnits')
+  })
+
+  it('removes a tool using the saved inventory without any archive', async () => {
+    const test = await unitFixture()
+    await test.install({ installRoot: test.installRoot, mediaDirectory: test.first.mediaDirectory, metadataPath: test.first.metadataPath })
+    const empty = join(test.root, 'empty-media')
+    await mkdir(empty)
+    await test.install({ installRoot: test.installRoot, mediaDirectory: empty, units: ['tools/beta'],
+      metadataPath: join(test.installRoot, `.rainy-toolpack/manifests/${test.first.metadata.id}.json`) })
+    await expect(readdir(join(test.installRoot, 'tools/alpha'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(join(test.installRoot, 'tools/beta/app.exe'), 'utf8')).toBe('beta one')
+    expect(await readdir(join(test.installRoot, '.rainy-toolpack/backups'))).toEqual([])
+  })
+
+  it('finds damaged files and replaces only the units it is told to', async () => {
+    const test = await unitFixture()
+    const options = { installRoot: test.installRoot, mediaDirectory: test.first.mediaDirectory, metadataPath: test.first.metadataPath }
+    await test.install(options)
+    await writeFile(join(test.installRoot, 'tools/alpha/app.exe'), 'alpha 0ne')
+    expect(await damagedToolPackUnits(test.installRoot, test.first.metadata, ['tools/alpha', 'tools/beta'])).toEqual(['tools/alpha'])
+    expect((await test.install(options)).installedFiles).toBe(0)
+    expect((await test.install({ ...options, replace: ['tools/alpha'] })).installedFiles).toBe(1)
+    expect(await readFile(join(test.installRoot, 'tools/alpha/app.exe'), 'utf8')).toBe('alpha one')
+  })
+
+  it('restores the partial installation record when a later switch fails', async () => {
+    const test = await unitFixture()
+    await test.install({ installRoot: test.installRoot, mediaDirectory: test.first.mediaDirectory, metadataPath: test.first.metadataPath, units: ['tools/alpha'] })
+    test.platform.move = async (source, destination) => {
+      if (destination === join(test.installRoot, 'tools/beta')) throw new Error('Interrupted move')
+      await rename(source, destination)
+    }
+    await expect(test.install({ installRoot: test.installRoot, mediaDirectory: test.second.mediaDirectory,
+      metadataPath: test.second.metadataPath }))
+      .rejects.toMatchObject({ code: 'install-failed' })
+    expect(JSON.parse(await readFile(join(test.installRoot, '.rainy-toolpack/installed.json'), 'utf8'))).toEqual({
+      version: 2, packId: test.first.metadata.id, units: ['tools/alpha', 'tools/manifest.json'] })
+    expect(await readFile(join(test.installRoot, 'tools/alpha/app.exe'), 'utf8')).toBe('alpha one')
+  })
+})
 
 describe('native tool pack installation', () => {
   it('streams verified split volumes into an installation and retains a transaction receipt', async () => {
@@ -134,7 +257,10 @@ describe('native tool pack installation', () => {
     expect(await readFile(join(test.installRoot, 'tools/alpha/app.exe'), 'utf8')).toBe('new alpha executable')
     expect(await readFile(join(test.installRoot, 'tools/alpha/config/settings.json'), 'utf8')).toBe('{"theme":"personal"}')
     expect(await readFile(join(test.installRoot, 'tools/alpha/config/history/one.json'), 'utf8')).toBe('personal history')
-    expect(await readFile(join(result.backupDirectory, 'tools/alpha/app.exe'), 'utf8')).toBe('old alpha')
+    // The replaced program file matches the saved inventory and leaves the backup; changed settings stay there.
+    await expect(readFile(join(result.backupDirectory, 'tools/alpha/app.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
+    expect(await readFile(join(result.backupDirectory, 'tools/alpha/config/settings.json'), 'utf8')).toBe('{"theme":"personal"}')
+    expect(result.prunedBytes).toBeGreaterThan(0)
   })
 
   it.each([
@@ -234,7 +360,7 @@ describe('native tool pack installation', () => {
     expect(await readFile(join(test.installRoot, 'tools/alpha/output/report.txt'), 'utf8')).toBe('personal output')
   })
 
-  it('moves retired tools and their user files to the upgrade backup while retaining prior package records', async () => {
+  it('keeps only the user files of a retired tool in the upgrade backup while retaining prior package records', async () => {
     const test = await upgradeFixture(['tools/alpha/config'], {}, {}, ['tools/alpha'])
     const previousManifestPath = join(test.installRoot, `.rainy-toolpack/manifests/${test.previous.metadata.id}.json`)
     const previousManifest = await readFile(previousManifestPath, 'utf8')
@@ -242,9 +368,9 @@ describe('native tool pack installation', () => {
     await put(test.installRoot, 'tools/unregistered/note.txt', 'unregistered user tool')
     const result = await createNativeToolPackInstaller(test.platform)(test.options)
     await expect(readFile(join(test.installRoot, 'tools/alpha/app.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
-    expect(await readFile(join(result.backupDirectory, 'tools/alpha/app.exe'), 'utf8')).toBe('old alpha')
+    await expect(readFile(join(result.backupDirectory, 'tools/alpha/app.exe'))).rejects.toMatchObject({ code: 'ENOENT' })
+    await expect(readFile(join(result.backupDirectory, 'tools/alpha/config/settings.json'))).rejects.toMatchObject({ code: 'ENOENT' })
     expect(await readFile(join(result.backupDirectory, 'tools/alpha/output/report.txt'), 'utf8')).toBe('personal output')
-    expect(await readFile(join(result.backupDirectory, 'tools/alpha/config/settings.json'), 'utf8')).toBe('{"theme":"default"}')
     expect(await readFile(join(test.installRoot, 'tools/beta/app.exe'), 'utf8')).toBe('new beta executable')
     expect(await readFile(join(test.installRoot, 'tools/unregistered/note.txt'), 'utf8')).toBe('unregistered user tool')
     expect(await readFile(previousManifestPath, 'utf8')).toBe(previousManifest)
@@ -253,7 +379,6 @@ describe('native tool pack installation', () => {
       phase: 'committed', units: [
         { path: 'tools/alpha', kind: 'directory', preserve: [], retired: true, hadOriginal: true, state: 'old-moved' },
         { path: 'tools/beta' },
-        { path: 'tools/manifest.json' },
       ],
     })
   })

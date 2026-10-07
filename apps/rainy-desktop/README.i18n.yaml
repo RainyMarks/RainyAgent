@@ -3,29 +3,32 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write apps/rainy-desktop/README.md
 /rainyagent-desktop:
-  en: e903475bfceada57
-  zh: a9bb52af010142ca
+  en: bd3b87c297ab93e0
+  zh: 6619d6bcd3a4d181
 /rainyagent-desktop/offline-installation-and-recovery:
-  en: e70a884e4273ae61
-  zh: cf58dc3d5f81ff98
+  en: ac80199848b73911
+  zh: 878d01c56477315f
+/rainyagent-desktop/optional-components:
+  en: e44bf8571dc0403b
+  zh: 9466278abe8bff74
 /rainyagent-desktop/application-updates:
-  en: fdf2b301a041e655
-  zh: b1e3bda40efed00f
+  en: defd8bcdd7dfc615
+  zh: f028893ecfe1b8fc
 /rainyagent-desktop/runtime-contract:
-  en: 99bc29f19a3df3a6
-  zh: 2f036809c6dd1154
+  en: f21cb2c80c57af25
+  zh: 56b0448baf5de7d0
 /rainyagent-desktop/code-workspace:
-  en: 30d61d4564fff3bb
-  zh: f04112029af06b98
+  en: 1cd8f56070431b7f
+  zh: 6bbfdfa68998e9d6
 /rainyagent-desktop/ctf-workbench:
-  en: 007a69824fd2829d
-  zh: 2e37a7d1608817d0
+  en: 4361bd6e2fa1d3d0
+  zh: e6e94eb9ebe0af15
 /rainyagent-desktop/strata-local-inference:
-  en: bb45c6c20d686fb7
-  zh: b21ce69ab297aebd
+  en: 126abe6285c90454
+  zh: ea35b04407e4ef22
 /rainyagent-desktop/model-experience:
-  en: c48e18384c49a195
-  zh: a1b404a7a16bdf98
+  en: ad22b18b7c89bc55
+  zh: f4ec6023a161beee
 /rainyagent-desktop/project-memory:
   en: 9ad651356a5cbb09
   zh: 2b1bf867c58d8a0e

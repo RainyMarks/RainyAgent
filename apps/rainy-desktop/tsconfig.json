@@ -29,6 +29,9 @@
       ],
       "@deepseek-ai/dsh-client-ui-rainy/strata-protocol": [
         "../../packages/client/ui-rainy/src/strata-protocol.ts"
+      ],
+      "@deepseek-ai/dsh-client-ui-rainy/modules-protocol": [
+        "../../packages/client/ui-rainy/src/modules-protocol.ts"
       ]
     }
   },

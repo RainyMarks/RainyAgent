@@ -2,18 +2,16 @@
 
 - Profile: Rainy desktop, with a recorded conversation
 - Common tools is the initial tab; IceSky frames before visiting: 0
-- Online tool pack: download action and manual update check available
-- Signed channel check: tool pack is up to date; installed catalog retained
+- Per-tool downloads: 已下载 4 / 5 款工具，用到哪款就下载哪款
+- Not downloaded entry: ExifTool — 下载 · 12MB; afterwards Open is available and Download all disappears
+- Signed channel check: tools are up to date; installed catalog retained
 - Unverified entry: CyberChef — launch enabled
 - Launch feedback: 已发送 CyberChef 的启动请求
 - Missing entry: 7-Zip — launch disabled (7zFM.exe)
-- Missing entry repair guidance:
-  - 保存工作，并退出 RainyAgent 和所有工具窗口
-  - 将配套版本的安装 EXE 和全部工具包分卷放在同一文件夹，然后重新运行安装程序
-  - 安装完成后重新打开 RainyAgent，点击“刷新工具状态”
+- Missing entry repair: 重新下载缺失或损坏的文件; the repair request reaches the desktop
 - Reverse filter: x64dbg
 - Search ffprobe: FFmpeg
-- Failed launch leaves all four tool rows visible
+- Failed launch leaves all five tool rows visible
 - Favorites after reload: CyberChef
 - Recent after reload: CyberChef
 - 950 px window: no horizontal directory overflow

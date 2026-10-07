@@ -256,6 +256,7 @@
       "@deepseek-ai/dsh-client-ui-rainy": ["./packages/client/ui-rainy/src"],
       "@deepseek-ai/dsh-client-ui-rainy/native-tools-protocol": ["./packages/client/ui-rainy/src/native-tools-protocol.ts"],
       "@deepseek-ai/dsh-client-ui-rainy/strata-protocol": ["./packages/client/ui-rainy/src/strata-protocol.ts"],
+      "@deepseek-ai/dsh-client-ui-rainy/modules-protocol": ["./packages/client/ui-rainy/src/modules-protocol.ts"],
       "@deepseek-ai/dsh-client-ui-rainy/ide-files-protocol": ["./packages/client/ui-rainy/src/ide-files-protocol.ts"],
       "@deepseek-ai/dsh-client-ui-rainy/ide-execution-protocol": ["./packages/client/ui-rainy/src/ide-execution-protocol.ts"],
       "@deepseek-ai/dsh-client-ui-approval": ["./packages/client/ui-approval/src"],

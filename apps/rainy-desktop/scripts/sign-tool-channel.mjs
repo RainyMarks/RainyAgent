@@ -1,4 +1,4 @@
-/** Sign a tool-channel revision using the same builder identity as application resources. */
+/** Sign a per-tool channel revision using the same builder identity as application resources. */
 import { createHash, sign } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
@@ -21,10 +21,10 @@ export async function signToolChannel(options) {
     readFile(options.sourcePath, 'utf8').then(JSON.parse), readFile(options.metadataPath, 'utf8').then(JSON.parse), readFile(options.catalogPath, 'utf8'),
   ])
   const record = metadata.files.find(file => file.path === 'tools/manifest.json')
-  if (source.packId !== metadata.id || !record || record.bytes !== Buffer.byteLength(catalog)
+  if (source.version !== 2 || metadata.version !== 2 || source.packId !== metadata.id || !record || record.bytes !== Buffer.byteLength(catalog)
     || record.sha256 !== createHash('sha256').update(catalog).digest('hex')) throw new Error('Tool-channel inputs do not match their frozen metadata')
-  const payload = Buffer.from(JSON.stringify({ version: 1, revision: options.revision, releaseVersion: options.releaseVersion, keyId, source, metadata, catalog }))
-  return { version: 1, payload: payload.toString('base64'), signature: sign(null, Buffer.concat([Buffer.from('RainyAgent/tool-channel/v1\0'), payload]), key).toString('base64') }
+  const payload = Buffer.from(JSON.stringify({ version: 2, revision: options.revision, releaseVersion: options.releaseVersion, keyId, source, metadata, catalog }))
+  return { version: 2, payload: payload.toString('base64'), signature: sign(null, Buffer.concat([Buffer.from('RainyAgent/tool-channel/v2\0'), payload]), key).toString('base64') }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

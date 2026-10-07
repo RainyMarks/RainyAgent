@@ -1,4 +1,4 @@
-"""Verify and unpack the bundled Host into Rainy's private WSL directory."""
+"""Verify and unpack the downloaded Host into Rainy's private WSL directory."""
 import fcntl
 import hashlib
 import json
@@ -21,6 +21,10 @@ with (owned / '.install.lock').open('a') as lock:
     if not (target / '.complete').is_file():
         if target.exists():
             raise RuntimeError('Incomplete runtime directory; preserved for diagnosis')
+        # The carrier downloads the archive only when this version's runtime is not installed yet.
+        if not archive.is_file():
+            print(json.dumps({'needsArchive': True}))
+            sys.exit(0)
         if archive.stat().st_size != metadata['bytes'] or hashlib.sha256(archive.read_bytes()).hexdigest() != digest:
             raise RuntimeError('Rainy runtime checksum mismatch')
         staging = Path(tempfile.mkdtemp(prefix='.install-', dir=owned))

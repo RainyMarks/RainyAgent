@@ -2,7 +2,7 @@
 
 English | [中文](README.zh.md)
 
-RainyAgent is a Windows desktop coding agent with a code editor, AI conversations, project memory, and a workspace for tools operated by people. The core installer includes the Windows Host and a complete Strata runtime; users supply their own supported model weights. Commands run in native Windows or a selected WSL2 environment, and other local servers or APIs remain available.
+RainyAgent is a Windows desktop coding agent with a code editor, AI conversations, project memory, and a workspace for tools operated by people. The core installer includes the Windows Host; the Strata engine, PHP, the WSL runtime and each tool are downloaded when needed, and users supply their own supported model weights. Commands run in native Windows or a selected WSL2 environment, and other local servers or APIs remain available.
 
 Develop by NCUCyberBase.
 
@@ -12,28 +12,28 @@ Develop by NCUCyberBase.
 
 - A Monaco editor with file tabs, search, differences, recovery of unsaved work, and sending selected code to AI.
 - Project terminals, run configurations, and debugging for Python, JavaScript/TypeScript, and C/C++; PHP supports execution.
-- Bundled Strata and Python, model discovery, explicit context budgets, request diagnostics, and project memory with separate use and generation controls.
-- Optional offline runtimes and a catalog of 38 tools for manual use, separate from the Agent's default tools.
+- A downloadable Strata engine with Python, model discovery, explicit context budgets, request diagnostics, and project memory with separate use and generation controls.
+- Optional offline runtimes and a catalog of 38 tools for manual use, downloaded per tool and separate from the Agent's default tools.
 - Stable release checks and background downloads, with installation only after confirmation and saved shutdown.
 
 <a id="run"></a>
 ## Download and start
 
-Get [RainyAgent 1.0.2 for Windows x64](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.2/RainyAgent-1.0.2-windows-x64-setup.exe). The [release page](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2) provides the installer and automatic-update files. The updated native tools are in the [1.0.2 resource archive](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.2-resources); unchanged offline environments remain in the [1.0.0 resource archive](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources).
+Get [RainyAgent 1.0.6 for Windows x64](https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6/RainyAgent-1.0.6-windows-x64-setup.exe). The [release page](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.6) provides the core installer and automatic-update files. The [1.0.6 resource archive](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.6-resources) holds the tool archives, the PHP component and the WSL runtime pieces; the Strata archive and offline environments remain in the [1.0.0 resource archive](https://github.com/RainyMarks/RainyAgent/releases/tag/v1.0.0-resources).
 
-Install the core application, open RainyAgent from the desktop shortcut, then choose **File → Open folder**. A new installation uses Windows directly; WSL2 and offline environment components are optional. No activation code is required. The core EXE already supplies the Windows Host, Strata engine, Python, and their runtime dependencies; main and MTP model weights remain outside the installer.
+Install the core application, open RainyAgent from the desktop shortcut, then choose **File → Open folder**. A new installation uses Windows directly; WSL2 and offline environment components are optional. No activation code is required. The core EXE supplies the Windows Host. Download the Strata engine (about 560 MB) and PHP from **Settings → Runtime environments → Optional components** when you need them; the first WSL launch downloads the WSL runtime (about 340 MB). Main and MTP model weights remain outside the installer.
 
-Open **CTF tools → Common tools → Download all tools** while online. Installed tools remain available offline; the catalog checks for added or updated tools. See [tool installation and updates](apps/rainy-desktop/README.md#ctf-workbench).
+Open **CTF tools → Common tools** while online and download each tool when you need it, or select **Download all**. Downloaded tools remain available offline; the catalog marks tools that have updates. See [tool installation and updates](apps/rainy-desktop/README.md#ctf-workbench).
 
-Automatic updates replace the core application. They do not download optional tool packs, WSL media, or scientific runtimes again. A downloaded update offers **Later** or **Restart and install**; ordinary exit does not install it.
+Automatic updates replace the core application. They do not download tools, WSL media, or scientific runtimes again; the first WSL launch after an update downloads that version's WSL runtime. A downloaded update offers **Later** or **Restart and install**; ordinary exit does not install it.
 
 ## Connect a model
 
-### Bundled Strata
+### Strata local model
 
-The core includes [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) and Python 3.12.14. Its inference engine targets Windows x64 and NVIDIA CUDA 13, requires driver 580 or newer, and includes GPU targets `sm75`, `sm86`, `sm89`, and `sm120`. The package does not provide AMD or Linux inference. Supply a supported Qwen3.8 Flash Next main GGUF, all of its shards, and matching MTP weights as a GGUF or prepared runtime directory; weights and derived dense/expert packs are not bundled.
+The Strata engine is an optional download of about 560 MB containing [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) and Python 3.12.14. Its inference engine targets Windows x64 and NVIDIA CUDA 13, requires driver 580 or newer, and includes GPU targets `sm75`, `sm86`, `sm89`, and `sm120`. The package does not provide AMD or Linux inference. Supply a supported Qwen3.8 Flash Next main GGUF, all of its shards, and matching MTP weights as a GGUF or prepared runtime directory; weights and derived dense/expert packs are not bundled.
 
-1. Open **Settings → Models → Strata local model**. Choose the main model and matching MTP files, or import a compatible Strata profile. An empty MTP path requests automatic detection beside the model.
+1. Open **Settings → Models → Strata local model**. If the engine is not downloaded yet, select **Download** first. Choose the main model and matching MTP files, or import a compatible Strata profile. An empty MTP path requests automatic detection beside the model.
 2. Save the context window and local port, then select **Start local model**. The first explicit start prepares required model files locally without downloads; preparation and startup can be cancelled.
 3. When the model is ready, select **Connect and use by default**. The current Host verifies its actual model and context before selecting it. Reasoning and request output limits remain in the ordinary model settings above.
 
@@ -58,7 +58,7 @@ cd RainyAgent
 pnpm install --frozen-lockfile
 node apps/rainy-desktop/scripts/bootstrap-release-inputs.mjs --manifest apps/rainy-desktop/toolpacks/build-inputs.v1.json
 pnpm run build
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.2 -ComponentSource apps/rainy-desktop/release/offline-1.0.2/environment-components
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.6 -ComponentSource apps/rainy-desktop/release/offline-1.0.6/environment-components
 ```
 
 Replace `Ubuntu` only when your prepared WSL build distribution has another name. [Validation](apps/rainy-desktop/VALIDATION.md) records the build, installation, and runtime checks completed for each artifact; source instructions alone are not a clean-machine acceptance result.

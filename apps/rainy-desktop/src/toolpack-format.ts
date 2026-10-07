@@ -18,18 +18,31 @@ export function isToolPackPath(path: string): boolean {
 const pathSchema = z.string().refine(isToolPackPath, 'Unsafe installation-relative path')
 const fileSchema = z.object({ path: pathSchema, bytes: bytesSchema, sha256: hashSchema }).strict()
 const unitSchema = z.object({ path: pathSchema, kind: z.enum(['directory', 'file']), preserve: z.array(pathSchema) }).strict()
+const metadataFields = { id: hashSchema, format: z.literal('tar.gz'), unpackedBytes: bytesSchema,
+  files: z.array(fileSchema).min(1), units: z.array(unitSchema).min(1) }
 
-/** Metadata ships inside the desktop installer; adjacent archive volumes are checked against it. */
-export const toolPackMetadataSchema = z.object({
-  version: z.literal(1),
-  id: hashSchema,
-  format: z.literal('tar.gz'),
-  volumeSize: z.number().int().positive().max(2 * 1024 ** 3),
-  unpackedBytes: bytesSchema,
-  files: z.array(fileSchema).min(1),
-  units: z.array(unitSchema).min(1),
-  volumes: z.array(z.object({ file: pathSchema.refine(path => !path.includes('/')), bytes: bytesSchema.refine(bytes => bytes > 0), sha256: hashSchema }).strict()).min(1),
-}).strict().superRefine((metadata, context) => {
+/** Name of a unit archive; the digest identifies the unit's file inventory, so an unchanged tool keeps its archive. */
+export const TOOL_UNIT_ARCHIVE = /^rainy-unit-[a-f0-9]{20}\.tar\.gz$/
+
+/** Whether a package file belongs to an installation unit.
+ * @param unit Directory or catalog-file unit.
+ * @param path Package file path.
+ * @returns Membership.
+ */
+export function unitContains(unit: { readonly path: string; readonly kind: 'directory' | 'file' }, path: string): boolean {
+  return unit.kind === 'file' ? path === unit.path : path.startsWith(unit.path + '/')
+}
+
+/** Metadata names one archive split into volumes (version 1) or one archive per installation unit (version 2). */
+export const toolPackMetadataSchema = z.discriminatedUnion('version', [
+  z.object({ version: z.literal(1), ...metadataFields, volumeSize: z.number().int().positive().max(2 * 1024 ** 3),
+    volumes: z.array(z.object({ file: pathSchema.refine(path => !path.includes('/')), bytes: bytesSchema.refine(bytes => bytes > 0), sha256: hashSchema }).strict()).min(1),
+  }).strict(),
+  z.object({ version: z.literal(2), ...metadataFields,
+    archives: z.array(z.object({ unit: pathSchema, file: z.string().regex(TOOL_UNIT_ARCHIVE),
+      bytes: bytesSchema.refine(bytes => bytes > 0), sha256: hashSchema }).strict()).min(1),
+  }).strict(),
+]).superRefine((metadata, context) => {
   const reject = (message: string): void => { context.addIssue({ code: 'custom', message }) }
   const paths = new Set<string>()
   const aliases = new Map<string, string>()
@@ -44,7 +57,7 @@ export const toolPackMetadataSchema = z.object({
       if (previous && previous !== original) reject(`Inconsistent Windows path spelling: ${original}`)
       aliases.set(original.toLowerCase(), original)
     }
-    if (!metadata.units.some(unit => unit.kind === 'file' ? file.path === unit.path : file.path.startsWith(unit.path + '/'))) reject(`File outside install units: ${file.path}`)
+    if (!metadata.units.some(unit => unitContains(unit, file.path))) reject(`File outside install units: ${file.path}`)
   }
   if (metadata.files.reduce((sum, file) => sum + file.bytes, 0) !== metadata.unpackedBytes) reject('Unpacked byte count does not match file inventory')
   const units = new Set<string>()
@@ -71,25 +84,52 @@ export const toolPackMetadataSchema = z.object({
         if (existing && existing !== original) reject(`Inconsistent preserved path spelling: ${original}`)
       }
     }
-    if (!metadata.files.some(file => unit.kind === 'file' ? file.path === unit.path : file.path.startsWith(unit.path + '/'))) reject(`Empty installation unit: ${unit.path}`)
+    if (!metadata.files.some(file => unitContains(unit, file.path))) reject(`Empty installation unit: ${unit.path}`)
   }
   if (!metadata.files.some(file => file.path === 'tools/manifest.json')) reject('Tool catalog is missing')
   const expectedId = createHash('sha256').update(JSON.stringify({ files: metadata.files, units: metadata.units })).digest('hex')
   if (expectedId !== metadata.id) reject('Pack ID does not match the file and installation-unit records')
-  const volumeNames = new Set<string>()
-  for (const [index, volume] of metadata.volumes.entries()) {
-    const expectedName = `native-tools-${metadata.id.slice(0, 16)}.tar.gz.${String(index + 1).padStart(3, '0')}`
-    if (volume.file !== expectedName || volumeNames.has(volume.file.toLowerCase())) reject(`Unexpected archive volume: ${volume.file}`)
-    volumeNames.add(volume.file.toLowerCase())
-    if (volume.bytes > metadata.volumeSize || index < metadata.volumes.length - 1 && volume.bytes !== metadata.volumeSize) reject(`Invalid volume size: ${volume.file}`)
+  if (metadata.version === 1) {
+    const volumeNames = new Set<string>()
+    for (const [index, volume] of metadata.volumes.entries()) {
+      const expectedName = `native-tools-${metadata.id.slice(0, 16)}.tar.gz.${String(index + 1).padStart(3, '0')}`
+      if (volume.file !== expectedName || volumeNames.has(volume.file.toLowerCase())) reject(`Unexpected archive volume: ${volume.file}`)
+      volumeNames.add(volume.file.toLowerCase())
+      if (volume.bytes > metadata.volumeSize || index < metadata.volumes.length - 1 && volume.bytes !== metadata.volumeSize) reject(`Invalid volume size: ${volume.file}`)
+    }
+    return
   }
+  const archived = new Set<string>()
+  const archiveNames = new Set<string>()
+  for (const archive of metadata.archives) {
+    if (!metadata.units.some(unit => unit.path === archive.unit) || archived.has(archive.unit)) reject(`Unexpected unit archive: ${archive.unit}`)
+    if (archiveNames.has(archive.file)) reject(`Duplicate unit archive: ${archive.file}`)
+    archived.add(archive.unit)
+    archiveNames.add(archive.file)
+  }
+  if (archived.size !== metadata.units.length) reject('Every installation unit requires one archive')
 })
 
 /** Trusted fields after metadata parsing succeeds. */
 export type ToolPackMetadata = z.infer<typeof toolPackMetadataSchema>
 
+/** Single split archive inventory. */
+export type ToolPackMetadataV1 = Extract<ToolPackMetadata, { version: 1 }>
+
+/** Per-unit archive inventory. */
+export type ToolPackMetadataV2 = Extract<ToolPackMetadata, { version: 2 }>
+
 /** One directory or catalog file replaced atomically during the installation transaction. */
 export type ToolPackUnit = ToolPackMetadata['units'][number]
+
+/** Installed units of one pack; version 1 records predate partial installation and cover every unit. */
+export const installedToolPackSchema = z.discriminatedUnion('version', [
+  z.object({ version: z.literal(1), packId: hashSchema }).strict(),
+  z.object({ version: z.literal(2), packId: hashSchema, units: z.array(pathSchema) }).strict(),
+])
+
+/** Validated installed-pack record. */
+export type InstalledToolPack = z.infer<typeof installedToolPackSchema>
 
 /** Installer progress suitable for the maintenance window or setup log. */
 export interface ToolPackProgress {
@@ -105,6 +145,12 @@ export interface InstallNativeToolPackOptions {
   installRoot: string
   mediaDirectory: string
   metadataPath: string
+  /** Units installed after the transaction; omitted installs every unit. Installed units left out are retired. */
+  units?: readonly string[]
+  /** Units replaced even when their recorded files are unchanged, for example after a failed integrity check. */
+  replace?: readonly string[]
+  /** The caller already holds this directory's installation lock. */
+  lockHeld?: boolean
   onProgress?(progress: ToolPackProgress): void
   signal?: AbortSignal
 }
@@ -116,6 +162,8 @@ export interface NativeToolPackInstallResult {
   installedFiles: number
   reusedFiles: number
   backupDirectory: string
+  /** Program-file bytes removed from backups after the commit; user files stay there. */
+  prunedBytes: number
 }
 
 /** Platform calls that own free-space observations, busy-process checks, and atomic renames. */

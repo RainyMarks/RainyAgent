@@ -3,20 +3,20 @@
 # After editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write README.md
 /rainyagent:
-  en: 063e96a99adb501c
-  zh: 5e7d6f5dcf4d288a
+  en: 914a3af21e9f4771
+  zh: f7cc452aeaa4bf2c
 /rainyagent/what-it-includes:
-  en: 5f521d21dc39768a
-  zh: 8cd99e763c9443f2
+  en: 2379cb51bd47aba5
+  zh: a78cd094756e7302
 /rainyagent/download-and-start:
-  en: 9d23f943068db618
-  zh: 641d2d2bbd7e4e58
+  en: 2eb28f3bb461298e
+  zh: dd03aa11f0908a5e
 /rainyagent/connect-a-model:
   en: fda515a8f3177479
   zh: a18a4f3dffa9f10d
-/rainyagent/connect-a-model/bundled-strata:
-  en: f7f3df7b36907363
-  zh: 32c348bbf237338e
+/rainyagent/connect-a-model/strata-local-model:
+  en: c36b155295f4b857
+  zh: 9bc49209459837c9
 /rainyagent/connect-a-model/existing-server-or-api:
   en: 440c9fc49ab9101e
   zh: deac5aae28afb5fa

@@ -1,9 +1,12 @@
-/** Installer entry for the desktop carrier's adjacent offline tool volumes. */
+/** Installer entry for the desktop carrier's adjacent offline tool archives. */
+import { readFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { installNativeToolPack, ToolPackInstallError } from './toolpack.ts'
-import { assertToolPackPath, writeToolPackRecord } from './toolpack-files.ts'
+import { assertToolPackPath, writeToolPackFile, writeToolPackRecord } from './toolpack-files.ts'
+import { authenticateToolChannel } from './native-tools-update.ts'
+import { parseReleaseKeyring } from './release-trust.ts'
 
 /** Local progress; completedBytes applies only to the current named phase. */
 export interface ToolPackWindowProgress {
@@ -17,7 +20,7 @@ export interface ToolPackWindowProgress {
 
 /**
  * Install only the trusted tool pack described in this carrier's resources.
- * @param mediaDirectory - folder containing the adjacent archive volumes.
+ * @param mediaDirectory - folder containing every adjacent unit archive.
  * @param silent - suppress the progress window for a silent installation.
  * @returns an installer process exit code after the result has been recorded.
  */
@@ -62,9 +65,15 @@ export async function runToolPackMaintenance(mediaDirectory: string, silent: boo
   }
   try {
     await assertToolPackPath(stateRoot)
-    const result = await installNativeToolPack({ installRoot, mediaDirectory: resolve(mediaDirectory),
-      metadataPath: app.isPackaged ? join(process.resourcesPath, 'native-tools-metadata.json')
-        : resolve(__dirname, `../release/offline-${app.getVersion()}/native-tools-metadata.json`),
+    const resources = app.isPackaged ? process.resourcesPath : resolve(__dirname, '../resources')
+    const channel = authenticateToolChannel(JSON.parse(await readFile(app.isPackaged ? join(resources, 'native-tools-channel.signed.json')
+      : resolve(__dirname, '../toolpacks/native-tools-channel.v2.signed.json'), 'utf8')),
+    parseReleaseKeyring(JSON.parse(await readFile(join(resources, 'native-tools-public-keys.json'), 'utf8'))))
+    const metadataPath = join(stateRoot, `offline-metadata-${channel.metadata.id}.json`)
+    await writeToolPackFile(metadataPath, JSON.stringify(channel.metadata))
+    // Offline media carries every tool, so each unit is installed again from the adjacent archives.
+    const result = await installNativeToolPack({ installRoot, mediaDirectory: resolve(mediaDirectory), metadataPath,
+      replace: channel.metadata.units.map(unit => unit.path),
       onProgress: (update) => {
         if (progress.at(-1)?.phase !== update.phase) progress.push({ phase: update.phase, message: update.message })
         publish({ ...update, cancelling: abort.signal.aborted })

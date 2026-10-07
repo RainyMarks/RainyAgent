@@ -1,0 +1,539 @@
+{
+  "version": 2,
+  "packId": "0ce4cd501de4c2188efed475686188e344bbd5f293c744bfde481b6f6cf348b3",
+  "archives": [
+    {
+      "file": "rainy-unit-4f903bf5f0995cc9cbc1.tar.gz",
+      "bytes": 33771576,
+      "sha256": "8b6cb3500837362b7f259fe328160b120f73c2cadfa8f20788247cfa5b5c563a",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-a98c5ad74b461ded1dbe.001",
+          "bytes": 33771576,
+          "sha256": "8b6cb3500837362b7f259fe328160b120f73c2cadfa8f20788247cfa5b5c563a"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-ed66f9e1f9db422898b2.tar.gz",
+      "bytes": 48921128,
+      "sha256": "2154d822e2eaceb166cf558e81a198aab7d7087469ad0f3a452faf9ce40c2e28",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-c4550df4074e33fece78.001",
+          "bytes": 48921128,
+          "sha256": "2154d822e2eaceb166cf558e81a198aab7d7087469ad0f3a452faf9ce40c2e28"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-a5778682f993f78c9c28.tar.gz",
+      "bytes": 1233858,
+      "sha256": "7a06ec9a1f1b763c67eef6431e822174c25a69549c7fc6344090ad9796a9bd27",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-de279872eecd682eeab8.001",
+          "bytes": 1233858,
+          "sha256": "7a06ec9a1f1b763c67eef6431e822174c25a69549c7fc6344090ad9796a9bd27"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-5956e48d42f629700e84.tar.gz",
+      "bytes": 25398468,
+      "sha256": "a8e22ef2b9c716ad60e901e0d9eb7c4254034ba0588683642e4fc53682297ffe",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-ac5050a695d3de30e122.001",
+          "bytes": 25398468,
+          "sha256": "a8e22ef2b9c716ad60e901e0d9eb7c4254034ba0588683642e4fc53682297ffe"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-7bd1aaa16c1db432ad4b.tar.gz",
+      "bytes": 10092327,
+      "sha256": "74cac6f469415a72b210a5c59d033c0f4dfbb4a9e89c6dc053d0739f56bbabb0",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-3187848a3e522616dc80.001",
+          "bytes": 10092327,
+          "sha256": "74cac6f469415a72b210a5c59d033c0f4dfbb4a9e89c6dc053d0739f56bbabb0"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-f29750f38e372d83ada4.tar.gz",
+      "bytes": 182560372,
+      "sha256": "67ab1de169d0f8d05651e2c9b14af9336abe95605bc4442c80b252963c47e2e6",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-ee92882b07e54f0a5ff2.001",
+          "bytes": 182560372,
+          "sha256": "67ab1de169d0f8d05651e2c9b14af9336abe95605bc4442c80b252963c47e2e6"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-24059e2143e973ec9972.tar.gz",
+      "bytes": 8566902,
+      "sha256": "1db393ea5176a5eced9755f93ae8369c928a3f3eab16fbb88ecad07df32ec4ae",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-ec3179a97ce74d3c0925.001",
+          "bytes": 8566902,
+          "sha256": "1db393ea5176a5eced9755f93ae8369c928a3f3eab16fbb88ecad07df32ec4ae"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-b304c435d52647e0a8ad.tar.gz",
+      "bytes": 21922570,
+      "sha256": "b9f6aa02d6951166fbcc3a11019ac85255bee37eb43ac419863bbed032914eb0",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-092b440368387c426de1.001",
+          "bytes": 21922570,
+          "sha256": "b9f6aa02d6951166fbcc3a11019ac85255bee37eb43ac419863bbed032914eb0"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-3eceafa4cff0b9d1ce6f.tar.gz",
+      "bytes": 22326089,
+      "sha256": "7f5578e528d96e5f0ab59e3de1b205850c9ca61a023f8f251dd25b278fb5193b",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-c4cae876e99dc57a14b5.001",
+          "bytes": 22326089,
+          "sha256": "7f5578e528d96e5f0ab59e3de1b205850c9ca61a023f8f251dd25b278fb5193b"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-8786e91fdd2de3094d88.tar.gz",
+      "bytes": 98246766,
+      "sha256": "e1949d06c2830d457efbabfbfc6afc367834fb4dac3edd83762fee741ec976f5",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-2bc4595f2c8d4007e4a3.001",
+          "bytes": 98246766,
+          "sha256": "e1949d06c2830d457efbabfbfc6afc367834fb4dac3edd83762fee741ec976f5"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-4996760d047f3f993c96.tar.gz",
+      "bytes": 6915426,
+      "sha256": "757c6534df207da51746d5bf7b8a817b43b75b3b875d58e81ff49b1c1a7a14f6",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-5bbe5e69efd02931c3a6.001",
+          "bytes": 6915426,
+          "sha256": "757c6534df207da51746d5bf7b8a817b43b75b3b875d58e81ff49b1c1a7a14f6"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-7ca1ce5536f17c1418b4.tar.gz",
+      "bytes": 184783277,
+      "sha256": "edc714424a86b86ecd34c43c4f814da5f36f8d05fae4bd3b6b79b509321a773d",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-1ce7a93737d16af688ea.001",
+          "bytes": 184783277,
+          "sha256": "edc714424a86b86ecd34c43c4f814da5f36f8d05fae4bd3b6b79b509321a773d"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-b71a63f4f8c76d8f79e9.tar.gz",
+      "bytes": 244273176,
+      "sha256": "0dafab4beb9154b1c6847b18fc5ebf449d28635a4ee2483c0ba15638e8e10c35",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-9824c2b8e31cc302435c.001",
+          "bytes": 244273176,
+          "sha256": "0dafab4beb9154b1c6847b18fc5ebf449d28635a4ee2483c0ba15638e8e10c35"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-9e8b39c20a8d280ce6f4.tar.gz",
+      "bytes": 516458,
+      "sha256": "f5400367b23870f82e35c1f7f5ebce1a17712a9fc75ab5dfca365a1432301661",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-78f47117ad7bc6adc30c.001",
+          "bytes": 516458,
+          "sha256": "f5400367b23870f82e35c1f7f5ebce1a17712a9fc75ab5dfca365a1432301661"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-90f3aa62e1375c44164d.tar.gz",
+      "bytes": 401219091,
+      "sha256": "93d805c6694a8485275f4ca3a72d85fd30d9caaf456c27df58710527ea4c1138",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-b153ca1a793f0b63e1ec.001",
+          "bytes": 401219091,
+          "sha256": "93d805c6694a8485275f4ca3a72d85fd30d9caaf456c27df58710527ea4c1138"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-63fc18c11ca53f10769f.tar.gz",
+      "bytes": 262005,
+      "sha256": "b1dfd54d6fd9b63adbb86351070873bdce75e1475a7d6286b6aaf1a340480e3c",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-c4d1ed8fc17f1e807611.001",
+          "bytes": 262005,
+          "sha256": "b1dfd54d6fd9b63adbb86351070873bdce75e1475a7d6286b6aaf1a340480e3c"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-dba0ebe40b5e0481af28.tar.gz",
+      "bytes": 85954867,
+      "sha256": "8a8dc3ed34775bdd8de01d014dd46ea3778465b58f403d4f72df94c33b7b913e",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-72d71c3eb009388994ae.001",
+          "bytes": 85954867,
+          "sha256": "8a8dc3ed34775bdd8de01d014dd46ea3778465b58f403d4f72df94c33b7b913e"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-e9fa765783ae3a3a2ba4.tar.gz",
+      "bytes": 59413693,
+      "sha256": "77aaac1c3f9aa99ee7c5595fbd7614ff38b6a3f5fcb997af6789cfe69b5ec630",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-a0455ae038848153e6a4.001",
+          "bytes": 59413693,
+          "sha256": "77aaac1c3f9aa99ee7c5595fbd7614ff38b6a3f5fcb997af6789cfe69b5ec630"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-a83082354e9ce4cfd6d6.tar.gz",
+      "bytes": 72659721,
+      "sha256": "3dc9c0d1972dbc606ad04187ede936df2dffadb3c4f768732c0391f365b6b6bf",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-39edb90b3d85a62a59fc.001",
+          "bytes": 72659721,
+          "sha256": "3dc9c0d1972dbc606ad04187ede936df2dffadb3c4f768732c0391f365b6b6bf"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-7a8dd6b9e3a826f6d7e6.tar.gz",
+      "bytes": 431859,
+      "sha256": "f391f6855cc4481335c13975eba94ff435e58aa250a1c811fc80b1d7bdf51e0e",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-1fa0bab4fdea7c4a1850.001",
+          "bytes": 431859,
+          "sha256": "f391f6855cc4481335c13975eba94ff435e58aa250a1c811fc80b1d7bdf51e0e"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-0071705fcead0568cca2.tar.gz",
+      "bytes": 2214370,
+      "sha256": "4e7238f54d25a3afcac6681cef15724c6dbbb36cd48ef385cfa2a92214a39531",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-267370dece834841081f.001",
+          "bytes": 2214370,
+          "sha256": "4e7238f54d25a3afcac6681cef15724c6dbbb36cd48ef385cfa2a92214a39531"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-366cd88ad5490230fb48.tar.gz",
+      "bytes": 1488003,
+      "sha256": "9bdf329210324b1034a793c15f86fdd3fe4914039cf3208c883114dc775961c4",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-3a2aa1cf3d4af57c5158.001",
+          "bytes": 1488003,
+          "sha256": "9bdf329210324b1034a793c15f86fdd3fe4914039cf3208c883114dc775961c4"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-2fd854dada2e927e6be3.tar.gz",
+      "bytes": 303343,
+      "sha256": "1f30b2cd924c9c591724e58fd284642e570d7316c5af859dc920a23a209ed945",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-dda8041e1f56c3008c93.001",
+          "bytes": 303343,
+          "sha256": "1f30b2cd924c9c591724e58fd284642e570d7316c5af859dc920a23a209ed945"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-67f009816aeb8181de79.tar.gz",
+      "bytes": 12931469,
+      "sha256": "3c6d741a825e0d03aab7b64313369ba8d040a3b0c95f45bed44c04dbe75c59d3",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-05f01f14ef72989188c9.001",
+          "bytes": 12931469,
+          "sha256": "3c6d741a825e0d03aab7b64313369ba8d040a3b0c95f45bed44c04dbe75c59d3"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-82a0e8aa2b343b57e45d.tar.gz",
+      "bytes": 65095440,
+      "sha256": "8814754f9d1cdfdacfcfa77722cfd2d7b123c10205fc8ba7e424f69a211c2b8d",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-4da99f2ff1a2c7be941f.001",
+          "bytes": 65095440,
+          "sha256": "8814754f9d1cdfdacfcfa77722cfd2d7b123c10205fc8ba7e424f69a211c2b8d"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-b1891d3c82e693a81242.tar.gz",
+      "bytes": 24198707,
+      "sha256": "222ca3458e78197d30c8bf564b9947d85689ef62bd63d0b934c33843d3c8a19d",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-0cafe78401fa51f45acf.001",
+          "bytes": 24198707,
+          "sha256": "222ca3458e78197d30c8bf564b9947d85689ef62bd63d0b934c33843d3c8a19d"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-dc1e272887c947324576.tar.gz",
+      "bytes": 2120029,
+      "sha256": "7d87280dadb834d53fbb5750b68d4ccdfbffbfe9b4f9173ec8a0cbdef91f5c82",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-537e6b88753a5fca7abd.001",
+          "bytes": 2120029,
+          "sha256": "7d87280dadb834d53fbb5750b68d4ccdfbffbfe9b4f9173ec8a0cbdef91f5c82"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-785ce779946fb780ad86.tar.gz",
+      "bytes": 1883553,
+      "sha256": "11a480df0e3257bb0f1cc2f4caed4079511d78115834aa8deff016366e1c164d",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-623d2b9a80a1c19546a2.001",
+          "bytes": 1883553,
+          "sha256": "11a480df0e3257bb0f1cc2f4caed4079511d78115834aa8deff016366e1c164d"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-460650f07e9ed3f86ad2.tar.gz",
+      "bytes": 22924926,
+      "sha256": "14c0808ca60f93abd8c27c53f8eb862815e38169180363cc3db241cf5aae8f8e",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-b7b45d7c69dff2ec8aea.001",
+          "bytes": 22924926,
+          "sha256": "14c0808ca60f93abd8c27c53f8eb862815e38169180363cc3db241cf5aae8f8e"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-b223a34c802542d8bcbb.tar.gz",
+      "bytes": 1929616,
+      "sha256": "609d2d055f605959c1108b116cf870ed8dc2df6de6ce0f2211da8b2a100b8cdd",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-9811f5c55e10d5268f36.001",
+          "bytes": 1929616,
+          "sha256": "609d2d055f605959c1108b116cf870ed8dc2df6de6ce0f2211da8b2a100b8cdd"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-316f540a6b6fc0ed8df2.tar.gz",
+      "bytes": 6764100,
+      "sha256": "1e58cbe21d2ee31a97a81b2ea0fb5ae1efa807242163af2a3037fb5abd702de9",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-d9be34ff3bc836452da9.001",
+          "bytes": 6764100,
+          "sha256": "1e58cbe21d2ee31a97a81b2ea0fb5ae1efa807242163af2a3037fb5abd702de9"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-06cee6e13cf972d231f1.tar.gz",
+      "bytes": 22162444,
+      "sha256": "270cec33b03cb42d63b71acc8c1b293111686173db45eb931cdbe3021c1b653e",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-45381d8bb774d5dd1574.001",
+          "bytes": 22162444,
+          "sha256": "270cec33b03cb42d63b71acc8c1b293111686173db45eb931cdbe3021c1b653e"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-153650757f45a736ab5d.tar.gz",
+      "bytes": 69214,
+      "sha256": "e320b3a540c3b75dc0c0ce59756892b0b8f90c3eb92a07cc19a372aa59dfe814",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-4d8b3e90e83e805aa54f.001",
+          "bytes": 69214,
+          "sha256": "e320b3a540c3b75dc0c0ce59756892b0b8f90c3eb92a07cc19a372aa59dfe814"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-ffaabefb29b45144910d.tar.gz",
+      "bytes": 53871070,
+      "sha256": "90b0f127392f624c1af2b8bb2f5b24163d79bff264b4fed83b631397abc526fc",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-89c3c5a3d1f22afe2b8d.001",
+          "bytes": 53871070,
+          "sha256": "90b0f127392f624c1af2b8bb2f5b24163d79bff264b4fed83b631397abc526fc"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-9351f4bd4ed640079e3f.tar.gz",
+      "bytes": 210821,
+      "sha256": "12bf681756cc841dc197328d8cea91d95d82700d57bbfb0f1deba7e8ae6a0d5b",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-6dad80b8e60f2ae08d4e.001",
+          "bytes": 210821,
+          "sha256": "12bf681756cc841dc197328d8cea91d95d82700d57bbfb0f1deba7e8ae6a0d5b"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-38cf4fd1e7eb0a6935fa.tar.gz",
+      "bytes": 13631947,
+      "sha256": "6f9e92d9d7010ceb0e12ec425c95e9379ebab55dba8a9067f4562b6705599f1d",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-b67ca6df43b3b1b8c0f8.001",
+          "bytes": 13631947,
+          "sha256": "6f9e92d9d7010ceb0e12ec425c95e9379ebab55dba8a9067f4562b6705599f1d"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-ba57dc9ab93aa47549ab.tar.gz",
+      "bytes": 134879324,
+      "sha256": "e86c8c9409c59a68c3299e6b55f9e4e3538c4a84b3443556c7a7a8f95b8a65c7",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-11db1b42fab8cca66ec5.001",
+          "bytes": 134879324,
+          "sha256": "e86c8c9409c59a68c3299e6b55f9e4e3538c4a84b3443556c7a7a8f95b8a65c7"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-60390cdb4652e8266483.tar.gz",
+      "bytes": 33998689,
+      "sha256": "bb2faab10b1c862a642ce4d2b645e6d91a2e91f2084fc87b858993d765903ddc",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-b03fa3eb39a0a57a8712.001",
+          "bytes": 33998689,
+          "sha256": "bb2faab10b1c862a642ce4d2b645e6d91a2e91f2084fc87b858993d765903ddc"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-1b9a5f41ecf748e23567.tar.gz",
+      "bytes": 214280970,
+      "sha256": "f5204919e1a5b1622f3d3495002d082ae061504f6f4a4141bceac8a58a07945a",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-63fd747f851b4b89b252.001",
+          "bytes": 214280970,
+          "sha256": "f5204919e1a5b1622f3d3495002d082ae061504f6f4a4141bceac8a58a07945a"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-516fe4904c3e865afb5e.tar.gz",
+      "bytes": 5921553,
+      "sha256": "06010970876acb48fe008ae2345b18a86d86548c6bc3167dd22e9039a44d26c4",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-4bd1529e5a44ef9c5d07.001",
+          "bytes": 5921553,
+          "sha256": "06010970876acb48fe008ae2345b18a86d86548c6bc3167dd22e9039a44d26c4"
+        }
+      ]
+    },
+    {
+      "file": "rainy-unit-f3de7270d4177236932b.tar.gz",
+      "bytes": 9092,
+      "sha256": "438179c44984e1351ea2da1387a201771cd821e8420be622d2987e3b48589daa",
+      "baseUrl": "https://github.com/RainyMarks/RainyAgent/releases/download/v1.0.6-resources/",
+      "pieces": [
+        {
+          "file": "rainy-c0a7cd6904ad1f013f0c.001",
+          "bytes": 9092,
+          "sha256": "438179c44984e1351ea2da1387a201771cd821e8420be622d2987e3b48589daa"
+        }
+      ]
+    }
+  ]
+}

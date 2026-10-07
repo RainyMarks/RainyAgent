@@ -84,12 +84,26 @@ export interface NativeInvocation {
   readonly pythonRoot?: string
 }
 
+/** Installation of one tool compared with the newest catalog. */
+interface ToolState { readonly installed: boolean; readonly outdated: boolean; readonly downloadBytes: number }
+
+/** Installed and downloadable tools reported by the tool downloader. */
+export interface NativeToolsInventorySource {
+  readonly root: string
+  readonly catalogText: string
+  readonly installedCatalogText?: string
+  readonly states: ReadonlyMap<string, ToolState>
+  readonly catalogOutdated: boolean
+}
+
 /** Main-process dependencies for the installed catalog. */
 export interface NativeToolsOptions {
   readonly installRoot: string
   readonly userData: string
-  readonly catalogPath?: string | (() => Promise<string>)
-  readonly selectRoot?: () => Promise<string>
+  /** Catalog read when the installation has none and no inventory is supplied. */
+  readonly catalogPath?: string
+  /** Per-tool installation state; without it every catalog tool is treated as installed below installRoot. */
+  readonly inventory?: () => Promise<NativeToolsInventorySource>
   /** Starts the checked invocation and resolves when the operating system accepts it. */
   readonly start: (invocation: NativeInvocation) => Promise<void>
 }
@@ -154,28 +168,39 @@ export class NativeToolsLibrary {
   }
 
   private async catalog(): Promise<{
-    readonly tools: (InstalledNativeTool & { readonly installRoot: string })[]
+    readonly tools: (InstalledNativeTool & { readonly installRoot: string; readonly state?: ToolState })[]
     readonly verified: ReadonlySet<string>
+    readonly catalogOutdated: boolean
   }> {
-    const root = this.options.selectRoot ? await this.options.selectRoot() : this.options.installRoot
-    const file = resolve(root, 'tools/manifest.json')
-    let text: string
-    try { text = await readFile(file, 'utf8') }
-    catch (error) {
-      if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT' || !this.options.catalogPath) throw error
-      const fallback = typeof this.options.catalogPath === 'function' ? await this.options.catalogPath() : this.options.catalogPath
-      text = await readFile(fallback, 'utf8')
+    const inventory = await this.options.inventory?.()
+    const root = inventory?.root ?? this.options.installRoot
+    let text = inventory?.installedCatalogText
+    if (inventory === undefined) {
+      try { text = await readFile(resolve(root, 'tools/manifest.json'), 'utf8') }
+      catch (error) {
+        if (!(error instanceof Error) || !('code' in error) || error.code !== 'ENOENT' || !this.options.catalogPath) throw error
+        text = await readFile(this.options.catalogPath, 'utf8')
+      }
     }
-    const catalog = parseNativeToolCatalog(text)
-    const record = await optionalJson(resolve(root, 'tools/verified.json'))
+    const installed = text === undefined ? [] : parseNativeToolCatalog(text).tools
     const verified = new Set<string>()
+    const record = text === undefined ? undefined : await optionalJson(resolve(root, 'tools/verified.json'))
     if (record !== undefined) {
       const parsed = verificationSchema.parse(record)
-      if (parsed.catalogSha256 === createHash('sha256').update(text).digest('hex')) for (const id of parsed.tools) verified.add(id)
+      if (parsed.catalogSha256 === createHash('sha256').update(text ?? '').digest('hex')) for (const id of parsed.tools) verified.add(id)
     }
-    const tools = catalog.tools.flatMap((tool) => {
+    // Installed tools launch with the entries of their own catalog; the others are listed from the newest catalog.
+    let listed = installed
+    if (inventory !== undefined) {
+      const newest = parseNativeToolCatalog(inventory.catalogText).tools
+      const present = (id: string): boolean => inventory.states.get(id)?.installed ?? false
+      listed = [...newest.map(tool => present(tool.id) ? installed.find(entry => entry.id === tool.id) ?? tool : tool),
+        ...installed.filter(tool => present(tool.id) && !newest.some(entry => entry.id === tool.id))]
+    }
+    const tools = listed.flatMap((tool) => {
       const { id } = tool
-      return id === 'burp-community' ? [] : [{ ...tool, id, installRoot: root }]
+      const state = inventory?.states.get(id)
+      return id === 'burp-community' ? [] : [{ ...tool, id, installRoot: root, ...state === undefined ? {} : { state } }]
     })
     const local = await optionalJson(resolve(this.options.userData, 'native-tools.local.json'), true)
     if (local !== undefined) {
@@ -189,7 +214,7 @@ export class NativeToolsLibrary {
         verified.delete(tool.id)
       }
     }
-    return { tools, verified }
+    return { tools, verified, catalogOutdated: inventory?.catalogOutdated ?? false }
   }
 
   private async preferences(): Promise<CurrentPreferences> {
@@ -225,18 +250,22 @@ export class NativeToolsLibrary {
    * @returns tool summaries; availability does not imply a completed functional acceptance run.
    */
   async listTools(): Promise<NativeToolCatalog> {
-    const [{ tools, verified }, preferences] = await Promise.all([this.catalog(), this.preferences()])
+    const [{ tools, verified, catalogOutdated }, preferences] = await Promise.all([this.catalog(), this.preferences()])
     return {
       tools: await Promise.all(tools.map(async (tool) => {
-        const missing = await this.missing(tool.installRoot, tool)
-        return {
-          id: tool.id, name: tool.name, category: tool.category, version: tool.version,
+        const summary = { id: tool.id, name: tool.name, category: tool.category, version: tool.version,
           launchKind: tool.entry.kind === 'console' ? 'terminal' as const : tool.entry.kind === 'web' ? 'web' as const : 'desktop' as const,
-          status: missing.length ? 'missing' as const : 'ready' as const, missing, verified: verified.has(tool.id),
+          verified: verified.has(tool.id), outdated: tool.state?.outdated ?? false, downloadBytes: tool.state?.downloadBytes ?? 0 }
+        if (tool.state?.installed === false) {
+          return { ...summary, status: 'available' as const, missing: [],
+            ...tool.variants ? { variants: tool.variants.map(variant => ({ id: variant.id, name: variant.name, status: 'available' as const })) } : {} }
+        }
+        const missing = await this.missing(tool.installRoot, tool)
+        return { ...summary, status: missing.length ? 'missing' as const : 'ready' as const, missing,
           ...tool.variants ? { variants: await Promise.all(tool.variants.map(async variant => ({ id: variant.id, name: variant.name,
             status: (await this.missing(tool.installRoot, tool, variant.entry)).length ? 'missing' as const : 'ready' as const }))) } : {},
         }
-      })), preferences: { favorites: preferences.favorites, recent: preferences.recent },
+      })), preferences: { favorites: preferences.favorites, recent: preferences.recent }, catalogOutdated,
     }
   }
 
@@ -293,6 +322,7 @@ export class NativeToolsLibrary {
     const { tools } = await this.catalog()
     const tool = tools.find(value => value.id === id)
     if (tool === undefined) throw new Error('工具不在已安装目录中')
+    if (tool.state?.installed === false) throw new Error('工具尚未下载，请先在工具列表中下载')
     const root = tool.installRoot
     const entry = variant === undefined ? tool.entry : tool.variants?.at(0)?.entry
     if (entry === undefined) throw new Error('工具启动选项不可用')

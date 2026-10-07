@@ -7,4 +7,5 @@ export default clientBundle('@deepseek-ai/dsh-client-ui-rainy', [
   'lib/types/ide-execution-protocol.js',
   'lib/types/runtime-protocol.js',
   'lib/types/strata-protocol.js',
+  'lib/types/modules-protocol.js',
 ])

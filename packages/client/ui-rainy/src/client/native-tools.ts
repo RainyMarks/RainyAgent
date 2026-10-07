@@ -1,6 +1,6 @@
 /** User-level tool directory state; native operations never enter the Session log. */
 import { createSnapshotStore } from '@deepseek-ai/dsh-client-store'
-import type { NativeToolCatalog, NativeToolId, NativeToolsBridge, NativeToolsDownloadState, NativeToolsUpdateState } from '../native-tools-protocol.ts'
+import type { NativeToolCatalog, NativeToolId, NativeToolsBridge, NativeToolsDownloadState, NativeToolsOperation, NativeToolsUpdateState } from '../native-tools-protocol.ts'
 
 /** Retained directory state and in-flight operations. */
 export interface NativeToolsState extends NativeToolCatalog {
@@ -18,7 +18,7 @@ export interface NativeToolsCopy {
   readonly launchFailed: (name: string) => string
   readonly favoritesFailed: () => string
   readonly favoriteSaved: (selected: boolean) => string
-  readonly downloadComplete: () => string
+  readonly completed: (operation: NativeToolsOperation) => string
   readonly downloadFailed: () => string
 }
 
@@ -40,7 +40,7 @@ export class NativeToolsController {
   constructor(private readonly bridge: NativeToolsBridge | undefined, private readonly copy: NativeToolsCopy,
     private readonly toast: (message: string, kind: 'success' | 'error' | 'warning') => void) {
     this.state = createSnapshotStore<NativeToolsState>({ phase: bridge === undefined ? 'desktop-only' : 'idle',
-      tools: [], preferences: { favorites: [], recent: [] }, error: '', pending: [], savingFavorites: false,
+      tools: [], preferences: { favorites: [], recent: [] }, catalogOutdated: false, error: '', pending: [], savingFavorites: false,
       download: { phase: 'idle', completedBytes: 0, totalBytes: 0, error: '' },
       update: { phase: 'unchecked', version: '', error: '' } })
     this.unsubscribe = bridge?.onDownloadProgress((download) => {
@@ -116,22 +116,31 @@ export class NativeToolsController {
   /** Suppress late IPC responses and feedback after the plugin unloads. */
   dispose(): void { this.disposed = true; this.unsubscribe?.() }
 
-  /** Install the fixed complete pack once, then refresh availability. @returns settled download and refresh. */
-  download(): Promise<void> {
+  /**
+   * Run one tool operation, then refresh availability; a second request while one runs is ignored.
+   * @param operation - add tools, update installed tools, remove one tool, or repair damaged files.
+   * @param ids - tools added or removed.
+   * @returns settled operation and refresh.
+   */
+  operate(operation: NativeToolsOperation, ids: readonly NativeToolId[] = []): Promise<void> {
     if (this.disposed || !this.bridge) return Promise.resolve()
     if (this.downloading) return this.downloading
     const bridge = this.bridge
-    this.state.set({ ...this.state.getSnapshot(), download: { ...this.state.getSnapshot().download, phase: 'downloading', error: '' } })
+    const [removed] = ids
+    if (operation === 'remove' && removed === undefined) return Promise.resolve()
+    this.state.set({ ...this.state.getSnapshot(), download: { phase: operation === 'repair' ? 'verifying' : operation === 'remove' ? 'installing' : 'downloading',
+      completedBytes: 0, totalBytes: 0, error: '', operation, tools: ids } })
     this.downloading = (async () => {
       try {
-        await bridge.downloadTools()
+        if (operation === 'remove' && removed !== undefined) await bridge.removeTool(removed)
+        else if (operation === 'repair') await bridge.repairTools()
+        else await bridge.installTools(operation === 'update' ? [] : ids)
         if (this.disposed) return
         const download = await bridge.getDownloadState()
         this.state.set({ ...this.state.getSnapshot(), download })
         if (download.phase === 'complete') {
-          this.state.set({ ...this.state.getSnapshot(), update: { ...this.state.getSnapshot().update, phase: 'current', error: '' } })
           await this.load()
-          this.toast(this.copy.downloadComplete(), 'success')
+          this.toast(this.copy.completed(operation), 'success')
         }
       } catch (error) {
         if (this.disposed) return
@@ -176,7 +185,11 @@ export class NativeToolsController {
       const [catalog, download] = await Promise.all([bridge.listTools(), bridge.getDownloadState()])
       if (this.disposed) return
       const current = this.state.getSnapshot()
-      this.state.set({ ...current, ...catalog, download, phase: 'ready', error: '' })
+      // A checked channel stays authoritative; whether installed tools still differ from it follows the new listing.
+      const outdated = catalog.catalogOutdated || catalog.tools.some(tool => tool.outdated)
+      const update = current.update.phase === 'available' || current.update.phase === 'current'
+        ? { ...current.update, phase: outdated ? 'available' as const : 'current' as const } : current.update
+      this.state.set({ ...current, ...catalog, download, update, phase: 'ready', error: '' })
       if (!this.checked) { this.checked = true; void this.checkUpdates() }
     } catch (error) {
       if (!this.disposed) this.state.set({ ...this.state.getSnapshot(), phase: 'error', error: error instanceof Error ? error.message : '' })

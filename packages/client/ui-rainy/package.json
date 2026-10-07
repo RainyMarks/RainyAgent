@@ -28,6 +28,10 @@
     "./strata-protocol": {
       "types": "./lib/types/strata-protocol.d.ts",
       "default": "./lib/strata-protocol.js"
+    },
+    "./modules-protocol": {
+      "types": "./lib/types/modules-protocol.d.ts",
+      "default": "./lib/modules-protocol.js"
     }
   },
   "dsh": {

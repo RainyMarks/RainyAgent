@@ -99,7 +99,7 @@ it('keeps cleanup owned after a tool window has emitted closed', async () => {
 it('refuses to replace tools when a webpage launch accepted before installation opens its window', async () => {
   const main = new BrowserWindow({})
   owner = installNativeTools({ window: main, origin: 'http://127.0.0.1:43210', installRoot: fixture, userData: join(fixture, 'user'), download: {
-    metadataPath: join(fixture, 'absent-metadata.json'), sourcePath: join(fixture, 'absent-source.json'), catalogPath: join(fixture, 'absent-catalog.json'), keys: { version: 1, keys: {} },
+    channelPath: join(fixture, 'absent-channel.json'), keys: { version: 1, keys: {} }, installRootLocked: false,
   } })
   const handler = (name: string) => {
     const found = control.handle.mock.calls.find(([channel]) => channel === name)?.[1]
@@ -111,7 +111,7 @@ it('refuses to replace tools when a webpage launch accepted before installation 
   control.serveGate = gate.promise
   const launched: unknown = handler('rainy:tools-launch')(event, { id: 'cyberchef' })
   await control.serving.promise
-  const installation: unknown = handler('rainy:tools-download')(event)
+  const installation: unknown = handler('rainy:tools-install')(event, ['cyberchef'])
   gate.resolve(undefined)
   expect(await launched).toEqual({ ok: true })
   await expect(installation).rejects.toThrow('请先关闭已打开的工具窗口')

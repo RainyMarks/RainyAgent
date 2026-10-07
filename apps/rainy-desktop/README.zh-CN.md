@@ -4,21 +4,22 @@
 
 ## 安装与使用
 
-使用 Windows x64，新安装默认原生执行，无需先安装 WSL。核心安装包包含 Windows 与 Linux Host、Strata 引擎、Python 及所需运行依赖；主模型与 MTP 权重由用户提供。完整离线目录另含 WSL 安装介质、Ubuntu 26.04.1 镜像，以及 Windows/Linux 基础、科学计算 CPU/CUDA 和 Windows C/C++ 组件。已有 Python、Conda、项目虚拟环境或 WSL 可直接检测并复用，不向它们安装软件包。也可连接自行管理的推理服务。
+使用 Windows x64，新安装默认原生执行，无需先安装 WSL。核心安装包包含 Windows Host；Strata 引擎、Windows PHP 和 WSL Linux 运行环境是按需下载的可选组件，常用工具也按工具单独下载。主模型与 MTP 权重由用户提供。完整离线目录另含 WSL 安装介质、Ubuntu 26.04.1 镜像，以及 Windows/Linux 基础、科学计算 CPU/CUDA 和 Windows C/C++ 组件。已有 Python、Conda、项目虚拟环境或 WSL 可直接检测并复用，不向它们安装软件包。也可连接自行管理的推理服务。
 
-1. 运行 `RainyAgent-1.0.5-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `native-tools-<id>.tar.gz.*` 分卷及校验清单。原生工具分卷为可选项；不带分卷更新时保留已安装工具。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
-2. 提供匹配原生工具分卷时，工具安装窗口会校验文件和目标空间再安装。点击取消后等待安全停止；重新运行同一完整发行文件可重试并复用已验证暂存。损坏或缺少部分分卷时应补齐匹配文件后重试。
+1. 运行 `RainyAgent-1.0.6-windows-x64-setup.exe` 安装核心。完整离线部署请保留 `environment/`、`environment-components/`、全部 `rainy-unit-*.tar.gz` 工具归档及校验清单。工具归档为可选项：放在安装程序旁时，安装程序会安装其中每个单元；不带归档更新时保留已安装工具，之后可在“常用工具”中按工具下载。安装包可选择目录，Windows Authenticode 签名情况以最终产物记录为准。
+2. 提供工具归档时，工具安装窗口会校验文件和目标空间再安装。点击取消后等待安全停止；使用同一组归档重新运行安装程序可重试并复用已验证暂存。归档损坏时应换成匹配文件后重试。
 3. 从桌面 RainyAgent 快捷方式启动，无需设备码、激活码或授权管理器。已有保存的 WSL 目标继续保留；新安装先使用 Windows。运行环境页可以选择已有 WSL，或点击准备环境并选择外置 `environment/` 目录创建专用 Ubuntu。需要系统组件时明确请求管理员确认；若提示重启，保存其他工作、自行重启后再次打开应用。首次启动会校验全部发行资源，之后启动直接打开；已记录的 WSL 目标跳过环境检查窗口。
-4. 若原发行版丢失，恢复向导保留原名称供处理。执行目标切换前保存草稿，运行中或排队中的任务、程序、调试和终端会阻止切换。项目公开身份与项目记忆跨目标保留，旧聊天及其运行状态留在原 Host，重新选择原目标即可访问。
-5. 通过“文件 → 打开文件夹”创建或打开项目；初次启动不会自动创建桌面项目。“添加文件夹”挂载额外根目录。Windows 原生目标直接使用 Windows 路径；WSL 目标映射至发行版路径。图片和无原生路径的粘贴内容仍走上传流程。
-6. 打开顶部设置中的“模型”，可通过 Strata 卡片选择自己的主模型与配套 MTP 权重并启动。连接其他服务时，填写供应商、服务地址、协议及可选密钥后即可点击“发现模型”，无需预先知道模型 ID 或上下文长度；选定或手填模型 ID，设置实际上下文长度并保存，再执行“验证流式与工具调用”。模型发现不保存配置，也不能替代这项诊断。
-7. 新会话使用保存的默认模型。已有会话在原有模型选择器中切换。停止按钮取消当前请求和命令；`/compact` 手动压缩。重启后从项目中重新打开已保存的会话继续处理。
+4. 安装或更新后首次以 WSL 启动时，应用会联网下载本版本的 WSL 运行环境（约 340 MB），启动页显示进度；发行版中已解包本版本运行环境时不下载。下载失败时可选择“重试”“改用 Windows 原生运行”（记录为执行目标，与在设置中切换相同）或“退出”。
+5. 若原发行版丢失，恢复向导保留原名称供处理。执行目标切换前保存草稿，运行中或排队中的任务、程序、调试和终端会阻止切换。项目公开身份与项目记忆跨目标保留，旧聊天及其运行状态留在原 Host，重新选择原目标即可访问。
+6. 通过“文件 → 打开文件夹”创建或打开项目；初次启动不会自动创建桌面项目。“添加文件夹”挂载额外根目录。Windows 原生目标直接使用 Windows 路径；WSL 目标映射至发行版路径。图片和无原生路径的粘贴内容仍走上传流程。
+7. 打开顶部设置中的“模型”，可通过 Strata 卡片下载引擎（首次使用时），再选择自己的主模型与配套 MTP 权重并启动。连接其他服务时，填写供应商、服务地址、协议及可选密钥后即可点击“发现模型”，无需预先知道模型 ID 或上下文长度；选定或手填模型 ID，设置实际上下文长度并保存，再执行“验证流式与工具调用”。模型发现不保存配置，也不能替代这项诊断。
+8. 新会话使用保存的默认模型。已有会话在原有模型选择器中切换。停止按钮取消当前请求和命令；`/compact` 手动压缩。重启后从项目中重新打开已保存的会话继续处理。
 
 WSL 系统组件安装、管理员确认和 Windows 重启续装按具体发行产物分别验收；控制器模拟测试不能替代这些系统操作。已完成项目与剩余限制见[验收记录](VALIDATION.md)。
 
-模型不可用时显示请求错误，由用户选择另一个模型；没有自动云端回退。会话标题来自首条消息，不产生标题模型调用。安装版在启动时静默检查 GitHub `RainyMarks/RainyAgent` 的稳定版并后台下载核心更新；“帮助 → 检查更新”提供手动状态和重试。下载完成后选择“稍后”或“重启安装”。只有确认、草稿保存和 Host 清理完成后才启动安装；保存失败保留窗口，普通退出不会安装。自动更新不选择预发布版或降级，也不重新下载可选工具包、WSL 介质或科学计算组件。需要安装或修复离线组件时，使用匹配的完整发行文件并关闭相关工具窗口；安装程序检查占用，不自动结束这些进程。
+模型不可用时显示请求错误，由用户选择另一个模型；没有自动云端回退。会话标题来自首条消息，不产生标题模型调用。安装版在启动时静默检查 GitHub `RainyMarks/RainyAgent` 的稳定版并后台下载核心更新；“帮助 → 检查更新”提供手动状态和重试。下载完成后选择“稍后”或“重启安装”。只有确认、草稿保存和 Host 清理完成后才启动安装；保存失败保留窗口，普通退出不会安装。自动更新不选择预发布版或降级，也不重新下载常用工具、WSL 介质或科学计算组件；更新后首次以 WSL 启动时会下载新版本的 WSL 运行环境。用安装程序离线安装工具前，请关闭相关工具窗口；安装程序检查占用，不自动结束这些进程。
 
-工具升级在继续提供的工具目录保留已声明的个人设置和用户新增文件，并依据已安装版本的文件清单移除新版不再包含的旧程序文件。新版移除旧清单中的工具时，会把该工具整个目录及用户数据移入 `.rainy-toolpack/backups/<transactionId>/`，供手动恢复；旧清单之外的目录保持不动。用户路径与新版冲突或旧清单缺失时，安装程序在替换前停止并指出相关路径。`.rainy-toolpack` 保留版本清单、旧目录备份和恢复记录；卸载应用会保留 `tools/`、`runtime/` 及用户数据。
+工具升级在继续提供的工具目录保留已声明的个人设置和用户新增文件，并依据已安装版本的文件清单移除新版不再包含的旧程序文件。安装会把被替换或移除的工具目录移入 `.rainy-toolpack/backups/<transactionId>/`；安装提交后，路径、大小和 SHA-256 与已保存版本清单一致的备份文件会被删除，只留下用户文件和有改动的文件供手动恢复。启动约 60 秒后，应用对旧版本留下的备份执行同样的清理，从而释放旧版占用的数 GB 备份；未完成的切换或回滚会保留全部备份。旧清单之外的目录保持不动。用户路径与新版冲突或旧清单缺失时，安装程序在替换前停止并指出相关路径。`.rainy-toolpack` 保留版本清单、剩余备份和恢复记录；卸载应用会保留 `tools/`、`runtime/` 及用户数据。
 
 窗口控制与单行顶部工具栏共用区域。拖动顶部空白处可移动窗口，双击可最大化或还原；编辑和缩放的键盘快捷键仍可使用。窗口按上次关闭时的大小、位置和最大化状态重新打开；首次启动时若屏幕容纳不下默认大小则直接最大化。
 
@@ -32,23 +33,23 @@ WSL 系统组件安装、管理员确认和 Windows 重启续装按具体发行�
 
 Host 重启后恢复活动工作区，未保存缓冲区按工作区恢复；外部修改与保存版本冲突会保留草稿并要求比较处理。选中代码后可发送到右侧 AI，路径、范围与文本会进入普通用户消息。
 
-在“设置 → 运行环境”检查解释器与库能力，手动选择已有解释器，或从 `environment-components/` 选择匹配目标的 JSON 导入离线组件。Python/Node/PHP 基础、CPU 科学计算、CUDA 科学计算和 Windows C/C++ 分别提供；选中的环境会用于该项目的 Agent 命令、终端、运行及语言服务。科学组件使用配套的 PyTorch、torchvision、torchaudio，CUDA 实算还需要兼容驱动。WSL 的“准备 Ubuntu 开发工具”仅在 Ubuntu 26.04 amd64 明确安装经过校验的 C/C++、GDB、CMake、clangd 与 PHP 软件包，安装时不访问软件源。
+在“设置 → 运行环境”检查解释器与库能力，手动选择已有解释器，或从 `environment-components/` 选择匹配目标的 JSON 导入离线组件。Python/Node/PHP 基础、CPU 科学计算、CUDA 科学计算和 Windows C/C++ 分别提供；选中的环境会用于该项目的 Agent 命令、终端、运行及语言服务。科学组件使用配套的 PyTorch、torchvision、torchaudio，CUDA 实算还需要兼容驱动。同一页的“可选组件”可下载或删除 Strata 引擎（约 560 MB）和 PHP 8.5：组件保存在 `%APPDATA%\RainyAgent\modules\<id>`，从 GitHub 发行分片下载，逐片及整体校验 SHA-256，支持断点续传，取消后保留已下载的分片。WSL 的“准备 Ubuntu 开发工具”仅在 Ubuntu 26.04 amd64 明确安装经过校验的 C/C++、GDB、CMake、clangd 与 PHP 软件包，安装时不访问软件源。
 
-运行按钮默认按当前文件后缀选择语言；需要时点击旁边的“运行方式”为该文件改选 Python、JavaScript、TypeScript、PHP、C 或 C++，之后会记住。Windows 原生环境自带 PHP，无需另装。也可在运行配置中保存当前文件或 Python 模块、参数、工作目录和可选的目标平台绝对解释器路径。支持 Windows 原生与 WSL 的 Python、Node、TypeScript、PHP 运行，以及 C/C++ 单文件和 CMake 构建；默认 Debug 构建，失败时停止启动。运行与调试前保存全部修改，失败则中止。Python、JavaScript/TypeScript、C/C++ 调试提供断点、单步、调用栈、变量和监视；PHP 仅运行。此版本只调试由工作区启动的程序。
+运行按钮默认按当前文件后缀选择语言；需要时点击旁边的“运行方式”为该文件改选 Python、JavaScript、TypeScript、PHP、C 或 C++，之后会记住。在 Windows 原生环境运行 PHP 前，请在“设置 → 运行环境 → 可选组件”下载 PHP 8.5（含 json、openssl、mbstring、pdo_sqlite、curl、zip 扩展），或在运行配置中选择已安装的 `php.exe`；未下载时运行 PHP 文件会提示下载位置。已安装的环境组件或项目选定的 PHP 优先；WSL 目标使用发行版自身的 PHP。也可在运行配置中保存当前文件或 Python 模块、参数、工作目录和可选的目标平台绝对解释器路径。支持 Windows 原生与 WSL 的 Python、Node、TypeScript、PHP 运行，以及 C/C++ 单文件和 CMake 构建；默认 Debug 构建，失败时停止启动。运行与调试前保存全部修改，失败则中止。Python、JavaScript/TypeScript、C/C++ 调试提供断点、单步、调用栈、变量和监视；PHP 仅运行。此版本只调试由工作区启动的程序。
 
-## 内置 Strata 本地模型
+## Strata 本地模型
 
-核心安装包已包含 Niko1221/Strata 0.1.39、Python 3.12.14 和运行依赖，不需要预装 Strata、创建 Python 环境或手工运行转换命令。推理引擎面向 Windows x64 与 NVIDIA CUDA 13，要求 580 或更新的 NVIDIA 驱动，提供 `sm75`、`sm86`、`sm89`、`sm120` 目标；本包不提供 AMD 或 Linux 推理引擎。安装程序不安装显卡驱动。
+Strata 引擎不随安装包附带，是约 560 MB 的可选组件，包含 Niko1221/Strata 0.1.39、Python 3.12.14 以及服务、准备脚本和 CUDA 运行依赖；下载后不需要预装 Strata、创建 Python 环境或手工运行转换命令。推理引擎面向 Windows x64 与 NVIDIA CUDA 13，要求 580 或更新的 NVIDIA 驱动，提供 `sm75`、`sm86`、`sm89`、`sm120` 目标；本包不提供 AMD 或 Linux 推理引擎。安装程序不安装显卡驱动。
 
 1. 准备受支持的 Qwen3.8 Flash Next 主模型 GGUF 及全部分片，并准备与主模型匹配的 MTP GGUF 或已准备 MTP 目录。发行包不含主模型、MTP 权重或派生 dense/expert 文件；不要只保留一个不完整分片。
-2. 打开“设置 → 模型 → Strata 本地模型”。选择主 GGUF 的首片、模型目录或兼容 Strata profile。选择配套 MTP 文件或目录；留空仅表示自动检测模型附近的匹配文件，不表示关闭 MTP。
+2. 打开“设置 → 模型 → Strata 本地模型”。引擎尚未下载时点击“下载”，也可在“设置 → 运行环境 → 可选组件”下载。选择主 GGUF 的首片、模型目录或兼容 Strata profile。选择配套 MTP 文件或目录；留空仅表示自动检测模型附近的匹配文件，不表示关闭 MTP。
 3. 设置引擎上下文长度和本地端口后保存。高级运行设置提供 KV 缓存、保留显存和常驻 RAM 预算。设置写入载体应用数据目录中的私有 `strata/settings.json`，不把开发者机器路径作为默认值，也不移动用户模型权重。
 4. 点击“启动本地模型”。首次启动按所选主模型和 MTP 文件在本机离线准备运行数据，再加载服务；过程中可点击“取消准备或启动”。缺失分片、MTP 不匹配或运行组件缺失时按错误提示处理，不会下载模型或切换到云端。
 5. 状态就绪后点击“连接并设为默认”。当前 Host 验证实际模型及上下文，保存为本地 Chat Completions 配置；推理档位和请求输出上限继续在上方普通模型配置中调整。仅本应用启动的进程可被停止，已有外部服务不会被终止。
 
 Strata 服务在 Windows loopback 上运行。WSL Host 只有在能访问该地址时才可连接；NAT 导致不可达时，在“运行环境”中切换到 Windows 后使用 Strata。应用不修改防火墙或 WSL 网络配置。
 
-内置运行时已进行独立路径迁移、Python 导入和模拟健康/聊天接口检查；真实 GPU 推理和性能尚未在本次发行验收中确认。具体产物、结果与剩余限制见[验收记录](VALIDATION.md)，运行时可导入不等于模型推理已通过。
+Strata 运行时已进行独立路径迁移、Python 导入和模拟健康/聊天接口检查；真实 GPU 推理和性能尚未在本次发行验收中确认。具体产物、结果与剩余限制见[验收记录](VALIDATION.md)，运行时可导入不等于模型推理已通过。
 
 ## 模型设置
 
@@ -99,25 +100,23 @@ MCP 也支持 `streamable-http` 与 `url`。只向该会话注册 `tools` 中列
 
 ## CTF 工具
 
-联网时点击“下载全部工具”，下载和安装过程中可查看进度、取消或重试；重试复用已下载内容。完成后自动刷新状态，后续启动直接使用本地工具。首次打开目录会检查工具更新，也可点击“检查工具更新”；有新增或更新工具时，由用户选择下载工具包。检查失败不会删除已有工具。工具和缓存保存在当前用户的应用数据目录，应用更新仍保留；离线时可使用已安装工具。
+工具按需逐个下载。“常用工具”顶部显示“已下载 N / M 款工具”；未下载工具的卡片显示“下载 · 大小”，已下载工具显示“打开”和“移除”，移除需再次点击确认。顶部的“全部下载（大小）”一次下载全部工具，“更新已下载的工具（大小）”更新带“有更新”标签的工具；“已下载”筛选只显示已下载工具。下载过程中可查看进度、取消或重试；重试复用已下载内容。
 
-点击顶部“CTF 工具”即可使用，不必先创建或选择聊天。默认“常用工具”目录共 38 项，按 Web 与接口、流量分析、逆向调试、取证与文件、隐写与图像、音频与信号、编码与数据分组显示；完整名单见[桌面功能说明](README.zh.md#ctf-工作台)。可按名称或用途搜索、按分组筛选、收藏工具及查看最近启动记录。收藏与最近记录按 Windows 用户保存，在聊天之间共享。Burp 收藏迁移到 Yakit，旧 Burp 最近记录移除，不会伪造 Yakit 启动记录。该目录只供人操作，不占用 Agent 的工具定义和提示词预算。
+下载某个工具时会同时安装它需要的运行时（Java 21、.NET 8），并把其他已下载工具更新到同一目录修订，只下载有变化的单元；未变化的工具不会重复下载。“移除”删除该工具以及不再被其他工具使用的运行时，无需联网。首次打开目录会检查工具更新，也可点击“检查工具更新”；检查失败不会删除已有工具。1.0.6 之前由离线安装程序放入应用目录的工具在原处更新，其他工具保存在 `%APPDATA%\RainyAgent\native-tools`；应用更新后仍保留，离线时可使用已下载工具。
+
+点击顶部“CTF 工具”即可使用，不必先创建或选择聊天。默认“常用工具”目录共 38 项，按 Web 与接口、流量分析、逆向调试、取证与文件、隐写与图像、音频与信号、编码与数据分组显示；完整名单见[桌面功能说明](README.zh.md#ctf-工作台)。可按名称或用途搜索、按分组或“已下载”筛选、收藏工具及查看最近启动记录。收藏与最近记录按 Windows 用户保存，在聊天之间共享。Burp 收藏迁移到 Yakit，旧 Burp 最近记录移除，不会伪造 Yakit 启动记录。该目录只供人操作，不占用 Agent 的工具定义和提示词预算。
 
 桌面工具打开独立窗口，命令行工具打开已配置依赖的 Windows 终端，离线网页打开隔离工具窗口。x64dbg 与 x32dbg 共用一个条目，并分别提供按钮；FFmpeg 同包包含 ffprobe 与 ffplay。程序按安装目录定位，Windows 工具留在 Windows 侧，Agent 项目终端使用当前执行目标。
 
 Yakit 使用官方 1.4.8-0919 完整发行包，内置 `bins/yak.zip` 提供 Yak 1.4.8-beta19 的离线恢复来源，无需单独下载引擎。其数据目录遵循 Yakit 已配置的 `YAKIT_HOME`，Windows 默认值为 `Yakit.exe` 旁的 `yakit-projects`。原生界面的首次初始化仍须在 Yakit 内完成。工具包保留 AGPLv3 许可证及上游声明。ImHex 位于 Reverse 分类，可用于二进制编辑。
 
-自有 IDA Pro 9.5 使用正式安装和自己的许可证。将其安装到本机工具根目录的 `tools/ida/`，通过 `%APPDATA%/RainyAgent/native-tools.local.json` 指定该绝对根目录及 ID 为 `ida` 的工具条目，入口为 `tools/ida/ida.exe`。应用优先使用这一本机条目，后续下载或更新公共工具包时保留选择；安装路径、配置和许可证留在本机。配置字段与约束见[本机工具目录说明](README.md#ctf-workbench)。
+自有 IDA Pro 9.5 使用正式安装和自己的许可证。将其安装到本机工具根目录的 `tools/ida/`，通过 `%APPDATA%/RainyAgent/native-tools.local.json` 指定该绝对根目录及 ID 为 `ida` 的工具条目，入口为 `tools/ida/ida.exe`。应用优先使用这一本机条目，后续下载或更新公共工具时保留选择；安装路径、配置和许可证留在本机。配置字段与约束见[本机工具目录说明](README.md#ctf-workbench)。
 
-下载工具包中的 IDA 附带独立的 Python 3.12.14、匹配的 SIP 绑定和 `imp` 兼容模块；启动时使用应用数据目录下的独立 `IDAUSR`。StegSolve、JADX 使用包内 Java 21.0.12.1，dnSpy 6.6.0 附带 .NET Desktop 10.0.9。multimon-ng 默认打开帮助终端；分析 WAV 时，在音频所在目录依次运行 `sox.exe -R -t wav sample.wav -esigned-integer -b 16 -r 22050 -t raw sample.raw` 和 `multimon-ng.exe -a DTMF -t raw sample.raw`，文件名换成实际文件名。
+下载的 IDA 附带独立的 Python 3.12.14、匹配的 SIP 绑定和 `imp` 兼容模块；启动时使用应用数据目录下的独立 `IDAUSR`。StegSolve、JADX 使用共享的 Java 21.0.12.1，dnSpy 6.6.0 附带 .NET Desktop 10.0.9。multimon-ng 默认打开帮助终端；分析 WAV 时，在音频所在目录依次运行 `sox.exe -R -t wav sample.wav -esigned-integer -b 16 -r 22050 -t raw sample.raw` 和 `multimon-ng.exe -a DTMF -t raw sample.raw`，文件名换成实际文件名。
 
 “已发送某工具的启动请求”仅表示系统接受了请求；首次确认窗口、界面是否就绪及实际样例操作需分别验证。文件和依赖存在不等于通过功能验收：缺少文件时禁止启动，未经实际验收时显示“待验证”。版本按目录记录显示，具体版本依据与文件摘要保存在工具清单中。目录显示 38 项不能作为“38 项全部通过”的结论。
 
-工具文件缺失的卡片和目录读取失败提示提供“修复工具包”入口。点击后展开以下离线修复指引；该入口只展示说明，不自动启动安装程序：
-
-1. 保存当前工作，退出 RainyAgent，并关闭所有工具及其命令行窗口。
-2. 将匹配的安装 EXE 和全部 `native-tools-<id>.tar.gz.*` 工具包分卷放在同一目录，再次运行安装程序。
-3. 安装完成后重新打开 RainyAgent，进入“常用工具”并刷新工具状态。
+工具文件缺失的卡片提供“修复”按钮，只重新下载文件缺失或 SHA-256 不符的单元。无法联网时，退出 RainyAgent 并关闭所有工具及其命令行窗口，把全部 `rainy-unit-*.tar.gz` 归档放在匹配的安装 EXE 旁再运行安装程序，安装程序会安装其中每个单元。
 
 选择“IceSky”标签可使用原有 22 项浏览器工具。首次选择时才加载一份 iframe，返回目录或收起工作台后保留该实例。选中的聊天拥有独立草稿；未选聊天或空白“新会话”页使用独立通用草稿。切换聊天、重新加载和退出时继续使用已有的保存流程。
 
@@ -133,22 +132,22 @@ IceSky 从安装包本地加载。工作台和 RainyAgent 的模型设置分别�
 pnpm install --frozen-lockfile
 node apps/rainy-desktop/scripts/bootstrap-release-inputs.mjs --manifest apps/rainy-desktop/toolpacks/build-inputs.v1.json
 pnpm run build
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.2 -ComponentSource apps/rainy-desktop/release/offline-1.0.2/environment-components
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File apps/rainy-desktop/scripts/package.ps1 -SkipUpstreamBuild -Distribution Ubuntu -ReuseNativeToolsRelease apps/rainy-desktop/release/offline-1.0.6 -ComponentSource apps/rainy-desktop/release/offline-1.0.6/environment-components
 ```
 
-[bootstrap-release-inputs.mjs](scripts/bootstrap-release-inputs.mjs)按仓库中的 [1.0.2 输入清单](toolpacks/build-inputs.v1.json)从两个固定版本的资源存档下载发行分片、重组并校验原始文件，恢复 Git 不保存的 IDE、Strata、工具、WSL 和运行环境输入；其中 `build-inputs/strata-runtime.tar.gz` 会自动展开到核心构建使用的资源目录。已有完整输入目录可通过 `--inputs-dir` 指定，仍需通过清单校验。打包入口 [package.ps1](scripts/package.ps1)校验环境媒体和组件归档，分别生成 Windows 与 Linux Host，再生成 NSIS 安装包。`-ReuseNativeToolsRelease` 复用刚恢复的 `release/offline-1.0.2` 工具分卷，`-ComponentSource` 指向其 `environment-components`。`-Distribution` 必须匹配准备好的 WSL 构建发行版名称；省略 `-SkipUpstreamBuild` 会重新构建上游库。最终产物与干净 checkout 的实测情况由[验收记录](VALIDATION.md)记录，以上命令不代表已经完成该项验收。
+[bootstrap-release-inputs.mjs](scripts/bootstrap-release-inputs.mjs)按仓库中的 [1.0.6 输入清单](toolpacks/build-inputs.v1.json)从固定版本的资源存档下载发行分片、重组并校验原始文件，恢复 Git 不保存的 IDE、Strata、工具、WSL 和运行环境输入；其中 `build-inputs/strata-runtime.tar.gz` 会展开到 `resources/strata-runtime`，供源码检出直接运行时使用，安装包不包含该目录。已有完整输入目录可通过 `--inputs-dir` 指定，仍需通过清单校验。打包入口 [package.ps1](scripts/package.ps1)校验环境媒体和组件归档，分别生成 Windows 与 Linux Host，再生成 NSIS 安装包。`-ReuseNativeToolsRelease` 复用刚恢复到 `release/offline-1.0.6` 的工具输入，`-ComponentSource` 指向其 `environment-components`。`-Distribution` 必须匹配准备好的 WSL 构建发行版名称；省略 `-SkipUpstreamBuild` 会重新构建上游库。最终产物与干净 checkout 的实测情况由[验收记录](VALIDATION.md)记录，以上命令不代表已经完成该项验收。
 
 Windows Host 构建先按官方 SHA-256 校验 Node ZIP，再使用 Windows 随附的 .NET ZIP 解压器展开；这一环节无需额外安装压缩工具。
 
 生产构建使用独立 Ed25519 发行密钥。默认在忽略提交的 `build/release-signing-key.pem` 创建并复用本机构建密钥；`RAINY_RELEASE_SIGNING_KEY` 可指定已有私钥文件，路径缺失、格式不符或与暂存公钥不匹配时构建失败。公开资源只包含发行公钥，载体将该公钥嵌入并校验签名资源清单。该流程不读取客户授权数据库。
 
-1.0.2 完整离线目录为 `release/offline-1.0.2/`，包含核心安装程序、原生工具分卷、`environment/` WSL 介质、`environment-components/` 独立运行环境及递归 SHA-256 清单。WSL 镜像和科学计算大依赖位于核心 EXE 之外。构建核对 IDE 固定来源、Linux APT 索引和组件逐文件摘要；Windows Host 使用实体依赖文件，Linux Host 使用包内相对链接。构建暂存位于 `runtime/` 与 Linux `/var/tmp`，最终容量和验收以本次产物报告为准。
+1.0.6 完整离线目录为 `release/offline-1.0.6/`，包含核心安装程序、原生工具文件、`environment/` WSL 介质、`environment-components/` 独立运行环境及递归 SHA-256 清单。WSL 镜像、科学计算大依赖、Strata 引擎、PHP 组件和 WSL 运行环境都位于核心 EXE 之外；安装包只附带固定这三个可选组件归档的签名资源 `optional-modules.json`。构建核对 IDE 固定来源、Linux APT 索引和组件逐文件摘要；Windows Host 使用实体依赖文件，Linux Host 使用包内相对链接。构建暂存位于 `runtime/` 与 Linux `/var/tmp`，最终容量和验收以本次产物报告为准。
 
 `tests/composition.ts` 通过真正的 Rainy profile 和文件工具连接确定性模拟服务；其结果不是本地模型能力评估。`tests/benchmark.mjs` 用相同真实 API、相同任务和独立 Python 断言比较上游 Web 组合与 Rainy。原始数据和复现边界见 [验收记录](VALIDATION.md)。
 
 ## 已知限制和后续工作
 
-当前发布目标是 Windows x64，可选择 Windows 原生或 WSL2。应用提供内置 Strata 和离线运行环境，模型权重与兼容显卡驱动由使用者准备，启动模型需要明确操作。程序运行、断点调试、CPU/CUDA 组件导入与计算，以及各模型端点按具体产物分别验收。没有精确 tokenizer 的服务使用估计，其误差会影响压缩时机。
+当前发布目标是 Windows x64，可选择 Windows 原生或 WSL2。应用提供可下载的 Strata 引擎和离线运行环境，模型权重与兼容显卡驱动由使用者准备，启动模型需要明确操作。程序运行、断点调试、CPU/CUDA 组件导入与计算，以及各模型端点按具体产物分别验收。没有精确 tokenizer 的服务使用估计，其误差会影响压缩时机。
 
 38 表示工具包目录的工具数量。命令行和离线网页功能检查按当前工具、版本与被测产物分别记录，旧版验收总数不沿用到新版。无头浏览器截图或 GIF 使用明确标注的桥接适配器，展示真实目录数据、搜索、分类和收藏。Windows 原生工具界面、首次启动提示、UAC 和干净机重启仍未验收。最终逐工具矩阵关联具体产物，不能由目录可用状态或进程创建成功推定。
 
