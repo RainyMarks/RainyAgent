@@ -78,6 +78,14 @@ export async function signReleaseResources(resourceRoot, options = {}) {
     if (!strata.isDirectory() || strata.isSymbolicLink()) throw new Error('The bundled Strata runtime must be a regular directory')
     await inventory(strataPath)
   }
+  const phpPath = join(root, 'php')
+  let php
+  try { php = await lstat(phpPath) }
+  catch (error) { if (error.code !== 'ENOENT') throw error }
+  if (php) {
+    if (!php.isDirectory() || php.isSymbolicLink()) throw new Error('The bundled PHP runtime must be a regular directory')
+    await inventory(phpPath)
+  }
   const windowsInventory = JSON.parse(await readFile(join(root, 'windows-host/runtime.json'), 'utf8'))
   const expectedWindows = new Map(windowsInventory.files.map(file => [file.path, file]))
   const copiedWindows = files.filter(file => file.path.startsWith('windows-host/') && file.path !== 'windows-host/runtime.json')

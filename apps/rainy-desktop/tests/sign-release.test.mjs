@@ -109,6 +109,19 @@ test('a bundled Strata runtime is included in the signed inventory', async t => 
   })
 })
 
+test('the bundled PHP runtime is included in the signed inventory', async t => {
+  const f = await fixture(t)
+  await resources(f)
+  const bytes = Buffer.from('bundled php fixture')
+  await mkdir(join(f.root, 'php/ext'), { recursive: true })
+  await writeFile(join(f.root, 'php/php.exe'), bytes)
+  await writeFile(join(f.root, 'php/ext/php_curl.dll'), bytes)
+  const result = await signReleaseResources(f.root, { privateKeyPath: f.privateKeyPath })
+  const envelope = JSON.parse(await readFile(result.path, 'utf8'))
+  const manifest = JSON.parse(Buffer.from(envelope.payload, 'base64url'))
+  assert.deepEqual(manifest.files.filter(file => file.path.startsWith('php/')).map(file => file.path), ['php/ext/php_curl.dll', 'php/php.exe'])
+})
+
 test('a mismatched key or a key within resources cannot sign a package', async t => {
   const f = await fixture(t)
   const other = await fixture(t)
