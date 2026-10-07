@@ -50,6 +50,8 @@ export interface NativeToolsInventory {
   readonly installedCatalogText?: string
   readonly states: ReadonlyMap<string, NativeToolState>
   readonly catalogOutdated: boolean
+  /** Compressed bytes that bring every installed unit, including tools replaced by a local override, to the newest catalog. */
+  readonly updateBytes: number
 }
 
 /** A tool operation requested by the trusted window. */
@@ -175,7 +177,10 @@ export class NativeToolsDownloader {
     }
     for (const id of present) if (!states.has(id)) states.set(id, { installed: true, outdated: false, downloadBytes: 0 })
     return { root, catalogText, ...installedCatalogText === undefined ? {} : { installedCatalogText }, states,
-      catalogOutdated: channel !== undefined && installed !== undefined && !current('tools/manifest.json') }
+      catalogOutdated: channel !== undefined && installed !== undefined && !current('tools/manifest.json'),
+      updateBytes: channel === undefined || installed === undefined ? 0 : channel.metadata.archives
+        .filter(archive => installed.keys.has(archive.unit.toLowerCase()) && !current(archive.unit))
+        .reduce((sum, archive) => sum + archive.bytes, 0) }
   }
 
   /** Check the fixed publisher channel; a failed check retains installed tools and the last accepted revision.

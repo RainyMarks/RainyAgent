@@ -181,6 +181,8 @@ describe('per-tool downloads', () => {
     expect(await owner.checkUpdates()).toMatchObject({ phase: 'available', version: '1.0.2' })
     const inventory = await owner.inventory()
     expect(inventory.catalogOutdated).toBe(true)
+    const bytes = (unit: string): number => h.second.metadata.archives.find(archive => archive.unit === unit)?.bytes ?? 0
+    expect(inventory.updateBytes).toBe(bytes('tools/alpha') + bytes('tools/manifest.json'))
     expect(Object.fromEntries(inventory.states)).toMatchObject({ alpha: { outdated: true }, beta: { outdated: false, downloadBytes: 0 } })
     h.transport.mockClear()
     await owner.start({ operation: 'update' })

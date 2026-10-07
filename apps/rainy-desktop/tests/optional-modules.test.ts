@@ -94,6 +94,10 @@ describe('optional components', () => {
     expect(progress).toHaveBeenLastCalledWith(21, 21)
     // The carrier owns this download's feedback; the settings page never sees it.
     expect(h.publish).not.toHaveBeenCalled()
+    // Once WSL has unpacked it, the archive is removed without notifying the settings page either.
+    await h.modules.remove('linux-runtime')
+    expect(await h.modules.installed('linux-runtime')).toBe(false)
+    expect(h.publish).not.toHaveBeenCalled()
   })
 
   it('rejects changed bytes, publishes the error, and succeeds on retry', async () => {

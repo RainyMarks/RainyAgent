@@ -40,7 +40,7 @@ export class NativeToolsController {
   constructor(private readonly bridge: NativeToolsBridge | undefined, private readonly copy: NativeToolsCopy,
     private readonly toast: (message: string, kind: 'success' | 'error' | 'warning') => void) {
     this.state = createSnapshotStore<NativeToolsState>({ phase: bridge === undefined ? 'desktop-only' : 'idle',
-      tools: [], preferences: { favorites: [], recent: [] }, catalogOutdated: false, error: '', pending: [], savingFavorites: false,
+      tools: [], preferences: { favorites: [], recent: [] }, catalogOutdated: false, updateBytes: 0, error: '', pending: [], savingFavorites: false,
       download: { phase: 'idle', completedBytes: 0, totalBytes: 0, error: '' },
       update: { phase: 'unchecked', version: '', error: '' } })
     this.unsubscribe = bridge?.onDownloadProgress((download) => {

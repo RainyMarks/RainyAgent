@@ -163,7 +163,7 @@ export class OptionalModules {
   /** Delete an installed module; the caller stops the programs that use it first.
    * @param id - module identity.
    */
-  async remove(id: OptionalModuleId): Promise<void> {
+  async remove(id: CarrierModuleId): Promise<void> {
     if (this.running) throw new Error('请等待组件下载完成后再删除')
     await this.descriptor(id)
     const target = join(this.options.root, id)
@@ -171,7 +171,7 @@ export class OptionalModules {
     const retired = join(this.options.root, `.retired-${id}-${randomUUID()}`)
     if (await toolPackStat(target)) await rename(target, retired)
     await rm(retired, { recursive: true, force: true })
-    this.publish({ phase: 'idle', module: id, completedBytes: 0, totalBytes: 0, error: '' })
+    if (id !== 'linux-runtime') this.publish({ phase: 'idle', module: id, completedBytes: 0, totalBytes: 0, error: '' })
   }
 
   /** Remove leftovers of interrupted installations and module archives this carrier no longer pins. */

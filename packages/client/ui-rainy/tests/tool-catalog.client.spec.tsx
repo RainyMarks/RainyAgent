@@ -16,7 +16,7 @@ const t = ((key: keyof typeof zh, values?: Record<string, string>) => zh[key].re
   (match, name: string) => values?.[name] ?? match)) as TranslateNS<'rainy'>
 
 const current = { outdated: false, downloadBytes: 0 }
-const state: NativeToolsState = { phase: 'ready', error: '', pending: [], savingFavorites: false, catalogOutdated: false,
+const state: NativeToolsState = { phase: 'ready', error: '', pending: [], savingFavorites: false, catalogOutdated: false, updateBytes: 0,
   update: { phase: 'unchecked', version: '', error: '' },
   download: { phase: 'idle', completedBytes: 0, totalBytes: 0, error: '' }, tools: [
     { ...current, id: 'cyberchef', name: 'CyberChef', category: 'web', version: '10', launchKind: 'web', status: 'ready', verified: false, missing: [] },
@@ -38,7 +38,7 @@ function fixture(next = state) {
 describe('common tool catalog', () => {
   it('updates only outdated downloaded tools from a checked channel', () => {
     const h = fixture({ ...state, tools: state.tools.map(tool => tool.id === 'x64dbg' ? { ...tool, outdated: true, downloadBytes: 3 * 1024 ** 2 } : tool),
-      update: { phase: 'available', version: '1.0.6', error: '' } })
+      updateBytes: 3 * 1024 ** 2, update: { phase: 'available', version: '1.0.6', error: '' } })
     expect(screen.getByText('有新工具或更新：1.0.6')).toBeTruthy()
     expect(within(screen.getByRole('heading', { name: 'x64dbg' }).closest('li')!).getByText('有更新')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '更新已下载的工具（3.0MB）' }))

@@ -154,7 +154,7 @@ export function ToolCatalog({ t, state, loadTools, launchTool, toggleFavorite, o
       <div className={css.actions}>
         {operating ? <Button size="sm" variant="outline" onClick={() => { void cancelDownload() }}>{t('toolsDownloadCancel')}</Button> : <>
           {updatable && <Button size="sm" variant="primary" disabled={busy}
-            onClick={() => { void operateTools('update') }}>{t('toolsUpdateAll', { size: fileSizeText(sum(outdated)) })}</Button>}
+            onClick={() => { void operateTools('update') }}>{t('toolsUpdateAll', { size: fileSizeText(state.updateBytes) })}</Button>}
           {available.length > 0 && <Button size="sm" variant="outline" disabled={busy}
             onClick={() => { void operateTools('install', available.map(tool => tool.id)) }}>
             {t('toolsDownloadAll', { size: fileSizeText(sum(available)) })}

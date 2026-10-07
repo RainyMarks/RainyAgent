@@ -48,6 +48,8 @@ export interface NativeToolCatalog {
   readonly preferences: NativeToolPreferences
   /** Installed tools describe an older catalog, even when no tool files changed. */
   readonly catalogOutdated: boolean
+  /** Compressed bytes that bring every downloaded tool and the catalog to the newest revision. */
+  readonly updateBytes: number
 }
 
 /** Reports platform acceptance of a launch request; interface readiness and tool acceptance require separate observations. */

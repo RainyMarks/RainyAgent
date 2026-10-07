@@ -94,6 +94,7 @@ export interface NativeToolsInventorySource {
   readonly installedCatalogText?: string
   readonly states: ReadonlyMap<string, ToolState>
   readonly catalogOutdated: boolean
+  readonly updateBytes: number
 }
 
 /** Main-process dependencies for the installed catalog. */
@@ -171,6 +172,7 @@ export class NativeToolsLibrary {
     readonly tools: (InstalledNativeTool & { readonly installRoot: string; readonly state?: ToolState })[]
     readonly verified: ReadonlySet<string>
     readonly catalogOutdated: boolean
+    readonly updateBytes: number
   }> {
     const inventory = await this.options.inventory?.()
     const root = inventory?.root ?? this.options.installRoot
@@ -214,7 +216,7 @@ export class NativeToolsLibrary {
         verified.delete(tool.id)
       }
     }
-    return { tools, verified, catalogOutdated: inventory?.catalogOutdated ?? false }
+    return { tools, verified, catalogOutdated: inventory?.catalogOutdated ?? false, updateBytes: inventory?.updateBytes ?? 0 }
   }
 
   private async preferences(): Promise<CurrentPreferences> {
@@ -250,7 +252,7 @@ export class NativeToolsLibrary {
    * @returns tool summaries; availability does not imply a completed functional acceptance run.
    */
   async listTools(): Promise<NativeToolCatalog> {
-    const [{ tools, verified, catalogOutdated }, preferences] = await Promise.all([this.catalog(), this.preferences()])
+    const [{ tools, verified, catalogOutdated, updateBytes }, preferences] = await Promise.all([this.catalog(), this.preferences()])
     return {
       tools: await Promise.all(tools.map(async (tool) => {
         const summary = { id: tool.id, name: tool.name, category: tool.category, version: tool.version,
@@ -265,7 +267,7 @@ export class NativeToolsLibrary {
           ...tool.variants ? { variants: await Promise.all(tool.variants.map(async variant => ({ id: variant.id, name: variant.name,
             status: (await this.missing(tool.installRoot, tool, variant.entry)).length ? 'missing' as const : 'ready' as const }))) } : {},
         }
-      })), preferences: { favorites: preferences.favorites, recent: preferences.recent }, catalogOutdated,
+      })), preferences: { favorites: preferences.favorites, recent: preferences.recent }, catalogOutdated, updateBytes,
     }
   }
 

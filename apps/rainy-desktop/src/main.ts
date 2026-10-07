@@ -256,6 +256,12 @@ async function start(): Promise<void> {
       progress.step(`正在启动 WSL · ${distribution}…`)
       installed = await install()
     }
+    // The unpacked runtime is all WSL needs; only the next version downloads an archive again.
+    if (app.isPackaged) {
+      void modules.remove('linux-runtime').catch((error: unknown) => {
+        appendFileSync(logPath, `The Linux runtime archive was not removed: ${errorText(error)}\n`)
+      })
+    }
     return { installed, carrierState: state, uvx: mappedUvx }
   }
   let prepared: Awaited<ReturnType<typeof prepareWsl>> | undefined

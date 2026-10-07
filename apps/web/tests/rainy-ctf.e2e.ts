@@ -81,7 +81,7 @@ const CATALOG: NativeToolCatalog = { tools: [
   { ...INSTALLED, id: '7zip', name: '7-Zip', category: 'misc', version: '25.01', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
   { id: 'exiftool', name: 'ExifTool', category: 'misc', version: '13.30', launchKind: 'terminal', status: 'available', verified: false, missing: [],
     outdated: false, downloadBytes: 12_345_678 },
-], preferences: { favorites: [], recent: [] }, catalogOutdated: false }
+], preferences: { favorites: [], recent: [] }, catalogOutdated: false, updateBytes: 0 }
 
 async function installCatalogFixture(page: Page): Promise<void> {
   // Only the native preload is substituted: Rainy's profile, rendering and Session routes remain real.

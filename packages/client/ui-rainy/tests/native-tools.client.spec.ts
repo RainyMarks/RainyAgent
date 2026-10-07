@@ -9,7 +9,7 @@ const catalog: NativeToolCatalog = { tools: [
   { ...tool, id: 'x64dbg', name: 'x64dbg', category: 'reverse', version: '2026', launchKind: 'desktop', status: 'ready', verified: true,
     missing: [], variants: [{ id: 'x32', name: 'x32dbg', status: 'ready' }] },
   { ...tool, id: '7zip', name: '7-Zip', category: 'misc', version: '25', launchKind: 'desktop', status: 'missing', verified: false, missing: ['7zFM.exe'] },
-], preferences: { favorites: [], recent: ['x64dbg'] }, catalogOutdated: false }
+], preferences: { favorites: [], recent: ['x64dbg'] }, catalogOutdated: false, updateBytes: 0 }
 
 function deferred<T>() {
   let resolve!: (value: T) => void

@@ -64,7 +64,7 @@ describe('native tool catalog', () => {
   it('lists tools not yet downloaded from the newest catalog and launches installed ones with their own entries', async () => {
     const onlineRoot = join(userData, 'native-tools')
     const newest = JSON.stringify({ version: 1, tools: [{ ...installedTool(), version: 'next' }] })
-    let inventory: NativeToolsInventorySource = { root: onlineRoot, catalogText: newest, catalogOutdated: false,
+    let inventory: NativeToolsInventorySource = { root: onlineRoot, catalogText: newest, catalogOutdated: false, updateBytes: 0,
       states: new Map([['7zip', { installed: false, outdated: false, downloadBytes: 42 }]]) }
     const start = vi.fn()
     const library = new NativeToolsLibrary({ installRoot, userData, inventory: async () => inventory, start })
@@ -73,9 +73,10 @@ describe('native tool catalog', () => {
     expect(start).not.toHaveBeenCalled()
     await mkdir(join(onlineRoot, 'tools/7zip'), { recursive: true })
     await writeFile(join(onlineRoot, 'tools/7zip/7z.exe'), 'downloaded tool')
-    inventory = { ...inventory, installedCatalogText: JSON.stringify({ version: 1, tools: [installedTool()] }), catalogOutdated: true,
+    inventory = { ...inventory, installedCatalogText: JSON.stringify({ version: 1, tools: [installedTool()] }),
+      catalogOutdated: true, updateBytes: 9,
       states: new Map([['7zip', { installed: true, outdated: true, downloadBytes: 7 }]]) }
-    expect(await library.listTools()).toMatchObject({ catalogOutdated: true,
+    expect(await library.listTools()).toMatchObject({ catalogOutdated: true, updateBytes: 9,
       tools: [{ id: '7zip', status: 'ready', version: 'test', outdated: true, downloadBytes: 7 }] })
     await library.launchTool('7zip')
     expect(start.mock.calls[0][0]).toMatchObject({ target: await realpath(join(onlineRoot, 'tools/7zip/7z.exe')) })
