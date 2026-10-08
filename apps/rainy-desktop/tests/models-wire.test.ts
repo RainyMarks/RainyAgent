@@ -56,3 +56,45 @@ it.each([
     for (const field of ['thinking', 'reasoning', 'reasoning_effort', 'enable_thinking']) expect(server.requests[0]).not.toHaveProperty(field)
   } else expect(server.requests[0]).toMatchObject(expected)
 })
+
+it('saves a relayed Claude model with its own efforts, low effort for "off" and an hour-long cache', async () => {
+  const sse = (type: string, data: Record<string, unknown>): string => `${JSON.stringify({ type, ...data })}\nevent: ${type}`
+  const server = await mockServer([{ events: [
+    sse('message_start', { message: { id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content: [],
+      stop_reason: null, usage: { input_tokens: 3, output_tokens: 1 } } }),
+    sse('content_block_start', { index: 0, content_block: { type: 'text', text: '' } }),
+    sse('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'hello' } }),
+    sse('content_block_stop', { index: 0 }),
+    sse('message_delta', { delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } }),
+    sse('message_stop', {}),
+  ] }])
+  const ctx = new Context()
+  onTestFinished(() => ctx.fiber.dispose())
+  let providers: Record<string, PiAiProviderProfile> = {}
+  let selection: unknown
+  ctx.provide('credentials', { describe: async () => ({ configured: true }) } as never)
+  ctx.provide('agentDefaultModel', { saveSelection: async (value: unknown) => { selection = value } } as never)
+  ctx.provide('configEditor', {
+    entries: () => [{ options: { id: 'llm-pi-ai' } }],
+    edit: async (
+      _entry: object,
+      update: (current: { providers: Record<string, PiAiProviderProfile> }) => { providers: Record<string, PiAiProviderProfile> },
+    ) => {
+      providers = update({ providers }).providers
+    },
+  } as never)
+  const setup: ModelSetup = { provider: 'claude-relay', model: 'claude-opus-5-5', baseURL: server.url, api: 'anthropic-messages',
+    local: false, contextWindow: 200000, maxTokens: 8000, thinking: 'off' }
+  await configureModel(ctx, setup)
+  expect(providers['claude-relay']).toMatchObject({ reasoning: 'low', cacheRetention: 'long' })
+  expect(providers['claude-relay']?.models?.[0]).not.toHaveProperty('reasoningEfforts')
+  expect(selection).toMatchObject({ reasoningEffort: 'low' })
+  const adapter = new PiAiAdapter({ profiles: () => resolveProfiles(providers), resolveApiKey: () => Promise.resolve('test-key'), auth: memoryAuth() })
+  const chunks = []
+  for await (const chunk of adapter.stream({ provider: setup.provider, model: setup.model, maxTokens: 8000,
+    messages: [createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Return a concise checkpoint.' }] })] })) chunks.push(chunk)
+  expect(chunks.at(-1)).toMatchObject({ type: 'finish', reason: { kind: 'stop' } })
+  expect(server.requests[0]).toMatchObject({ thinking: { type: 'adaptive' } })
+  expect(JSON.stringify(server.requests[0])).toContain('"effort":"low"')
+  expect(JSON.stringify(server.requests[0])).toContain('"ttl":"1h"')
+})

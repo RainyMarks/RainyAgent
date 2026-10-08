@@ -205,6 +205,22 @@ export function catalogModels(provider: string): Map<string, Model<Api>> {
 }
 
 /**
+ * The installed Anthropic entry for a Claude model that a hand-declared
+ * Anthropic Messages route serves, such as a relay in front of the Claude API.
+ *
+ * Only the catalog may set the thinking protocol (adaptive or budgeted), the
+ * effort spellings, and the mid-conversation effort, system-message and
+ * tool-change capabilities, so without this a route named anything but
+ * `anthropic` would send current Claude models a thinking budget they refuse.
+ * @param api - the route's wire protocol.
+ * @param id - the configured model id.
+ * @returns the catalog entry, or `undefined` for another protocol or an id the catalog does not describe.
+ */
+export function claudeCatalogModel(api: string | undefined, id: string): Model<Api> | undefined {
+  return api === 'anthropic-messages' ? catalogModels('anthropic').get(id) : undefined
+}
+
+/**
  * Selectable reasoning efforts for one model: each key is a level the model
  * offers (and selectors show), and its value is the wire spelling dispatch
  * sends for it. `off` alone may leave its value empty — "supported, send
@@ -895,7 +911,7 @@ export function resolveRouteModels(
     if (entry.id.length === 0) invalid(provider, 'has a model with an empty id')
     if (seen.has(entry.id)) invalid(provider, `lists model "${entry.id}" more than once`)
     seen.add(entry.id)
-    const base = defaults.get(entry.id)
+    const base = defaults.get(entry.id) ?? claudeCatalogModel(request.api, entry.id)
     const api = request.api ?? base?.api ?? routeApi
     if (api === undefined) {
       invalid(provider, `model "${entry.id}" needs an api; the installed catalog does not describe it, so set the`

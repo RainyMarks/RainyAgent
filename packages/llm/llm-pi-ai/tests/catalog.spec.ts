@@ -913,6 +913,64 @@ describe('compat switches', () => {
     })
   })
 
+  it('gives a relay route serving a known Claude model the installed Claude entry', () => {
+    const models = modelsOf({
+      'claude-relay': {
+        api: 'anthropic-messages',
+        baseURL: 'https://relay.test',
+        compat: { supportsCacheControlOnTools: true },
+        models: [{ id: 'claude-opus-5-5', contextWindow: 200000 }, { id: 'relay-own-model' }],
+      },
+    }, 'claude-relay')
+
+    const claude = models.get('claude-opus-5-5')
+    expect(claude?.baseUrl).toBe('https://relay.test')
+    expect(claude?.provider).toBe('claude-relay')
+    expect(claude?.contextWindow).toBe(200000)
+    expect(claude?.reasoning).toBe(true)
+    expect(claude?.compat).toMatchObject({ forceAdaptiveThinking: true, supportsMidConvoEffort: true, supportsCacheControlOnTools: true })
+    expect(getSupportedThinkingLevels(claude as Model<Api>)).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(models.get('relay-own-model')?.reasoning).toBe(false)
+    expect(LlmPiAi.claudeReasoningLevels('claude-opus-5-5')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    expect(LlmPiAi.claudeReasoningLevels('relay-own-model')).toBeUndefined()
+  })
+
+  it('sends a relay Claude request adaptive thinking and four cache breakpoints', async () => {
+    const sse = (type: string, data: Record<string, unknown>): string => `${JSON.stringify({ type, ...data })}\nevent: ${type}`
+    const server = await mockServer([{ events: [
+      sse('message_start', { message: { id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5-5', content: [],
+        stop_reason: null, usage: { input_tokens: 5, output_tokens: 1, cache_read_input_tokens: 900, cache_creation_input_tokens: 40 } } }),
+      sse('content_block_start', { index: 0, content_block: { type: 'text', text: '' } }),
+      sse('content_block_delta', { index: 0, delta: { type: 'text_delta', text: 'done' } }),
+      sse('content_block_stop', { index: 0 }),
+      sse('message_delta', { delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 2 } }),
+      sse('message_stop', {}),
+    ] }])
+    const ctx = await harness({ providers: { 'claude-relay': {
+      apiKeyEnv: KEY_ENV, api: 'anthropic-messages', baseURL: server.url, cacheRetention: 'long',
+      models: [{ id: 'claude-opus-5-5' }],
+    } } })
+    const tool = { name: 'read', description: 'Read a file', parameters: { type: 'object', properties: { path: { type: 'string' } } } }
+    const result = await assemble(ctx, {
+      provider: 'claude-relay', model: 'claude-opus-5-5', reasoningEffort: ReasoningEffortId('high'), tools: [tool],
+      messages: [
+        { role: 'system', content: [{ type: 'text', text: 'You are a CTF assistant.' }], source: { kind: 'test' } },
+        createUserMessage({ content: [{ type: 'text', text: 'read a.txt' }], source: { kind: 'test' } }),
+        { role: 'assistant', content: [{ type: 'tool-call', id: 'call_1', name: 'read', arguments: '{"path":"a.txt"}' }], source: { kind: 'test' } },
+        { role: 'tool', toolCallId: 'call_1', content: [{ type: 'text', text: 'flag{x}' }], source: { kind: 'test' } },
+      ] as never,
+    })
+
+    expect(result.finish).toEqual({ kind: 'stop' })
+    expect(result.usage).toMatchObject({ cacheReadTokens: 900, cacheWriteTokens: 40 })
+    expect(server.paths).toEqual(['/v1/messages?beta=true'])
+    const body = server.requests[0] as { thinking: unknown; output_config: unknown; messages: unknown[] }
+    expect(body.thinking).toMatchObject({ type: 'adaptive' })
+    expect(body.output_config).toEqual({ effort: 'high' })
+    expect(JSON.stringify(body).match(/"cache_control":\{"type":"ephemeral","ttl":"1h"\}/g)).toHaveLength(4)
+    expect(String(server.headers[0]?.['anthropic-beta'])).toContain('mid-conversation-output-config')
+  })
+
   it('lands each route switch only on the models whose protocol declares it', () => {
     const catalog = getBuiltinModels('opencode') as readonly Model<Api>[]
     const completions = catalog.find(model => model.api === 'openai-completions')

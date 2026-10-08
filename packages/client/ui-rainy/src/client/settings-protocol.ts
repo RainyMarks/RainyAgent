@@ -33,7 +33,7 @@ export const settingsStatusSchema = z.object({
   models: z.array(modelSchema), budgets: z.array(budgetSchema),
   selected: z.object({ provider: z.string(), model: z.string() }).nullish(),
   sessions: z.array(z.object({ id: z.string(), title: z.string().optional(), status: z.string() })),
-  preset: modelSchema.optional(), tools: z.array(z.string()),
+  presets: z.array(z.object({ name: z.string(), model: modelSchema })).optional(), tools: z.array(z.string()),
   globalPrompt: z.object({ text: z.string(), maxChars: z.number() }),
 })
 /** Settings read state supplied through the framework hook. */

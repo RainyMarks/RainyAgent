@@ -66,12 +66,13 @@ import type {} from '@deepseek-ai/dsh-fs'
 import { deepEqualJson } from '@deepseek-ai/dsh-util-values'
 import { PiAiAdapter } from './adapter.ts'
 import { authContextFrom, credentialStoreFrom } from './auth.ts'
-import { catalogProviderIds } from './catalog.ts'
+import { catalogProviderIds, claudeCatalogModel } from './catalog.ts'
 import { assertServiceable, Config, resolveProfiles } from './config.ts'
 import type { ResolvedPiAiProviderProfile } from './config.ts'
 import { discoverModels } from './discovery.ts'
 import type { StoredModelDiscoveryProfile } from './discovery.ts'
 import { registerPiAiFlows } from './login.ts'
+import { getSupportedThinkingLevels } from './models.ts'
 
 export { PiAiAdapter } from './adapter.ts'
 export type { PiAiAdapterOptions } from './adapter.ts'
@@ -89,6 +90,16 @@ export type {
 } from './config.ts'
 export { recordKeyFor } from './auth.ts'
 export { supportedProtocols } from './provider.ts'
+
+/**
+ * Reasoning levels a Claude model takes when an Anthropic Messages route serves it.
+ * @param id - configured model id.
+ * @returns the supported levels in escalation order, or `undefined` when the installed catalog does not describe the id.
+ */
+export function claudeReasoningLevels(id: string): readonly string[] | undefined {
+  const model = claudeCatalogModel('anthropic-messages', id)
+  return model === undefined ? undefined : getSupportedThinkingLevels(model)
+}
 
 export const name = 'llm-pi-ai'
 export const inject = ['llm']

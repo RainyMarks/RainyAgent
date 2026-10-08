@@ -2,6 +2,7 @@
 import type { Context } from '@deepseek-ai/cordis'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { ReasoningEffortId } from '@deepseek-ai/dsh-llm'
+import { claudeReasoningLevels } from '@deepseek-ai/dsh-llm-pi-ai'
 import type {} from '@deepseek-ai/dsh-config-editor'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { resolveBudget } from './budget.ts'
@@ -31,16 +32,34 @@ export const DEEPSEEK_FLASH: ModelSetup = {
   contextWindow: 1000000, maxTokens: 393216, api: 'openai-responses', local: false,
   thinking: 'max', thinkingFormat: 'deepseek',
 }
+/** Claude through the official API. A 200K window keeps long sessions affordable; the model accepts up to 1M. */
+export const CLAUDE_OPUS: ModelSetup = {
+  provider: 'rainy-claude', baseURL: 'https://api.anthropic.com', model: 'claude-opus-5-5',
+  contextWindow: 200000, maxTokens: 64000, api: 'anthropic-messages', local: false, thinking: 'high',
+}
 const reasoningEfforts = { off: 'none', low: 'low', high: 'high', max: 'max' } as const
+
+/**
+ * The effort a Claude model actually runs at. Current Claude models cannot turn
+ * thinking off, so Rainy's "off" becomes their lowest effort.
+ * @param setup Saved or requested model settings.
+ * @returns the effort to send, or the setting unchanged for a model that is not a known Claude model.
+ */
+export function effectiveThinking(setup: Pick<ModelSetup, 'api' | 'model' | 'thinking'>): ModelSetup['thinking'] {
+  const levels = setup.api === 'anthropic-messages' ? claudeReasoningLevels(setup.model) : undefined
+  return levels !== undefined && setup.thinking === 'off' && !levels.includes('off') ? 'low' : setup.thinking
+}
 
 /** Credential variable owned by Rainy for one provider; repair recognizes only these profiles. */
 function credentialEnv(provider: string): string {
-  return provider === DEEPSEEK_FLASH.provider ? 'DEEPSEEK_API_KEY' : `RAINY_${provider.replaceAll('-', '_').toUpperCase()}_KEY`
+  if (provider === DEEPSEEK_FLASH.provider) return 'DEEPSEEK_API_KEY'
+  return provider === CLAUDE_OPUS.provider ? 'ANTHROPIC_API_KEY' : `RAINY_${provider.replaceAll('-', '_').toUpperCase()}_KEY`
 }
 
 /** Display name Rainy writes for a provider it configures. */
 function ownedDisplayName(provider: string, local: boolean): string {
-  return local ? '本地模型' : provider === DEEPSEEK_FLASH.provider ? 'DeepSeek V4.1 Flash' : provider
+  if (local) return '本地模型'
+  return provider === DEEPSEEK_FLASH.provider ? 'DeepSeek V4.1 Flash' : provider === CLAUDE_OPUS.provider ? 'Claude' : provider
 }
 
 /** Validate discovery connection fields without including credentials in diagnostics.
@@ -93,25 +112,30 @@ export async function configureModel(ctx: Context, raw: unknown): Promise<{ prov
   const entry = ctx.configEditor.entries().find(item => item.options.id === 'llm-pi-ai')
   if (!entry) throw new Error('模型适配器尚未就绪。')
   const budget = resolveBudget(setup.contextWindow, setup.maxTokens)
+  // A known Claude model keeps the installed catalog's thinking protocol and efforts,
+  // and its prompt cache lives an hour so a pause to read output does not resend the session.
+  const claude = setup.api === 'anthropic-messages' && claudeReasoningLevels(setup.model) !== undefined
+  const thinking = effectiveThinking(setup)
   const profile = {
     displayName: ownedDisplayName(setup.provider, setup.local),
     baseURL: setup.baseURL, api: setup.api, apiKeyEnv: ref,
     defaultContextWindow: setup.contextWindow, defaultMaxTokens: budget.outputTokens,
     streamIdleTimeoutMs: 300000, timeoutMs: 1800000,
     retryPolicy: { mode: 'normal', maxRetries: 1 },
-    ...(setup.thinking === undefined ? {} : { reasoning: setup.thinking }),
+    ...(thinking === undefined ? {} : { reasoning: thinking }),
+    ...(claude ? { cacheRetention: 'long' } : {}),
     ...(setup.api === 'openai-completions' ? { compat: { maxTokensField: setup.maxTokensField ?? 'max_tokens', supportsDeveloperRole: false,
       ...(setup.thinkingFormat === undefined ? {} : { thinkingFormat: setup.thinkingFormat }),
     } } : {}),
     models: [{ id: setup.model, contextWindow: setup.contextWindow, maxTokens: budget.outputTokens,
-      ...(setup.thinking === undefined ? { reasoningEfforts: false } : { reasoningEfforts }),
+      ...(claude ? {} : setup.thinking === undefined ? { reasoningEfforts: false } : { reasoningEfforts }),
     }],
   }
   await ctx.configEditor.edit(entry, current => ({ ...current,
     providers: { ...objectRecord(objectRecord(current).providers), [setup.provider]: profile },
   }))
   await ctx.agentDefaultModel.saveSelection({ provider: setup.provider, model: setup.model,
-    ...(setup.thinking === undefined || setup.thinking === 'off' ? {} : { reasoningEffort: ReasoningEffortId(setup.thinking) }),
+    ...(thinking === undefined || thinking === 'off' ? {} : { reasoningEffort: ReasoningEffortId(thinking) }),
   })
   return { provider: setup.provider, model: setup.model }
 }
@@ -156,7 +180,13 @@ function repairThinkingProfiles(value: unknown): { config: Record<string, unknow
   const providers = Object.fromEntries(Object.entries(objectRecord(config.providers)).map(([provider, value]) => {
     const profile = objectRecord(value)
     const ownedName = profile.displayName === ownedDisplayName(provider, true) || profile.displayName === ownedDisplayName(provider, false)
-    if (!ownedName || profile.apiKeyEnv !== credentialEnv(provider) || profile.reasoning !== 'off' || !Array.isArray(profile.models)) return [provider, value]
+    if (!ownedName || profile.apiKeyEnv !== credentialEnv(provider) || !Array.isArray(profile.models)) return [provider, value]
+    const ids = profile.models.map(model => objectRecord(model).id)
+    const [id] = ids
+    if (profile.api === 'anthropic-messages' && ids.length === 1 && typeof id === 'string' && claudeReasoningLevels(id) !== undefined) {
+      return [provider, repairClaudeProfile(profile, id, () => { changedModels++ })]
+    }
+    if (profile.reasoning !== 'off') return [provider, value]
     const models = profile.models.map((value: unknown) => {
       const model = objectRecord(value)
       if (model.reasoningEfforts !== false) return value
@@ -166,6 +196,17 @@ function repairThinkingProfiles(value: unknown): { config: Record<string, unknow
     return [provider, { ...profile, models }]
   }))
   return { config: { ...config, providers }, changedModels }
+}
+
+/** Bring a Claude profile saved before Rainy recognized Claude to the catalog's efforts and the hour-long cache. */
+function repairClaudeProfile(profile: Record<string, unknown>, id: string, changed: () => void): Record<string, unknown> {
+  const models = (profile.models as unknown[]).map(objectRecord)
+  const thinking = typeof profile.reasoning === 'string' && ['off', 'low', 'high', 'max'].includes(profile.reasoning)
+    ? effectiveThinking({ api: 'anthropic-messages', model: id, thinking: profile.reasoning as ModelSetup['thinking'] }) : profile.reasoning
+  if (profile.cacheRetention !== undefined && thinking === profile.reasoning && models.every(model => !('reasoningEfforts' in model))) return profile
+  changed()
+  return { ...profile, ...(thinking === undefined ? {} : { reasoning: thinking }), cacheRetention: profile.cacheRetention ?? 'long',
+    models: models.map(({ reasoningEfforts: _efforts, ...model }) => model) }
 }
 
 /**
@@ -224,14 +265,15 @@ export async function probeModel(ctx: Context, raw: unknown): Promise<{ stream: 
   const saved = configuredModels(ctx).find(model => model.provider === setup.provider && model.model === setup.model)
   if (!saved || saved.baseURL !== setup.baseURL || saved.api !== setup.api
     || saved.contextWindow !== setup.contextWindow || saved.maxTokens !== resolveBudget(setup.contextWindow, setup.maxTokens).outputTokens
-    || saved.thinking !== setup.thinking || (setup.api === 'openai-completions'
+    || saved.thinking !== effectiveThinking(setup) || (setup.api === 'openai-completions'
       && ((saved.thinkingFormat ?? 'openai') !== (setup.thinkingFormat ?? 'openai')
         || (saved.maxTokensField ?? 'max_tokens') !== (setup.maxTokensField ?? 'max_tokens')))) throw new Error('请先保存当前模型设置，再验证这份已保存的配置。')
   const budget = resolveBudget(setup.contextWindow, setup.maxTokens)
   let text = ''; let toolCall = false; let stream = false
+  const thinking = effectiveThinking(setup)
   const route = {
     provider: setup.provider, model: setup.model, maxTokens: budget.outputTokens,
-    ...(setup.thinking === undefined || setup.thinking === 'off' ? {} : { reasoningEffort: ReasoningEffortId(setup.thinking) }),
+    ...(thinking === undefined || thinking === 'off' ? {} : { reasoningEffort: ReasoningEffortId(thinking) }),
   }
   for await (const chunk of ctx.llm.stream({ ...route,
     messages: [{ role: 'user', content: [{ type: 'text', text: 'Connection diagnostic. Reply only with RainyAgent connected.' }] }],

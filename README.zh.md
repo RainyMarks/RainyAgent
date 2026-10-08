@@ -62,6 +62,8 @@ RainyAgent 会检查稳定版更新并在后台下载。下载完成后可选择
 
 所选 Windows 或 WSL 环境必须能访问服务地址。密钥保存在该环境的私有凭据存储中，RainyAgent 不会静默切换到其他模型。
 
+使用 Claude 时，点击**载入 Claude 预设**并填写 Anthropic API 密钥。通过中转服务使用时同样可行：协议保持 `anthropic-messages`，模型 ID 填 Claude 的模型名（例如 `claude-opus-5-5` 或 `claude-sonnet-5-5`），RainyAgent 会按该模型使用自适应思考和对应的推理档位。Claude 对话的提示词缓存保留一小时，继续对话时之前的上下文从缓存读取。
+
 ### Strata 本地模型
 
 Strata 引擎包含 [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) 和 Python 3.12.14，运行于 Windows x64 与 NVIDIA CUDA 13（驱动 580 或更新；GPU 目标 `sm75`、`sm86`、`sm89`、`sm120`），不提供 AMD 或 Linux 推理。请自行准备受支持的 Qwen3.8 Flash Next 主模型 GGUF 及全部分片，以及配套 MTP 权重；发行包不含模型权重。

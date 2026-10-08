@@ -11,7 +11,7 @@ import type {} from './policy.ts'
 import type {} from './extensions.ts'
 import type {} from './project-memory.ts'
 import type {} from '@deepseek-ai/dsh-session-title'
-import { configureModel, configuredModels, connectStrataModel, discoverModels, probeModel, DEEPSEEK_FLASH } from './models.ts'
+import { CLAUDE_OPUS, configureModel, configuredModels, connectStrataModel, discoverModels, probeModel, DEEPSEEK_FLASH } from './models.ts'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { fileDiff } from './file-diff.ts'
 import { installIceSkyProxy } from './icesky-proxy.ts'
@@ -61,7 +61,7 @@ export async function apply(ctx: Context, config: Config): Promise<void> {
           sessions: ctx.agents.list().map(agent => ({
             id: agent.id, title: ctx.sessionTitle.get(agent.session)?.title, status: agent.status,
           })),
-          preset: DEEPSEEK_FLASH, tools: ['read', 'write', 'edit', process.platform === 'win32' ? 'pwsh' : 'bash'],
+          presets: [{ name: 'DeepSeek', model: DEEPSEEK_FLASH }, { name: 'Claude', model: CLAUDE_OPUS }], tools: ['read', 'write', 'edit', process.platform === 'win32' ? 'pwsh' : 'bash'],
           globalPrompt: ctx.rainy.globalPrompt(),
         }))
         return

@@ -41,3 +41,17 @@ it('propagates a failed profile write', async ({ onTestFinished }) => {
   await expect(migrateSavedModelThinking(ctx)).rejects.toThrow('Fixture profile is read-only')
   expect(config.providers.local.models[0]?.reasoningEfforts).toBe(false)
 })
+
+it('moves a Claude profile saved with generic efforts to the catalog efforts and the hour-long cache', async ({ onTestFinished }) => {
+  const ctx = new Context()
+  onTestFinished(() => ctx.fiber.dispose())
+  const claude = { displayName: 'claude-relay', api: 'anthropic-messages', baseURL: 'https://relay.test', apiKeyEnv: 'RAINY_CLAUDE_RELAY_KEY',
+    reasoning: 'off', models: [{ id: 'claude-sonnet-5-5', contextWindow: 200000, reasoningEfforts: { off: 'none', low: 'low', high: 'high', max: 'max' } }] }
+  let config: object = { providers: { 'claude-relay': claude } }
+  const entry = { options: { id: 'llm-pi-ai', get config() { return config } } }
+  ctx.provide('configEditor', { entries: () => [entry], edit: async (_entry: object, update: (current: object) => object) => { config = update(config) } } as never)
+  expect(await migrateSavedModelThinking(ctx)).toBe(1)
+  expect(config).toEqual({ providers: { 'claude-relay': { ...claude, reasoning: 'low', cacheRetention: 'long',
+    models: [{ id: 'claude-sonnet-5-5', contextWindow: 200000 }] } } })
+  expect(await migrateSavedModelThinking(ctx)).toBe(0)
+})

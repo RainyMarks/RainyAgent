@@ -53,6 +53,8 @@ jobs:
           packages/client/ui-rainy/tests/native-tools.client.spec.ts
           packages/client/ui-rainy/tests/tool-catalog.client.spec.tsx
           packages/client/ui-rainy/tests/optional-modules.client.spec.tsx
+          packages/llm/llm-pi-ai/tests/anthropic-cache.spec.ts
+          packages/llm/llm-pi-ai/tests/catalog.spec.ts
       - name: Rainy desktop regression tests
         working-directory: apps/rainy-desktop
         run: >-
@@ -60,7 +62,7 @@ jobs:
           tests/desktop-lifecycle.test.ts tests/clipboard-policy.test.ts tests/updates.test.ts tests/models-discovery.test.ts
           tests/transport.test.ts tests/transport-lifecycle.test.ts
           tests/runtime-environments.test.ts tests/release-integrity.test.ts
-          tests/strata.test.ts tests/strata-health.test.ts tests/models-strata.test.ts
+          tests/strata.test.ts tests/strata-health.test.ts tests/models-strata.test.ts tests/models-wire.test.ts tests/models-migration.test.ts
           tests/native-tools-download.test.ts tests/native-tools.test.ts
           tests/native-tool-windows-lifecycle.test.ts
           tests/optional-modules.test.ts tests/toolpack-prune.test.ts

@@ -62,6 +62,8 @@ RainyAgent checks for stable releases and downloads them in the background. A do
 
 The selected Windows or WSL environment must be able to reach the service. Keys are stored in that environment's private credential store, and RainyAgent never silently switches to another model.
 
+For Claude, select **Load Claude preset** and enter your Anthropic API key. A relay works the same way: keep the `anthropic-messages` protocol and the Claude model ID (for example `claude-opus-5-5` or `claude-sonnet-5-5`), and RainyAgent applies that model's adaptive thinking and effort levels. Claude sessions keep the prompt cache for an hour, so continuing a conversation reads the earlier context from the cache.
+
 ### Strata local model
 
 The Strata engine runs [Niko1221/Strata 0.1.39](https://github.com/Niko1221/Strata/releases/tag/v0.1.39) with Python 3.12.14 on Windows x64 with NVIDIA CUDA 13 (driver 580 or newer; GPU targets `sm75`, `sm86`, `sm89`, `sm120`). AMD and Linux inference are not provided. You supply a supported Qwen3.8 Flash Next main GGUF with all of its shards and the matching MTP weights; model weights are not bundled.

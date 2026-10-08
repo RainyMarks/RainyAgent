@@ -197,9 +197,9 @@ export function ModelsSection({
         <Button variant="outline" disabled={busy} onClick={() => { run(async () => {
           const tested = await probe(setup()); setResult(t('settingsProbeResult', { stream: t(tested.stream ? 'settingsPass' : 'settingsNotVerified'), tools: t(tested.toolCall ? 'settingsPass' : 'settingsNotVerified') }))
         }) }}>{t('settingsProbeModel')}</Button>
-        {snapshot.status?.preset !== undefined && <Button disabled={busy} onClick={() => {
-          if (snapshot.status?.preset !== undefined) { setSelected(''); setForm(formOf(snapshot.status.preset)) }
-        }}>{t('settingsPreset')}</Button>}
+        {snapshot.status?.presets?.map(preset => <Button key={preset.name} disabled={busy} onClick={() => {
+          setSelected(''); setForm(formOf(preset.model))
+        }}>{t('settingsPreset', { name: preset.name })}</Button>)}
       </div>
       {result !== '' && <p className={css.notice} role="status">{result}</p>}
     </article>
