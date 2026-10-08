@@ -255,6 +255,7 @@ async function start(): Promise<void> {
       if (!await downloadLinuxRuntime()) return undefined
       progress.step(`正在启动 WSL · ${distribution}…`)
       installed = await install()
+      if (installed !== null && typeof installed === 'object' && 'needsArchive' in installed) throw new Error('下载的 WSL 运行环境与此版本不一致')
     }
     // The unpacked runtime is all WSL needs; only the next version downloads an archive again.
     if (app.isPackaged) {

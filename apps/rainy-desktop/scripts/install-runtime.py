@@ -21,12 +21,12 @@ with (owned / '.install.lock').open('a') as lock:
     if not (target / '.complete').is_file():
         if target.exists():
             raise RuntimeError('Incomplete runtime directory; preserved for diagnosis')
-        # The carrier downloads the archive only when this version's runtime is not installed yet.
-        if not archive.is_file():
+        # The carrier downloads the archive only when this version's runtime is not installed yet;
+        # an archive left by an earlier version is replaced the same way.
+        if not archive.is_file() or archive.stat().st_size != metadata['bytes'] or (
+                hashlib.sha256(archive.read_bytes()).hexdigest() != digest):
             print(json.dumps({'needsArchive': True}))
             sys.exit(0)
-        if archive.stat().st_size != metadata['bytes'] or hashlib.sha256(archive.read_bytes()).hexdigest() != digest:
-            raise RuntimeError('Rainy runtime checksum mismatch')
         staging = Path(tempfile.mkdtemp(prefix='.install-', dir=owned))
         with tarfile.open(archive, 'r:gz') as package:
             package.extractall(staging, filter='data')
