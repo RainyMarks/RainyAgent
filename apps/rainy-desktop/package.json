@@ -1,6 +1,6 @@
 {
   "name": "@deepseek-ai/dsh-rainy-desktop",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "private": true,
   "type": "module",
   "description": "RainyAgent desktop coding agent for Windows and WSL2",
