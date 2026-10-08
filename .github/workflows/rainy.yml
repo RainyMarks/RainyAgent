@@ -69,4 +69,4 @@ jobs:
       - name: Release signing regression tests
         run: node --test apps/rainy-desktop/tests/sign-release.test.mjs apps/rainy-desktop/tests/sign-tool-channel.test.mjs
       - name: Release transport regression tests
-        run: node --test apps/rainy-desktop/tests/release-assets.test.mjs apps/rainy-desktop/tests/strata-runtime.test.mjs
+        run: node --test apps/rainy-desktop/tests/release-assets.test.mjs apps/rainy-desktop/tests/strata-runtime.test.mjs apps/rainy-desktop/tests/install-runtime.test.mjs

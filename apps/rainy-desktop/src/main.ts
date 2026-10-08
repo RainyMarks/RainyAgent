@@ -263,7 +263,14 @@ async function start(): Promise<void> {
         appendFileSync(logPath, `The Linux runtime archive was not removed: ${errorText(error)}\n`)
       })
     }
-    return { installed, carrierState: state, uvx: mappedUvx }
+    /** Delete the runtimes earlier versions unpacked; only the installed application does this, never a source checkout. */
+    const pruneRuntimes = async (): Promise<string[]> => {
+      const { stdout } = await run('wsl.exe', ['-d', distribution, '--exec', 'python3', installer, '--prune', metadata],
+        { windowsHide: true, timeout: 600000 })
+      const result: unknown = JSON.parse(stdout)
+      return result !== null && typeof result === 'object' && 'removed' in result && Array.isArray(result.removed) ? result.removed.map(String) : []
+    }
+    return { installed, carrierState: state, uvx: mappedUvx, pruneRuntimes }
   }
   let prepared: Awaited<ReturnType<typeof prepareWsl>> | undefined
   let windowsInstead = false
@@ -735,6 +742,11 @@ async function start(): Promise<void> {
     void nativeTools.maintain().then((bytes) => {
       if (bytes > 0) appendFileSync(logPath, `Removed ${Math.round(bytes / 1024 ** 2)} MiB of program files from tool upgrade backups\n`)
     })
+    if (app.isPackaged && prepared !== undefined) {
+      void prepared.pruneRuntimes().then((removed) => {
+        if (removed.length) appendFileSync(logPath, `Removed ${removed.length} WSL runtimes that earlier versions unpacked\n`)
+      }, (error: unknown) => { appendFileSync(logPath, `Earlier WSL runtimes were not removed: ${errorText(error)}\n`) })
+    }
   }, BACKGROUND_CHECK_DELAY_MS)
   window.on('closed', () => { clearTimeout(background) })
 }
