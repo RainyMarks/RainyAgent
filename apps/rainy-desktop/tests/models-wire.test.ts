@@ -6,7 +6,7 @@ import { afterEach, expect, it, onTestFinished } from 'vitest'
 import { resolveProfiles } from '../../../packages/llm/llm-pi-ai/src/config.ts'
 import { memoryAuth } from '../../../packages/llm/llm-pi-ai/tests/auth-double.ts'
 import { closeMockServers, mockServer, textEvents } from '../../../packages/llm/llm-pi-ai/tests/mock-server.ts'
-import { configureModel } from '../src/models.ts'
+import { CLAUDE_HAIKU, CLAUDE_OPUS, configureModel } from '../src/models.ts'
 import type { ModelSetup } from '../src/models.ts'
 
 afterEach(closeMockServers)
@@ -97,4 +97,31 @@ it('saves a relayed Claude model with its own efforts, low effort for "off" and 
   expect(server.requests[0]).toMatchObject({ thinking: { type: 'adaptive' } })
   expect(JSON.stringify(server.requests[0])).toContain('"effort":"low"')
   expect(JSON.stringify(server.requests[0])).toContain('"ttl":"1h"')
+})
+
+it('saves both Claude presets under one Anthropic key with the catalog efforts', async () => {
+  const ctx = new Context()
+  onTestFinished(() => ctx.fiber.dispose())
+  let providers: Record<string, PiAiProviderProfile> = {}
+  ctx.provide('credentials', { describe: async () => ({ configured: true }) } as never)
+  ctx.provide('agentDefaultModel', { saveSelection: async () => undefined } as never)
+  ctx.provide('configEditor', {
+    entries: () => [{ options: { id: 'llm-pi-ai' } }],
+    edit: async (
+      _entry: object,
+      update: (current: { providers: Record<string, PiAiProviderProfile> }) => { providers: Record<string, PiAiProviderProfile> },
+    ) => {
+      providers = update({ providers }).providers
+    },
+  } as never)
+  await configureModel(ctx, CLAUDE_OPUS)
+  await configureModel(ctx, CLAUDE_HAIKU)
+  for (const preset of [CLAUDE_OPUS, CLAUDE_HAIKU]) {
+    expect(providers[preset.provider]).toMatchObject({ apiKeyEnv: 'ANTHROPIC_API_KEY', api: 'anthropic-messages', reasoning: 'high', cacheRetention: 'long' })
+    expect(providers[preset.provider]?.models?.[0]).not.toHaveProperty('reasoningEfforts')
+  }
+  expect(providers[CLAUDE_HAIKU.provider]).toMatchObject({ displayName: 'Claude Haiku', defaultContextWindow: 100000 })
+  const adapter = new PiAiAdapter({ profiles: () => resolveProfiles(providers), resolveApiKey: () => Promise.resolve('test-key'), auth: memoryAuth() })
+  expect((await adapter.resolveModel(CLAUDE_HAIKU.provider, CLAUDE_HAIKU.model)).reasoning?.efforts.map(effort => String(effort.id)))
+    .toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
 })

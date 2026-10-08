@@ -62,7 +62,7 @@ RainyAgent checks for stable releases and downloads them in the background. A do
 
 The selected Windows or WSL environment must be able to reach the service. Keys are stored in that environment's private credential store, and RainyAgent never silently switches to another model.
 
-For Claude, select **Load Claude preset** and enter your Anthropic API key. A relay works the same way: keep the `anthropic-messages` protocol and the Claude model ID (for example `claude-opus-5-5` or `claude-sonnet-5-5`), and RainyAgent applies that model's adaptive thinking and effort levels. Claude sessions keep the prompt cache for an hour, so continuing a conversation reads the earlier context from the cache.
+For Claude, select **Load Claude Opus preset** or **Load Claude Haiku preset** and enter your Anthropic API key; both presets share the key. The Haiku preset uses a 100K window so each request stays in Claude Haiku 5.5's lower price tier. A relay works the same way: keep the `anthropic-messages` protocol and the Claude model ID (for example `claude-opus-5-5`, `claude-sonnet-5-5` or `claude-haiku-5-5`), and RainyAgent applies that model's adaptive thinking and effort levels. Claude sessions keep the prompt cache for an hour, so continuing a conversation reads the earlier context from the cache.
 
 ### Strata local model
 

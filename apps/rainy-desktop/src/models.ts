@@ -37,6 +37,13 @@ export const CLAUDE_OPUS: ModelSetup = {
   provider: 'rainy-claude', baseURL: 'https://api.anthropic.com', model: 'claude-opus-5-5',
   contextWindow: 200000, maxTokens: 64000, api: 'anthropic-messages', local: false, thinking: 'high',
 }
+/** Claude Haiku 5.5. A 100K window keeps every request inside its lower price tier for prompts up to 100K tokens. */
+export const CLAUDE_HAIKU: ModelSetup = {
+  provider: 'rainy-claude-haiku', baseURL: 'https://api.anthropic.com', model: 'claude-haiku-5-5',
+  contextWindow: 100000, maxTokens: 16000, api: 'anthropic-messages', local: false, thinking: 'high',
+}
+/** Rainy's Claude presets share one Anthropic key. */
+const CLAUDE_DISPLAY_NAMES: Readonly<Record<string, string>> = { [CLAUDE_OPUS.provider]: 'Claude', [CLAUDE_HAIKU.provider]: 'Claude Haiku' }
 const reasoningEfforts = { off: 'none', low: 'low', high: 'high', max: 'max' } as const
 
 /**
@@ -53,13 +60,13 @@ export function effectiveThinking(setup: Pick<ModelSetup, 'api' | 'model' | 'thi
 /** Credential variable owned by Rainy for one provider; repair recognizes only these profiles. */
 function credentialEnv(provider: string): string {
   if (provider === DEEPSEEK_FLASH.provider) return 'DEEPSEEK_API_KEY'
-  return provider === CLAUDE_OPUS.provider ? 'ANTHROPIC_API_KEY' : `RAINY_${provider.replaceAll('-', '_').toUpperCase()}_KEY`
+  return provider in CLAUDE_DISPLAY_NAMES ? 'ANTHROPIC_API_KEY' : `RAINY_${provider.replaceAll('-', '_').toUpperCase()}_KEY`
 }
 
 /** Display name Rainy writes for a provider it configures. */
 function ownedDisplayName(provider: string, local: boolean): string {
   if (local) return '本地模型'
-  return provider === DEEPSEEK_FLASH.provider ? 'DeepSeek V4.1 Flash' : provider === CLAUDE_OPUS.provider ? 'Claude' : provider
+  return provider === DEEPSEEK_FLASH.provider ? 'DeepSeek V4.1 Flash' : CLAUDE_DISPLAY_NAMES[provider] ?? provider
 }
 
 /** Validate discovery connection fields without including credentials in diagnostics.

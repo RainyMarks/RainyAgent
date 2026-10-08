@@ -217,7 +217,31 @@ export function catalogModels(provider: string): Map<string, Model<Api>> {
  * @returns the catalog entry, or `undefined` for another protocol or an id the catalog does not describe.
  */
 export function claudeCatalogModel(api: string | undefined, id: string): Model<Api> | undefined {
-  return api === 'anthropic-messages' ? catalogModels('anthropic').get(id) : undefined
+  if (api !== 'anthropic-messages') return undefined
+  const catalog = catalogModels('anthropic')
+  return catalog.get(id) ?? newerClaudeModel(catalog, id)
+}
+
+/**
+ * Claude models released after the installed pi-ai catalog, described from the
+ * nearest catalog sibling and the documented differences. Claude Haiku 5.5 thinks
+ * adaptively with efforts `low` to `max`, refuses a sampling temperature, and
+ * takes per-message effort and mid-conversation system messages; mid-conversation
+ * tool changes are not documented for it, so they stay off.
+ * @param catalog - the installed Anthropic catalog.
+ * @param id - the configured model id.
+ * @returns the described model, or `undefined` for an id this table does not know.
+ */
+function newerClaudeModel(catalog: ReadonlyMap<string, Model<Api>>, id: string): Model<Api> | undefined {
+  const sibling = catalog.get('claude-sonnet-5-5')
+  if (id !== 'claude-haiku-5-5' || sibling === undefined) return undefined
+  return {
+    ...sibling,
+    id,
+    name: 'Claude Haiku 5.5',
+    cost: { input: 0.1, output: 0.5, cacheRead: 0.01, cacheWrite: 0.125 },
+    compat: { ...sibling.compat as AnthropicMessagesCompat, supportsMidConvoToolChanges: false },
+  }
 }
 
 /**

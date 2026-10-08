@@ -933,6 +933,14 @@ describe('compat switches', () => {
     expect(models.get('relay-own-model')?.reasoning).toBe(false)
     expect(LlmPiAi.claudeReasoningLevels('claude-opus-5-5')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
     expect(LlmPiAi.claudeReasoningLevels('relay-own-model')).toBeUndefined()
+    // A Claude model newer than the installed catalog is described from its sibling.
+    expect(LlmPiAi.claudeReasoningLevels('claude-haiku-5-5')).toEqual(['low', 'medium', 'high', 'xhigh', 'max'])
+    const haiku = modelsOf({
+      'claude-relay': { api: 'anthropic-messages', baseURL: 'https://relay.test', models: [{ id: 'claude-haiku-5-5' }] },
+    }, 'claude-relay').get('claude-haiku-5-5')
+    expect(haiku?.compat).toMatchObject({
+      forceAdaptiveThinking: true, supportsMidConvoEffort: true, supportsMidConvoToolChanges: false, supportsTemperature: false,
+    })
   })
 
   it('sends a relay Claude request adaptive thinking and four cache breakpoints', async () => {
